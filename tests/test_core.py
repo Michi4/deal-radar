@@ -123,16 +123,20 @@ def test_driver_fixture_parsing():
     assert len(items) == 1 and items[0]["title"] == "ThinkPad T14" and items[0]["price"] == 579.0
     assert items[0]["url"].startswith("https://www.willhaben.at/iad/")
     assert items[0]["images"] == ["https://cache.willhaben.at/x.jpg"]
-    # kleinanzeigen 2026-layout fixture
+    # kleinanzeigen live-layout fixture (h3>a, JSON-LD, location pin, DHL badge)
     khtml = ('<article data-adid="987" data-href="/s-anzeige/rad/987-217-1">'
-             "<h3>Cityrad 28 Zoll</h3>"
-             '<p class="text-secondary">150 € VB</p>'
-             '<p class="text-bodyRegular">Kaum gefahren, Abholung in Berlin</p>'
-             '<div class="text-onSurfaceNonessential"><span>10115 Berlin</span></div>'
+             '<script type="application/ld+json">{"title":"Cityrad 28 Zoll","description":"Kaum gefahren",'
+             '"contentUrl":"https://img.kleinanzeigen.de/x.jpg"}</script>'
+             '<h3 class="x"><a href="/s-anzeige/rad/987-217-1">Cityrad 28 Zoll</a></h3>'
+             '<p class="y">Kaum gefahren, Abholung in Berlin</p>'
+             '<div><p>150 € VB</p></div>'
+             '<div><svg data-title="locationOutline"></svg><span>10115 Berlin</span></div>'
+             '<div><p><span data-dhl-promotion>Versand möglich</span></p></div>'
              '<img src="https://img.kleinanzeigen.de/x.jpg"/></article>')
     kitems = parse_cards(khtml)
     assert len(kitems) == 1 and kitems[0]["id"] == "987" and kitems[0]["price"] == 150.0
-    assert "Abholung" in kitems[0]["description"]
+    assert kitems[0]["title"] == "Cityrad 28 Zoll" and kitems[0]["location"] == "10115 Berlin"
+    assert kitems[0]["shipping"] is True and "Abholung" in kitems[0]["description"]
     fx = Path(__file__).parent / "fixtures"
     fx.mkdir(exist_ok=True)
 

@@ -33,27 +33,45 @@ def parse_price(raw: str) -> tuple[float | None, str]:
         return None, t
 
 
+def _ld_block(block: str) -> dict:
+    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', block, re.S)
+    if not m:
+        return {}
+    try:
+        import json as _json
+        return _json.loads(m.group(1))
+    except Exception:
+        return {}
+
+
 def parse_cards(html: str, limit: int = 25) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
-    # 2026 layout: article[data-adid] + data-href
     for m in re.finditer(r'<article[^>]*data-adid="(\d+)"[^>]*data-href="([^"]+)"[^>]*>(.*?)</article>', html, re.S):
         adid, href, block = m.group(1), m.group(2), m.group(3)
         if adid in seen:
             continue
         seen.add(adid)
-        title = re.search(r"<h3[^>]*>([^<]{2,200})</h3>", block)
-        price = re.search(r'<p[^>]*class="[^"]*text-secondary[^"]*"[^>]*>([^<]{1,60})</p>', block)
-        desc = re.search(r'<p[^>]*class="[^"]*text-bodyRegular[^"]*"[^>]*>([^<]{0,500})</p>', block)
-        addr = re.search(r'text-onSurfaceNonessential[^>]*>\s*<span[^>]*>([^<]{1,120})</span>', block)
+        ld = _ld_block(block)
+        t = re.search(r"<h3[^>]*>\s*<a[^>]*>([^<]{2,300})</a>", block)
+        title = (t.group(1).strip() if t else ld.get("title", "")).replace("&quot;", '"').replace("&amp;", "&")
+        d = re.search(r"</h3>\s*<p[^>]*>([^<]{0,600})</p>", block)
+        desc = (d.group(1).strip() if d else ld.get("description", ""))[:600]
+        p = re.search(r"<p[^>]*>\s*(\d[\d\.\s]*)\s*€", block)
+        price, praw = parse_price(p.group(1) if p else "")
+        loc = re.search(r'data-title="locationOutline".*?<span[^>]*>([^<]{1,120})</span>', block, re.S)
+        location = loc.group(1).strip() if loc else ""
         img = re.search(r'<img[^>]+src="([^"]+)"', block)
-        p, praw = parse_price(price.group(1) if price else "")
+        image = img.group(1) if img else ld.get("contentUrl", "")
+        ship_badge = "data-dhl-promotion" in block or "Versand möglich" in block
+        blob = f"{title} {desc}".lower()
+        shipping = ship_badge or any(k in blob for k in ("versand", "verschicke", "dhl", "hermes", "porto"))
+        pickup = any(k in blob for k in ("abholung", "selbstabholung", "abholer"))
         url = href if href.startswith("http") else f"https://www.kleinanzeigen.de{href}"
-        out.append({"id": adid, "title": (title.group(1).strip() if title else ""),
-                    "url": url, "price": p, "price_raw": praw,
-                    "description": (desc.group(1).strip() if desc else ""),
-                    "location": (addr.group(1).strip() if addr else ""),
-                    "images": [img.group(1)] if img else []})
+        out.append({"id": adid, "title": title, "url": url, "price": price, "price_raw": praw,
+                    "description": desc, "location": location,
+                    "images": [image] if image else [],
+                    "pickup": pickup, "shipping": shipping})
         if len(out) >= limit:
             return out
     if out:
@@ -112,16 +130,13 @@ class KleinanzeigenDriver(MarketplaceDriver):
             raise RuntimeError("kleinanzeigen markup changed (schema-change) — no cards parsed")
         out: list[CanonicalListing] = []
         for it in items:
-            blob = f"{it['title']} {it['description']}".lower()
-            pickup = any(k in blob for k in ("abholung", "selbstabholung", "abholer"))
-            shipping = any(k in blob for k in ("versand", "verschicke", "dhl", "hermes", "porto"))
-            loc = it["location"]
-            pc = re.search(r"\b\d{5}\b", loc)
+            pcm = re.search(r"\b\d{5}\b", it["location"] or "")
             out.append(CanonicalListing(
                 id=f"kleinanzeigen:{it['id']}", source="kleinanzeigen", native_id=str(it["id"]),
                 url=it["url"], title=it["title"], description=it["description"], price=it["price"],
-                location=loc, postcode=pc.group(0) if pc else "", images=it["images"],
-                shipping=it.get("price_raw", ""), pickup_available=pickup, shipping_available=shipping))
+                location=it["location"], postcode=pcm.group(0) if pcm else "", images=it["images"],
+                shipping=it.get("price_raw", ""), pickup_available=it.get("pickup", False),
+                shipping_available=it.get("shipping", False)))
         # hard price pre-filter when supported (site ignores it for keyword URLs, so post-filter)
         if query.max_price is not None:
             out = [l for l in out if l.price is None or l.price <= query.max_price]
