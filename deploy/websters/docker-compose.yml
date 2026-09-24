@@ -27,7 +27,10 @@ services:
       - "traefik.http.routers.${ROUTER_NAME}-secure.tls=true"
       - "traefik.http.routers.${ROUTER_NAME}-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.${ROUTER_NAME}-secure.tls.domains[0].main=dealradar.websters.at"
-      - "traefik.http.routers.${ROUTER_NAME}-secure.middlewares=authelia@docker,${ROUTER_NAME}-compress"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.middlewares=${ROUTER_NAME}-auth,${ROUTER_NAME}-compress"
+      - "traefik.http.middlewares.${ROUTER_NAME}-auth.basicauth.users=${ADMIN_BASIC_AUTH}"
+      # NOTE: websters traefik has no authelia middleware (that's the home-server traefik).
+      # Basic-auth here; swap the middlewares label to authelia@docker if authelia is ever added.
       - "traefik.http.middlewares.${ROUTER_NAME}-compress.compress=true"
       - "traefik.http.services.${ROUTER_NAME}.loadbalancer.server.port=8099"
 
