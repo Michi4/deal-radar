@@ -39,29 +39,43 @@ async def kev_decide(state: dict | str, questions: dict) -> dict | None:
         return None
 
 
-CLOUD_API_URL = os.getenv("CLOUD_API_URL", "")  # OpenAI-compatible base, e.g. https://api.openai.com/v1
+CLOUD_API_URL = os.getenv("CLOUD_API_URL", "")  # OpenAI-compatible base, e.g. https://openrouter.ai/api/v1
 CLOUD_API_KEY = os.getenv("CLOUD_API_KEY", "")
-CLOUD_MODEL = os.getenv("CLOUD_MODEL", "gpt-4o-mini")
+CLOUD_MODEL = os.getenv("CLOUD_MODEL", "")
+CLOUD_MODELS = [m.strip() for m in os.getenv(
+    "CLOUD_MODELS",
+    "nvidia/nemotron-3-super-120b-a12b:free,qwen/qwen3.8-27b:free,"
+    "google/gemma-4-31b-it:free,z-ai/glm-5.2:free").split(",") if m.strip()]
+if CLOUD_MODEL and CLOUD_MODEL not in CLOUD_MODELS:
+    CLOUD_MODELS.insert(0, CLOUD_MODEL)
 
 
 async def cloud_json(system: str, user: str, max_tokens: int = 600) -> dict | None:
-    """Generic OpenAI-compatible JSON call. Returns None when unconfigured/failing (offline-first)."""
+    """Generic OpenAI-compatible JSON call with model failover. None when unconfigured/failing (offline-first)."""
     if not (CLOUD_API_URL and CLOUD_API_KEY):
         return None
-    try:
-        async with httpx.AsyncClient(timeout=45.0) as c:
-            r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
-                             headers={"Authorization": f"Bearer {CLOUD_API_KEY}"},
-                             json={"model": CLOUD_MODEL,
-                                   "messages": [{"role": "system", "content": system},
-                                                {"role": "user", "content": user}],
-                                   "response_format": {"type": "json_object"},
-                                   "temperature": 0.2, "max_tokens": max_tokens})
-            r.raise_for_status()
-            import json as _json
-            return _json.loads(r.json()["choices"][0]["message"]["content"])
-    except Exception:
-        return None
+    import json as _json
+    last_err: str = ""
+    for model in CLOUD_MODELS:
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as c:
+                r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
+                                 headers={"Authorization": f"Bearer {CLOUD_API_KEY}"},
+                                 json={"model": model,
+                                       "messages": [{"role": "system", "content": system},
+                                                    {"role": "user", "content": user}],
+                                       "response_format": {"type": "json_object"},
+                                       "temperature": 0.2, "max_tokens": max_tokens})
+                if r.status_code == 429:
+                    last_err = f"{model}: 429"
+                    continue
+                r.raise_for_status()
+                return _json.loads(r.json()["choices"][0]["message"]["content"])
+        except Exception as e:  # noqa: BLE001 - try next model
+            last_err = f"{model}: {e}"
+            continue
+    print(f"[cloud] all models failed ({last_err})", flush=True)
+    return None
 
 
 NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON SearchIntent. "
