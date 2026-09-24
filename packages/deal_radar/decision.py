@@ -55,33 +55,57 @@ if CLOUD_MODEL and CLOUD_MODEL not in CLOUD_MODELS:
 CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")  # free vision-language
 
 
+async def _post_chat(base: str, key: str, model: str, system: str, user: str,
+                   max_tokens: int, timeout: float = 60.0) -> dict | None:
+    import json as _json
+    try:
+        headers = {"Content-Type": "application/json"}
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        async with httpx.AsyncClient(timeout=timeout) as c:
+            r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers,
+                             json={"model": model,
+                                   "messages": [{"role": "system", "content": system},
+                                                {"role": "user", "content": user}],
+                                   "response_format": {"type": "json_object"},
+                                   "temperature": 0.2, "max_tokens": max_tokens,
+                                   "options": {"num_predict": max_tokens}})
+            if r.status_code == 429:
+                return {"__rate_limited": True}
+            r.raise_for_status()
+            return _json.loads(r.json()["choices"][0]["message"]["content"])
+    except Exception as e:  # noqa: BLE001
+        return {"__error": str(e)[:150]}
+
+
 async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str = "") -> dict | None:
-    """Generic OpenAI-compatible JSON call with model failover + one retry round. None when failing (offline-first)."""
+    """Local-first (Ollama on laptop, free, private) then OpenRouter free-model failover.
+    None when everything fails (offline-first deterministic fallback)."""
+    import asyncio as _aio
+    # 1) local backend (ollama OpenAI-compatible, no key needed)
+    local_base = os.getenv("LOCAL_API_URL", "")
+    local_model = os.getenv("LOCAL_MODEL", "qwen3:0.6b")
+    if local_base:
+        out = await _post_chat(local_base, "", local_model, system, user, max_tokens, timeout=90.0)
+        if out and not out.get("__error") and not out.get("__rate_limited"):
+            return out
+    # 2) OpenRouter free failover with one retry round
     if not (CLOUD_API_URL and CLOUD_API_KEY):
         return None
-    import json as _json
-    import asyncio as _aio
     models = [model] if model else list(CLOUD_MODELS)
     last_err: str = ""
     for round_no in range(2):
         for model in models:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as c:
-                    r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
-                                     headers={"Authorization": f"Bearer {CLOUD_API_KEY}"},
-                                     json={"model": model,
-                                           "messages": [{"role": "system", "content": system},
-                                                        {"role": "user", "content": user}],
-                                           "response_format": {"type": "json_object"},
-                                           "temperature": 0.2, "max_tokens": max_tokens})
-                    if r.status_code == 429:
-                        last_err = f"{model}: 429"
-                        continue
-                    r.raise_for_status()
-                    return _json.loads(r.json()["choices"][0]["message"]["content"])
-            except Exception as e:  # noqa: BLE001 - try next model
-                last_err = f"{model}: {e}"
+            out = await _post_chat(CLOUD_API_URL, CLOUD_API_KEY, model, system, user, max_tokens)
+            if out is None:
                 continue
+            if out.get("__rate_limited"):
+                last_err = f"{model}: 429"
+                continue
+            if out.get("__error"):
+                last_err = f"{model}: {out['__error']}"
+                continue
+            return out
         if round_no == 0:
             await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
     print(f"[cloud] all models failed ({last_err})", flush=True)
