@@ -44,8 +44,10 @@ CLOUD_API_KEY = os.getenv("CLOUD_API_KEY", "")
 CLOUD_MODEL = os.getenv("CLOUD_MODEL", "")
 CLOUD_MODELS = [m.strip() for m in os.getenv(
     "CLOUD_MODELS",
-    "nvidia/nemotron-3-super-120b-a12b:free,qwen/qwen3.8-27b:free,"
-    "google/gemma-4-31b-it:free,z-ai/glm-5.2:free").split(",") if m.strip()]
+    "liquid/lfm-2.5-2.6b:free,nvidia/nemotron-3.5-lightning:free,"
+    "thinkingmachines/inkling-small:free,poolside/laguna-xs-2.1:free,"
+    "qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free,dots-studio/dots-3-note-preview:free,"
+    "google/gemma-4-26b-a4b-it:free,z-ai/glm-5.2:free").split(",") if m.strip()]
 if CLOUD_MODEL and CLOUD_MODEL not in CLOUD_MODELS:
     CLOUD_MODELS.insert(0, CLOUD_MODEL)
 
@@ -54,30 +56,34 @@ CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")  #
 
 
 async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str = "") -> dict | None:
-    """Generic OpenAI-compatible JSON call with model failover. None when unconfigured/failing (offline-first)."""
+    """Generic OpenAI-compatible JSON call with model failover + one retry round. None when failing (offline-first)."""
     if not (CLOUD_API_URL and CLOUD_API_KEY):
         return None
     import json as _json
+    import asyncio as _aio
     models = [model] if model else list(CLOUD_MODELS)
     last_err: str = ""
-    for model in models:
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as c:
-                r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
-                                 headers={"Authorization": f"Bearer {CLOUD_API_KEY}"},
-                                 json={"model": model,
-                                       "messages": [{"role": "system", "content": system},
-                                                    {"role": "user", "content": user}],
-                                       "response_format": {"type": "json_object"},
-                                       "temperature": 0.2, "max_tokens": max_tokens})
-                if r.status_code == 429:
-                    last_err = f"{model}: 429"
-                    continue
-                r.raise_for_status()
-                return _json.loads(r.json()["choices"][0]["message"]["content"])
-        except Exception as e:  # noqa: BLE001 - try next model
-            last_err = f"{model}: {e}"
-            continue
+    for round_no in range(2):
+        for model in models:
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as c:
+                    r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
+                                     headers={"Authorization": f"Bearer {CLOUD_API_KEY}"},
+                                     json={"model": model,
+                                           "messages": [{"role": "system", "content": system},
+                                                        {"role": "user", "content": user}],
+                                           "response_format": {"type": "json_object"},
+                                           "temperature": 0.2, "max_tokens": max_tokens})
+                    if r.status_code == 429:
+                        last_err = f"{model}: 429"
+                        continue
+                    r.raise_for_status()
+                    return _json.loads(r.json()["choices"][0]["message"]["content"])
+            except Exception as e:  # noqa: BLE001 - try next model
+                last_err = f"{model}: {e}"
+                continue
+        if round_no == 0:
+            await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
     print(f"[cloud] all models failed ({last_err})", flush=True)
     return None
 
@@ -97,18 +103,70 @@ NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON Sear
              "Never invent prices. Missing info -> omit the key.")
 
 
+_NL_CACHE = "data/nl_cache.json"
+
+
+def _nl_cached(text: str) -> dict | None:
+    import json as _json, hashlib as _h, time as _t
+    from pathlib import Path as _P
+    try:
+        p = _P(_NL_CACHE)
+        if p.exists():
+            key = _h.sha256(text.strip().lower().encode()).hexdigest()[:32]
+            d = _json.loads(p.read_text())
+            if key in d and _t.time() - d[key].get("ts", 0) < 7 * 86400:
+                return d[key]["intent"]
+    except Exception:
+        pass
+    return None
+
+
+def _nl_store(text: str, intent: dict) -> None:
+    import json as _json, hashlib as _h, time as _t
+    from pathlib import Path as _P
+    try:
+        p = _P(_NL_CACHE)
+        d = _json.loads(p.read_text()) if p.exists() else {}
+        key = _h.sha256(text.strip().lower().encode()).hexdigest()[:32]
+        d[key] = {"ts": _t.time(), "intent": intent}
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(_json.dumps(d))
+    except Exception:
+        pass
+
+
 async def nl_to_intent(text: str) -> dict:
     """Natural language -> SearchIntent. Cloud model when configured, deterministic fallback otherwise."""
+    hit = _nl_cached(text)
+    if hit:
+        return hit
     cloud = await cloud_json(NL_SYSTEM, text)
     if cloud and isinstance(cloud.get("keywords"), str):
         bl = cloud.get("blacklist", []) or []
         for ex in (cloud.get("exclude", []) or []):
             bl.append({"fields": ["title", "description", "tags"], "op": "not_contains", "value": str(ex)})
-        return {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
-                "hard": cloud.get("hard", {}), "blacklist": bl,
-                "whitelist": [], "attributes": cloud.get("attributes", {}),
-                "models": cloud.get("models", []) or [],
-                "risk": {}, "enrich": True, "limit": 20}
+        models = cloud.get("models", []) or []
+        # follow-up: model skipped model resolution but query implies specific models
+        if not models and any(w in text.lower() for w in
+                              ("which", "with", "mit", "welche", "ohne", "that", "uses", "having", "haben")):
+            fix = await cloud_json(
+                "You know every product lineup. Return ONLY JSON {models: [exact model names], "
+                "exclude: [accessory/wrong-variant words]}.",
+                f"Query: {text}\nKeywords so far: {cloud['keywords']}\n"
+                "List ONLY the exact product models that satisfy the query "
+                "(e.g. USB-C iPhones -> iPhone 15 and newer, no cases/cables/chargers/Android).")
+            if fix:
+                models = fix.get("models", []) or []
+                for ex in (fix.get("exclude", []) or []):
+                    bl.append({"fields": ["title", "description", "tags"],
+                               "op": "not_contains", "value": str(ex)})
+        intent = {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
+                  "hard": cloud.get("hard", {}), "blacklist": bl,
+                  "whitelist": [], "attributes": cloud.get("attributes", {}),
+                  "models": models,
+                  "risk": {}, "enrich": True, "limit": 20}
+        _nl_store(text, intent)
+        return intent
     fb = nl_fallback(text)
     fb["models"] = []
     return fb
