@@ -1,0 +1,33 @@
+services:
+  api:
+    build: ./app
+    container_name: dealradar-api
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8099"
+    volumes:
+      - dealradar-data:/data
+    networks:
+      - app-network
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.http.routers.${ROUTER_NAME}.rule=${ROUTER_RULE}"
+      - "traefik.http.routers.${ROUTER_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${ROUTER_NAME}.tls=true"
+      - "traefik.http.routers.${ROUTER_NAME}.tls.certresolver=myresolver"
+      - "traefik.http.routers.${ROUTER_NAME}.middlewares=crowdsec@docker,authelia@docker,${ROUTER_NAME}-compress"
+      - "traefik.http.middlewares.${ROUTER_NAME}-compress.compress=true"
+      - "traefik.http.services.${ROUTER_NAME}.loadbalancer.server.port=8099"
+
+networks:
+  app-network:
+    driver: bridge
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK}
+
+volumes:
+  dealradar-data:
