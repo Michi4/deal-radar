@@ -188,6 +188,7 @@ async def create_nl_search(q: NLQuery):
             "sources": q.sources or registry.ids(), "hard": parsed.get("hard", {}),
             "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
             "ranking": None, "attributes": parsed.get("attributes", {}),
+            "models": parsed.get("models", []) or [],
             "enrich": True, "limit": q.limit, "watch": q.watch,
             "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
     sid = f"s_{int(time.time() * 1000)}"

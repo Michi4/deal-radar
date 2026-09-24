@@ -50,13 +50,17 @@ if CLOUD_MODEL and CLOUD_MODEL not in CLOUD_MODELS:
     CLOUD_MODELS.insert(0, CLOUD_MODEL)
 
 
-async def cloud_json(system: str, user: str, max_tokens: int = 600) -> dict | None:
+CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")  # free vision-language
+
+
+async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str = "") -> dict | None:
     """Generic OpenAI-compatible JSON call with model failover. None when unconfigured/failing (offline-first)."""
     if not (CLOUD_API_URL and CLOUD_API_KEY):
         return None
     import json as _json
+    models = [model] if model else list(CLOUD_MODELS)
     last_err: str = ""
-    for model in CLOUD_MODELS:
+    for model in models:
         try:
             async with httpx.AsyncClient(timeout=60.0) as c:
                 r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
@@ -79,12 +83,17 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600) -> dict | No
 
 
 NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON SearchIntent. "
-             "Return ONLY JSON with keys: keywords (core product words for marketplace search), "
+             "Use your product knowledge: resolve to concrete models (e.g. 'iPhone with USB-C charging' "
+             "-> models ['iPhone 15','iPhone 15 Plus','iPhone 15 Pro','iPhone 15 Pro Max','iPhone 16',"
+             "'iPhone 16 Plus','iPhone 16 Pro','iPhone 16 Pro Max','iPhone 17','iPhone Air']; "
+             "'ThinkPad with OLED' -> ThinkPad models known with OLED options). "
+             "Return ONLY JSON with keys: keywords (broad marketplace search words), "
+             "models [] (exact product models that qualify — listings must match one), "
+             "exclude [] (words that disqualify: accessories like case/hülle/kabel/charger, wrong variants, "
+             "other brands, 'defekt' if user wants working), "
              "category, hard {max_price, min_price, rules[]}, blacklist[] ({fields,op,value}), "
-             "attributes {} (inferred requirements like connector:usb-c, display:oled), "
-             "risk_note. Rules use {field,op,value} with op in contains,not_contains,regex,lt,gt,range,equals. "
-             "Example: 'iphone which uses a usb c plug to charge' -> "
-             '{"keywords":"iphone","attributes":{"connector":"usb-c"},"hard":{"rules":[{"field":"all_text","op":"contains","value":"usb"}]}}. '
+             "attributes {} (requirements like connector:usb-c), risk_note. "
+             "Rules use {field,op,value} with op in contains,not_contains,regex,lt,gt,range,equals. "
              "Never invent prices. Missing info -> omit the key.")
 
 
@@ -92,11 +101,17 @@ async def nl_to_intent(text: str) -> dict:
     """Natural language -> SearchIntent. Cloud model when configured, deterministic fallback otherwise."""
     cloud = await cloud_json(NL_SYSTEM, text)
     if cloud and isinstance(cloud.get("keywords"), str):
+        bl = cloud.get("blacklist", []) or []
+        for ex in (cloud.get("exclude", []) or []):
+            bl.append({"fields": ["title", "description", "tags"], "op": "not_contains", "value": str(ex)})
         return {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
-                "hard": cloud.get("hard", {}), "blacklist": cloud.get("blacklist", []),
+                "hard": cloud.get("hard", {}), "blacklist": bl,
                 "whitelist": [], "attributes": cloud.get("attributes", {}),
+                "models": cloud.get("models", []) or [],
                 "risk": {}, "enrich": True, "limit": 20}
-    return nl_fallback(text)
+    fb = nl_fallback(text)
+    fb["models"] = []
+    return fb
 
 
 def nl_fallback(text: str) -> dict:

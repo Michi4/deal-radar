@@ -65,3 +65,43 @@ def ocr_listing_images(images: list[str], max_images: int = 1) -> list[str]:
         if t:
             texts.append(t)
     return texts
+
+
+async def vision_check(image_url: str, title: str, description: str) -> dict:
+    """Ask a free vision-language model: does the photo show the described item?
+    Returns {shows_item 0..1, is_stock 0..1, visible_text, note}. {} when unavailable."""
+    import os
+    api, key = os.getenv("CLOUD_API_URL", ""), os.getenv("CLOUD_API_KEY", "")
+    vmodel = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")
+    if not (api and key and image_url):
+        return {}
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=60.0) as c:
+            r = await c.post(f"{api.rstrip('/')}/chat/completions",
+                             headers={"Authorization": f"Bearer {key}"},
+                             json={"model": vmodel,
+                                   "messages": [{
+                                       "role": "user",
+                                       "content": [
+                                           {"type": "text",
+                                            "text": "Listing title: " + title[:300] +
+                                                    "\nDescription: " + (description or "")[:800] +
+                                                    "\nReturn ONLY JSON: {shows_item (0..1: photo shows THIS item), "
+                                                    "is_stock (0..1: looks like a stock/catalog photo), "
+                                                    "visible_text (any readable spec text), "
+                                                    "note (one short line)}."},
+                                           {"type": "image_url", "image_url": {"url": image_url}}]}],
+                                   "response_format": {"type": "json_object"},
+                                   "temperature": 0.1, "max_tokens": 400})
+            if r.status_code == 429:
+                return {}
+            r.raise_for_status()
+            import json as _json
+            out = _json.loads(r.json()["choices"][0]["message"]["content"])
+            return {"shows_item": float(out.get("shows_item", 0.5)),
+                    "is_stock": float(out.get("is_stock", 0.5)),
+                    "visible_text": str(out.get("visible_text", ""))[:500],
+                    "note": str(out.get("note", ""))[:200]}
+    except Exception:
+        return {}
