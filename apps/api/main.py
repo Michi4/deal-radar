@@ -160,6 +160,45 @@ def metrics_ep():
     return PlainTextResponse(metrics.prometheus())
 
 
+@app.get("/metrics.json")
+def metrics_json():
+    return {"metrics": metrics.snapshot(), "drivers": {d: registry.get(d).health.model_dump() for d in registry.ids()},
+            "searches": len(SEARCHES), "events": len(EVENT_LOG)}
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin():
+    html = Path(__file__).resolve().parents[2] / "web" / "admin.html"
+    return html.read_text() if html.exists() else "<h1>admin missing</h1>"
+
+
+class NLQuery(BaseModel):
+    text: str
+    sources: list[str] | None = None
+    watch: bool = False
+    poll_interval_s: int = 300
+    limit: int = 20
+
+
+@app.post("/searches/nl")
+async def create_nl_search(q: NLQuery):
+    from deal_radar.decision import nl_to_intent
+    parsed = await nl_to_intent(q.text)
+    data = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
+            "sources": q.sources or registry.ids(), "hard": parsed.get("hard", {}),
+            "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
+            "ranking": None, "attributes": parsed.get("attributes", {}),
+            "enrich": True, "limit": q.limit, "watch": q.watch,
+            "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
+    sid = f"s_{int(time.time() * 1000)}"
+    SEARCHES[sid] = data
+    LAST_RUN[sid] = time.time()
+    out = await _run_cached(data, force=True)
+    SEEN_IDS[sid] = {r["listing"]["id"] for r in out.get("results", [])}
+    EVENT_LOG.extend(out.get("events", []))
+    return {"id": sid, "parsed": parsed, **out}
+
+
 @app.post("/searches")
 async def create_search(intent: SearchIntent):
     sid = f"s_{int(time.time() * 1000)}"

@@ -17,7 +17,7 @@ from .driver_sdk import DriverRegistry, SearchQuery
 from .filter_engine import apply_filters
 from .risk_engine import assess_risk, apply_risk_policy
 from .scoring import enrich_cpu, value_score, rank
-from .decision import heuristic_decide, jev_decide, kev_decide, STAGE_B_QUESTIONS, stage_b_to_scores
+from .decision import heuristic_decide, jev_decide, kev_decide, STAGE_B_QUESTIONS, stage_b_to_scores, stage_b_via_cloud
 from . import metrics
 
 
@@ -72,7 +72,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     events: list[dict] = []
 
     jev_key = os.getenv("JEV_API_KEY", "")
-    use_stage_b = bool(os.getenv("JEV_API_KEY") or os.getenv("KEV_URL"))
+    use_stage_b = bool(os.getenv("JEV_API_KEY") or os.getenv("KEV_URL") or os.getenv("CLOUD_API_KEY"))
+    want_attrs: dict = intent.get("attributes", {}) or {}
 
     for l in all_listings:
         key = dedupe_key(l.title, l.images)
@@ -90,6 +91,18 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         h = heuristic_decide(l.title, l.description, l.price, q.keywords)
         metrics.inc("stage_a_total")
 
+        # NL attribute requirements (e.g. connector:usb-c): soft gate, evidence-logged
+        attr_hits: list[str] = []
+        if want_attrs:
+            hay = l.field_text("all_text").lower()
+            for k, v in want_attrs.items():
+                if str(v).lower() in hay:
+                    attr_hits.append(f"{k}={v} confirmed in listing")
+                    h["match"] = min(1.0, h["match"] + 0.15)
+                else:
+                    attr_hits.append(f"{k}={v} NOT found (unverified, kept with penalty)")
+                    h["match"] = max(0.0, h["match"] - 0.1)
+
         r = assess_risk(l, median)
         enrich = enrich_cpu(l) if intent.get("enrich", True) else []
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
@@ -101,10 +114,12 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         dna = {"match": h["match"], "value": val, "risk": r.score,
                "completeness": round(completeness, 3), "condition": 0.5, "confidence": r.confidence}
-        why = [*fr.reasons, *val_why, *(f"risk: {x}" for x in r.reasons),
+        why = [*fr.reasons, *val_why, *attr_hits, *(f"risk: {x}" for x in r.reasons),
                *(f"ok: {x}" for x in r.counter_evidence)]
 
-        # Stage B escalation: borderline/high-value only
+        # Stage B escalation: borderline/high-value only.
+        # Order: Jev (hosted) -> Kev (self-hosted) -> cloud vision model -> heuristics stand.
+        sb: dict = {}
         if use_stage_b and (h["needs_stage_b"] or (val >= 0.8 and r.score >= 0.3)):
             metrics.inc("stage_b_total")
             state = {"title": l.title, "description": (l.description or "")[:2000],
@@ -112,6 +127,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             ans = await jev_decide(state, STAGE_B_QUESTIONS, api_key=jev_key) if jev_key \
                 else await kev_decide(state, STAGE_B_QUESTIONS)
             sb = stage_b_to_scores(ans)
+            if not sb and os.getenv("CLOUD_API_KEY"):
+                metrics.inc("stage_b_cloud")
+                sb = await stage_b_via_cloud(l.title, l.description, l.price, q.keywords)
+                if sb.get("note"):
+                    why.append(f"cloud: {sb['note']}")
             if sb:
                 if "exact" in sb:
                     dna["match"] = round(0.5 * dna["match"] + 0.5 * sb["exact"], 3)
