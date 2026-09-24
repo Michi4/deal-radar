@@ -1,0 +1,14 @@
+services:
+  deal-radar:
+    build: .
+    ports: ["8099:8099"]
+    volumes: [dealdata:/data]
+    environment:
+      EBAY_OAUTH_TOKEN: ${EBAY_OAUTH_TOKEN:-}
+      JEV_API_KEY: ${JEV_API_KEY:-}
+      KEV_URL: ${KEV_URL:-}
+      NTFY_TOPIC_URL: ${NTFY_TOPIC_URL:-}
+      TRANSPORTS_JSON: ${TRANSPORTS_JSON:-{}}
+    labels:
+      - "traefik.enable=true"
+volumes: { dealdata: {} }
