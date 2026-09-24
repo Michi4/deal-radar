@@ -12,7 +12,7 @@ import statistics
 import time
 from typing import Any
 
-from .contracts import ScoredListing
+from .contracts import ScoredListing, Evidence
 from .driver_sdk import DriverRegistry, SearchQuery
 from .filter_engine import apply_filters
 from .risk_engine import assess_risk, apply_risk_policy
@@ -105,6 +105,35 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         r = assess_risk(l, median)
         enrich = enrich_cpu(l) if intent.get("enrich", True) else []
+        # OCR listing photos (best-effort, cached) so spec stickers/BIOS screens become searchable text
+        if intent.get("ocr", True) and l.images and not l.ocr_texts:
+            try:
+                from .vision import ocr_listing_images
+                l.ocr_texts = await asyncio.to_thread(ocr_listing_images, l.images, 1)
+                if l.ocr_texts:
+                    metrics.inc("ocr_texts")
+                    enrich = enrich_cpu(l)  # re-extract (CPU may only be visible in photos)
+            except Exception:
+                pass
+        # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
+        if intent.get("benchmarks", True):
+            cpu_fact = next((e for e in enrich if e.field == "cpu"), None)
+            if cpu_fact:
+                try:
+                    from .benchmarks import fetch_passmark_cpu, STATIC_DB
+                    real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
+                    if real:
+                        for e in enrich:
+                            if e.field == "cpu_benchmark":
+                                e.value = real["multi"]
+                                e.confidence = 0.97
+                                e.sources = [Evidence(type="external",
+                                                      detail=f"cpubenchmark.net multithread={real['multi']} single={real['single']}")]
+                                metrics.inc("benchmark_real")
+                    else:
+                        metrics.inc("benchmark_static_fallback")
+                except Exception:
+                    pass
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
         val, val_why = value_score(l.price, bench, median)
         completeness = min(1.0, (bool(l.title) + bool(l.description and len(l.description) > 50)

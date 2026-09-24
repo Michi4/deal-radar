@@ -190,3 +190,20 @@ def test_nl_fallback():
     assert any("defekt" in b.get("value", "") for b in p2["blacklist"])
     # cloud unconfigured -> falls back deterministically, never raises
     assert asyncio.run(nl_to_intent("oled laptop unter 1000"))["keywords"]
+
+
+def test_passmark_parser_real_fixture():
+    from deal_radar.benchmarks import parse_passmark_detail
+    html = open(Path(__file__).parent / "fixtures" / "passmark-5800h.html", encoding="utf-8", errors="ignore").read()
+    multi, single = parse_passmark_detail(html)
+    assert multi == 20461 and single == 2987
+
+
+def test_ocr_worker_guarded():
+    import shutil
+    from deal_radar.vision import ocr_bytes
+    assert ocr_bytes(b"") == ""
+    assert ocr_bytes(None) == ""
+    if shutil.which("tesseract") is None:
+        return
+    assert isinstance(ocr_bytes(b"not-an-image"), str)
