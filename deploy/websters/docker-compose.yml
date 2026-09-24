@@ -1,0 +1,41 @@
+services:
+  api:
+    build: ./app
+    # layout on server: customers/deal-radar/{docker-compose.yml,.env,app/}
+    # where app/ is a git clone of https://github.com/Michi4/deal-radar
+    # (this file is versioned at deploy/websters/docker-compose.yml in that repo)
+    container_name: dealradar-api
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8099"
+    volumes:
+      - dealradar-data:/data
+    networks:
+      - app-network
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.http.routers.${ROUTER_NAME}.rule=${ROUTER_RULE}"
+      - "traefik.http.routers.${ROUTER_NAME}.entrypoints=http"
+      - "traefik.http.routers.${ROUTER_NAME}.middlewares=${ROUTER_NAME}-redirect"
+      - "traefik.http.middlewares.${ROUTER_NAME}-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.rule=${ROUTER_RULE}"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.entrypoints=https"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.tls=true"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.tls.domains[0].main=dealradar.websters.at"
+      - "traefik.http.routers.${ROUTER_NAME}-secure.middlewares=${ROUTER_NAME}-compress"
+      - "traefik.http.middlewares.${ROUTER_NAME}-compress.compress=true"
+      - "traefik.http.services.${ROUTER_NAME}.loadbalancer.server.port=8099"
+
+networks:
+  app-network:
+    driver: bridge
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK}
+
+volumes:
+  dealradar-data:
