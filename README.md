@@ -5,9 +5,9 @@
 
 ## Quickstart
 ```bash
-pip install -e ".[test]"
-PYTHONPATH=packages:drivers pytest -q
-PYTHONPATH=packages:drivers:apps uvicorn api.main:app --port 8099 --app-dir apps
+python3 -m venv .venv && .venv/bin/pip install -e ".[test]"
+PYTHONPATH=packages:drivers .venv/bin/python -m pytest -q
+PYTHONPATH=packages:drivers:apps .venv/bin/python -m uvicorn api.main:app --port 8099 --app-dir apps
 # open http://localhost:8099
 ```
 
