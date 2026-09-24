@@ -88,6 +88,16 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             metrics.inc("listings_filtered")
             continue
 
+        # product-model gate (NL product intel): listing must match one resolved model
+        want_models: list[str] = intent.get("models", []) or []
+        if want_models and l.title:
+            import re as _re
+            norm = _re.sub(r"[^a-z0-9]+", "", l.title.lower())
+            if not any(_re.sub(r"[^a-z0-9]+", "", m.lower()) in norm for m in want_models):
+                filtered_out += 1
+                metrics.inc("listings_filtered_model")
+                continue
+
         h = heuristic_decide(l.title, l.description, l.price, q.keywords)
         metrics.inc("stage_a_total")
 
@@ -172,6 +182,29 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 why.append("stage-B (Jev/Kev) verification applied")
                 final = rank(dna["match"], val, r.score, completeness, weights)
                 lane = apply_risk_policy(r, val, risk_policy)
+
+        # vision check (free VLM via OpenRouter): only Stage-B listings with photos
+        if intent.get("vision", True) and l.images and h.get("needs_stage_b"):
+            try:
+                from .vision import vision_check
+                vc = await vision_check(l.images[0], l.title, l.description)
+                if vc:
+                    metrics.inc("vision_total")
+                    dna["visual_consistency"] = round(vc.get("shows_item", 0.5), 3)
+                    if vc.get("is_stock", 0) >= 0.7:
+                        r.score = min(1.0, r.score + 0.15)
+                        why.append("vision: looks like a stock photo (+risk)")
+                    if vc.get("shows_item", 1) < 0.4:
+                        dna["match"] = round(dna["match"] * 0.6, 3)
+                        why.append(f"vision: photo may not show the item ({vc.get('note', '')})")
+                    else:
+                        why.append(f"vision: photo consistent ({vc.get('note', '')})")
+                    if vc.get("visible_text"):
+                        l.ocr_texts = [*l.ocr_texts, f"VLM: {vc['visible_text']}"[:500]]
+                    final = rank(dna["match"], val, r.score, completeness, weights)
+                    lane = apply_risk_policy(r, val, risk_policy)
+            except Exception:
+                pass
 
         s = ScoredListing(listing=l, match_score=h["match"], deal_dna=dna, risk=r,
                           enrichments=enrich, value_score=val, final_score=final, lane=lane, why=why)

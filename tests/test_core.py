@@ -207,3 +207,29 @@ def test_ocr_worker_guarded():
     if shutil.which("tesseract") is None:
         return
     assert isinstance(ocr_bytes(b"not-an-image"), str)
+
+
+def test_model_gate_and_accessory_penalty():
+    import asyncio
+    from deal_radar.orchestrator import run_search
+    from deal_radar.driver_sdk import DriverRegistry, SearchQuery, MarketplaceDriver, DriverManifest
+    good = L(title="iPhone 15 Pro 128GB", price=700)
+    case = L(title="Hülle Case für iPhone 15 Pro", price=15)
+    old = L(title="iPhone 12 64GB", price=300)
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+        async def search(self, query: SearchQuery):
+            return [good, case, old]
+    reg = DriverRegistry()
+    reg.register(F())
+    out = asyncio.run(run_search(
+        {"keywords": "iphone", "sources": ["t"], "limit": 10,
+         "models": ["iPhone 15", "iPhone 15 Pro"],
+         "blacklist": [{"fields": ["title"], "op": "not_contains", "value": "hülle"}],
+         "risk": {}, "enrich": False, "ocr": False, "benchmarks": False, "vision": False},
+        reg, None, None))
+    titles = [r["listing"]["title"] for r in out["results"]]
+    assert any("iPhone 15 Pro 128GB" in t for t in titles)
+    assert not any("Hülle" in t for t in titles)
+    assert not any("iPhone 12" in t for t in titles)
