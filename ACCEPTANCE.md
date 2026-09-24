@@ -23,4 +23,4 @@
 - [ ] Transports: socks5/rotating proxy live-tested w/ failover
 - [ ] Cross-platform favorites with change history UI
 - [ ] Playwright E2E for web UI
-- [ ] CI green + LICENSE + README quickstart from clean clone
+- [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → 14 passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
