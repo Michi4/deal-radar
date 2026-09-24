@@ -1,0 +1,2323 @@
+<!DOCTYPE html><html lang="en">
+<!-- CPU Becnhmark data Copyrighted by Passmark Software. Do not copy these charts or the information they contain -->
+
+<head>
+	<title>AMD Ryzen 7 5800H Benchmark</title>
+	<meta charset="UTF-8">
+	<meta name="DESCRIPTION" content="Performance and price comparison graphs for AMD Ryzen 7 5800H">
+	<meta name="KEYWORDS" content="benchmark, comparison, CPU, AMD Ryzen 7 5800H, Ryzen-7-5800H">
+	<link rel="canonical" href="https://www.cpubenchmark.net/cpu.php?cpu=AMD+Ryzen+7+5800H&amp;id=3907">
+	<link rel="stylesheet" href="/passmark.css?v=2.12" type="text/css">
+	<link rel="stylesheet" href="/tabnav.css?v=2.12" type="text/css">
+	<!-- <link rel="stylesheet" href="passmark_specials.css"> -->
+	<link rel="stylesheet" href="/chart.css?v=2.12" type="text/css">
+	<link rel="stylesheet" href="/cmp.css" type="text/css">
+	<link rel="stylesheet" href="/dropdown.css" type="text/css">
+	<link rel="stylesheet" href="/source/css/bootstrap.min.css?v=2.12" type="text/css">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/source/css/style.css" type="text/css">
+	<script src="js/ads.js"></script>
+	<style>
+		.highlight {
+			background: #FFFF40;
+		}
+
+		.searchheading {
+			display: none;
+			margin-top: 20px;
+			font-size: 17px;
+			font-weight: bold;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.summary {
+			font-size: 80%;
+			font-style: italic;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.suggestion {
+			display: none;
+			font-size: 100%;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.results {
+			font-size: 100%;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.category {
+			color: #999999;
+		}
+
+		.sorting {
+			text-align: right;
+		}
+
+		.result_title {
+			font-size: 14px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.description {
+			font-size: 12px;
+			color: #008000;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.context {
+			font-size: 12px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.infoline {
+			font-size: 10px;
+			font-style: normal;
+			color: #808080;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.zoom_searchform {
+			display: none;
+			font-size: 12px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.zoom_results_per_page {
+			display: none;
+		}
+
+		.zoom_match {
+			font-size: 12px;
+			margin-left: 12px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.zoom_categories {
+			font-size: 12px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.zoom_categories ul {
+			display: inline;
+			margin: 0px;
+			padding: 0px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.zoom_categories li {
+			display: inline;
+			margin-left: 15px;
+			list-style-type: none;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.cat_summary {
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.cat_summary ul {
+			margin: 0px;
+			padding: 0px;
+			display: inline;
+		}
+
+		.cat_summary li {
+			display: inline;
+			margin-left: 15px;
+			list-style-type: none;
+		}
+
+		input.zoom_button {}
+
+		input.zoom_searchbox {}
+
+		.result_image {
+			float: left;
+			display: block;
+		}
+
+		.result_image img {
+			margin: 12px;
+			width: 80px;
+			border: 0px;
+		}
+
+		.result_block {
+			margin-top: 15px;
+			margin-bottom: 15px;
+			clear: left;
+		}
+
+		.result_altblock {
+			margin-top: 15px;
+			margin-bottom: 15px;
+			clear: left;
+		}
+
+		.result_pages {
+			font-size: 12px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.result_pagescount {
+			display: none;
+		}
+
+		.searchtime {
+			font-size: 10px;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.smaller {
+			font-size: .8em;
+		}
+
+		.recommended {
+			background: #DFFFBF;
+			border-top: 1px dotted #808080;
+			border-bottom: 1px dotted #808080;
+			margin-top: 15px;
+			margin-bottom: 15px;
+		}
+
+		.recommended_heading {
+			float: right;
+			font-weight: bold;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.recommend_block {
+			margin-top: 15px;
+			margin-bottom: 15px;
+			clear: left;
+		}
+
+		.recommend_title {
+			font-size: 100%;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.recommend_description {
+			font-size: 100%;
+			color: #008000;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.recommend_infoline {
+			font-size: 80%;
+			font-style: normal;
+			color: #808080;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.divHeader {
+			font-family: Arial, Helvetica, sans-serif;
+			font-size: 110%;
+			font-weight: 200;
+			padding-bottom: 15px;
+		}
+
+		.vs div {
+			font-size: 75%;
+			font-style: normal;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+
+		/* Traditional clearfix */
+		.clearfix:after {
+			content: ".";
+			display: block;
+			height: 0;
+			clear: both;
+			visibility: hidden;
+		}
+
+		.clearfix {
+			display: inline-block;
+		}
+
+		* html .clearfix {
+			height: 1%;
+		}
+
+		.clearfix {
+			display: block;
+		}
+
+		.vs .col1 {
+			float: left;
+			width: 46%;
+			text-align: right;
+		}
+
+		.vs .col2 {
+			float: left;
+			width: 8%;
+			text-align: center;
+			color: #000;
+		}
+
+		.vs .col3 {
+			float: left;
+			width: 46%;
+			text-align: left;
+		}
+
+		span.percentage {
+			font-style: italic;
+			font-size: .8em;
+		}
+
+		span.increase {
+			color: #43BF40;
+		}
+
+		span.decrease {
+			color: #dc3545;
+		}
+
+		.selected {}
+
+		#test-suite-results tr th,
+		td {
+			font-size: 16px;
+		}
+
+		#relatedproducts {
+			overflow: hidden;
+			background: #ffffff;
+			margin-top: 60px;
+		}
+
+		#relatedproducts h2 {
+			margin: 0;
+			text-align: left;
+			font-size: 18px;
+			line-height: 25px;
+			padding: 17px 0;
+			background: #E2EDF4;
+			padding-left: 20px;
+		}
+
+		#relprodtable td {
+			background: #ffffff;
+			text-align: center;
+			font-size: 16px;
+			line-height: 22px;
+			border-bottom: 2px solid #f0f6f8;
+		}
+
+		#relprodtable td:last-child {
+			padding: 10px;
+		}
+
+		.managebaselines {
+			font-size: 14px;
+			margin-top: 14px;
+		}
+
+		.managebaselines a {
+			font-size: 14px;
+		}
+
+		.configure-button {
+			background: #246EB9;
+			border-radius: 3px;
+			font-weight: 400;
+			font-size: 12px;
+			cursor: pointer;
+			color: #fff;
+			border: none;
+			float: right;
+			margin-right: 15px;
+		}
+	</style>
+	<script data-cfasync="false">window.ramp = window.ramp || {}; window.ramp.que = window.ramp.que || [];</script>			<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": {
+					"@type": "Question",
+					"name": "Is the AMD Ryzen 7 5800H good for gaming?",
+					"acceptedAnswer": {
+					"@type": "Answer",
+					"text": "This is a fairly old CPU that is no longer competitive with newer CPUs. But this CPU contains 8 Cores and 16 Threads. Paired with a good videocard, is this CPU Good for Gaming? This CPU should be able to play most games."
+					}
+				}
+			}
+			</script></head>
+
+<body>
+	<script type="text/javascript" src="/js/jquery-3.6.0.min.js"></script>
+<script type="text/javascript" src="/js/dropdown.js"></script>
+<script type="text/javascript" src="/source/js/script.js"></script>
+<header>
+        <div class="container-fluid fixed_main" id="main_menu">
+            <nav class="nav navbar navbar-expand-md navbar-light bg-light">
+
+                <a class="navbar-brand" href="https://www.passmark.com/" aria-label="PassMark Homepage"><img src="/img/PassMarkLogo.png" alt=""></a>
+
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="icons icon_bar"></span>
+                </button>
+
+                <div class="collapse navbar-collapse  justify-content-start" id="navbarSupportedContent">
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a data-activemenu="software" class="nav-link dropdown-toggle" href="#" id="softwareDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Software
+                        </a>
+                        <div class="dropdown-menu big-dropdown-menu ddmenu_left_112" aria-labelledby="softwareDropdown">
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/burnintest/index.php">
+                                    BurnInTest
+                                    <span class="menu_desc">PC Reliability and Load Testing</span>
+                                </a>
+
+                                <span class="menu_tips_button">
+                                        <a href="https://passmark.com/products/burnintest/index.php">Learn More</a>
+                                        <a href="https://passmark.com/products/burnintest/download.php">Free Trial</a>
+                                        <a href="https://passmark.com/products/burnintest/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/performancetest/index.php">
+                                    PerformanceTest
+                                     <span class="menu_desc">Easy PC Benchmarking</span>
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/performancetest/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/performancetest/download.php">Free Trial</a>
+                                    <a href="https://passmark.com/products/performancetest/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://www.osforensics.com/">
+                                    OSForensics
+                                    <span class="menu_desc">Extract forensic data from a PC</span>
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://www.osforensics.com/">Learn More</a>
+                                    <a href="https://www.osforensics.com/download.html">Free Trial</a>
+                                    <a href="/sales/cart.php?add&id=PM060&qty=1">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a href="https://www.memtest86.com/" class="dropdown-item">
+                                    MemTest86
+                                    <span class="menu_desc">Industry standard for memory testing</span>
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://www.memtest86.com/">Learn More</a>
+                                    <a href="https://www.memtest86.com/download.htm">Free Trial</a>
+                                    <a href="/sales/cart.php?add&id=PM077&qty=1">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/wirelessmonitor/">
+                                    WirelessMon
+                                    <span class="menu_desc">Monitor WiFi hot spots in real time</span>
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/wirelessmonitor/">Learn More</a>
+                                    <a href="https://passmark.com/downloads/wirelessmon.exe">Free Trial</a>
+                                    <a href="https://passmark.com/products/wirelessmonitor/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://www.passmark.com/products/bitmgtconsole/index.php">
+                                    Management Console
+                                    <span class="menu_desc">Test Results Database</span>
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://www.passmark.com/products/bitmgtconsole/index.php">Learn More</a>
+                                    <a href="https://www.passmark.com/burnintest/management/dashboard.php">Demo</a>
+                                    <a href="https://www.passmark.com/products/bitmgtconsole/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <a class="dropdown-item all_width" href="https://www.passmark.com/products/index.php">All Software Products <span class="icon icon_right"></span> </a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a data-activemenu="hardware" class="nav-link dropdown-toggle" href="#" id="hardwareDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Hardware
+                        </a>
+                        <div class="dropdown-menu big-dropdown-menu ddmenu_left_111" aria-labelledby="hardwareDropdown">
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/usb3loopback/index.php">
+                                    USB3.0 Loopback Plugs
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/usb3loopback/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/usb3loopback/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/usb2loopback/index.php">
+                                    USB2.0 Loopback Plugs
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/usb2loopback/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/usb2loopback/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/pcie-test-card/index.php">
+                                    PCIe Test Cards
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/pcie-test-card/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/pcie-test-card/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/usb-power-delivery-tester/index.php">
+                                    USB Power Delivery Tester
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/usb-power-delivery-tester/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/usb-power-delivery-tester/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/loopback/index.php">
+                                    Serial, Parallel Loopback Plugs
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/loopback/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/loopback/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/products/usb-short-circuit-tester/index.php">
+                                    USB Short Circuit Testers
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a href="https://passmark.com/products/usb-short-circuit-tester/index.php">Learn More</a>
+                                    <a href="https://passmark.com/products/usb-short-circuit-tester/price.php">Buy</a>
+                                </span>
+                            </div>
+                            <a class="dropdown-item all_width" href="https://passmark.com/products/hardware.php">
+                                All Hardware Products <span class="icon icon_right"></span>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="benchmarksDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Benchmarks
+                        </a>
+                        <div class="dropdown-menu big-dropdown-menu ddmenu_left_110" aria-labelledby="benchmarksDropdown">
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.cpubenchmark.net/">
+                                    CPU Benchmarks
+
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.cpubenchmark.net/">Learn More</a>
+
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.videocardbenchmark.net/">
+                                    Video Card Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.videocardbenchmark.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.harddrivebenchmark.net/">
+                                    Hard Drive Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.harddrivebenchmark.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.memorybenchmark.net/">
+                                    RAM Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.memorybenchmark.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.pcbenchmarks.net/">
+                                    PC Systems Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.pcbenchmarks.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.softwaremarketshare.net/">
+                                    Software Marketshare
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.softwaremarketshare.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.databasebenchmarks.net/">
+                                    Database Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.databasebenchmarks.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.androidbenchmark.net/">
+                                    Android Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.androidbenchmark.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.iphonebenchmark.net/">
+                                    iOS Benchmarks
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.iphonebenchmark.net/">Learn More</a>
+                                </span>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a target="_blank" class="dropdown-item" href="https://www.bandwidthtest.net/">
+                                    Internet Bandwidth
+                                </a>
+
+                                <span class="menu_tips_button">
+                                    <a target="_blank" href="https://www.bandwidthtest.net/">Learn More</a>
+                                </span>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="servicesDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Services</a>
+                        <div class="dropdown-menu one-column-drop-menu ddmenu_left_113" aria-labelledby="servicesDropdown">
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/services/index.php">
+                                    Software Customization
+                                </a>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/services/it-consultancy.php">
+                                    Independent Benchmarking Labs
+                                </a>
+
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/services/market-analysis.php">
+                                    Hardware & Software Market Trends
+                                </a>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/reports/index.php">
+                                    Benchmark Reports
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="sales_link" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Store
+                        </a>
+                        <div class="dropdown-menu big-dropdown-menu colum-2-menu" aria-labelledby="sales_link">
+                            <div class="column_1_submenu">
+                                <div class="submeu_block_title">
+                                    Purchase
+                                </div>
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/sales/index.php">
+                                        Products
+                                        <span class="menu_desc">Major software\hardware products</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/sales/index.php">Learn More</a>
+                                    </span>
+                                </div>
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/sales/upgrade/index.php">
+                                       Upgrades
+                                       <span class="menu_desc">Purchasing Software Upgrades</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/sales/upgrade/index.php">Learn More</a>
+                                    </span>
+                                </div>
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/sales/sitelicenses/index.php">
+                                        Site Licenses
+                                        <span class="menu_desc">Purchasing Site Licenses</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/sales/sitelicenses/index.php">Learn More</a>
+                                    </span>
+                                </div>
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/sales/support/index.php">
+                                        Support
+                                        <span style="line-height: 13px;" class="menu_desc">Purchasing Support \ <br> Support for site licenses</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/sales/support/index.php">Learn More</a>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="column_2_submenu">
+                                <div class="submeu_block_title">
+                                    INFO
+                                </div>
+
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/sales/purchase_orders.php">
+                                        Purchase Orders
+                                         <span class="menu_desc">How to order with a PO</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/sales/purchase_orders.php">Learn More</a>
+                                    </span>
+                                </div>
+
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/support/ordering_faq.php">
+                                        FAQ
+                                        <span class="menu_desc">Information about ordering & <br> shipping</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/support/ordering_faq.php">Learn More</a>
+                                    </span>
+                                </div>
+
+                                <div class="one_big_submenu_item">
+                                    <a class="dropdown-item" href="https://passmark.com/sales/specials/index.php">
+                                        Specials
+                                        <span class="menu_desc">Monthly specials</span>
+                                    </a>
+
+                                    <span class="menu_tips_button">
+                                        <a href="https://passmark.com/sales/specials/index.php">Learn More</a>
+                                    </span>
+                                </div>
+
+                            </div>
+
+                            <!--
+                            <a class="dropdown-item all_width" href="#">All Hardware Products <span class="icon icon_right"></a> -->
+                        </div>
+                    </li>
+                    <li class="nav-item ">
+                        <a id="support_link" class="nav-link" href="https://passmark.com/support/index.php">Support</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="aboutUsDropDown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            About Us
+                        </a>
+                        <div class="dropdown-menu one-column-drop-menu ddmenu_left_114" aria-labelledby="aboutUsDropDown">
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/about/index.php">
+                                    Company
+
+                                </a>
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/about/contact_us.php">
+                                    Contact Us
+
+                                </a>
+
+                            </div>
+                            <div class="one_big_submenu_item">
+                                <a class="dropdown-item" href="https://passmark.com/press/index.php">
+                                    The Press Room
+
+                                </a>
+
+                            </div>
+                        </div>
+                    </li>
+                    <li class="nav-item ">
+                        <a class="nav-link" href="https://passmark.com/forum/index.php">Forums</a>
+                    </li>
+
+                </ul>
+
+
+
+                </div>
+
+                <ul id="search_form" class="nav navbar-nav left-nav-bar">
+                    <li class="active">
+                        <form action="https://www.passmark.com/search/zoomsearch.php" class="form-inline my-lg-0">
+                            <input name="zoom_query" id="search_input" class="form-control mr-sm-2" type="search" placeholder="Search entire site..." aria-label="Search">
+                            <button id="search_submit" class="icon_search icons" type="submit" aria-label="Submit Search"></button>
+                        </form>
+                    </li>
+                    <li>
+                        <a href="https://www.passmark.com/about/contact_us.php" aria-label="Contact Us">
+                            <span class="icons icon_phone"></span>
+                        </a>
+                    </li>
+                    <li>
+                    <div class="cmp-header mob-cmp-h">
+    <a href="/singleCompare.php?redirect"><svg viewBox="0 0 40 40" id="icon-header-compare">
+    <path d="M24.7155 5H34C34.8284 5 35.5 5.67157 35.5 6.5C35.5 7.32843 34.8284 8 34 8H24.7155C24.0291 9.74779 22.1771 11 20 11C17.8229 11 15.9709 9.74779 15.2845 8H6C5.17163 8 4.5 7.32843 4.5 6.5C4.5 5.67157 5.17163 5 6 5H15.2845C15.9709 3.25221 17.8229 2 20 2C22.1771 2 24.0291 3.25221 24.7155 5Z"></path>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M9 11.0845L18 26.0845V26.5C18 29.1843 17.1319 31.5684 15.5183 33.295C13.8968 35.0299 11.6146 36 9 36C6.38542 36 4.10321 35.0299 2.48172 33.295C0.86806 31.5684 0 29.1843 0 26.5V26.0845L9 11.0845ZM3.1269 28C3.36348 29.3415 3.91726 30.4374 4.67351 31.2465C5.68709 32.3311 7.15488 33 9 33C10.8451 33 12.3129 32.3311 13.3265 31.2465C14.0827 30.4374 14.6365 29.3415 14.8731 28H3.1269ZM13.8507 25H4.14929L9 16.9155L13.8507 25Z"></path>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M31 11.0845L40 26.0845V26.5C40 29.1843 39.1319 31.5684 37.5183 33.295C35.8968 35.0299 33.6146 36 31 36C28.3854 36 26.1032 35.0299 24.4817 33.295C22.8681 31.5684 22 29.1843 22 26.5V26.0845L31 11.0845ZM25.1269 28C25.3635 29.3415 25.9173 30.4374 26.6735 31.2465C27.6871 32.3311 29.1549 33 31 33C32.8451 33 34.3129 32.3311 35.3265 31.2465C36.0827 30.4374 36.6365 29.3415 36.8731 28H25.1269ZM35.8507 25H26.1493L31 16.9155L35.8507 25Z"></path>
+</svg>
+
+      <span id="indexcmp3" class="number-cmp">0</span>
+    </a>
+  </div>
+                    </li>
+                </ul>
+
+
+
+            </nav>
+        </div>
+        <script>
+
+        $(document).ready(function(){
+                    $(".navbar-toggler").click(function() {
+                        $("#navbarSupportedContent").toggle();
+                    })
+
+ $("#benchmarksDropdown").click(function() {
+                        $(".ddmenu_left_110").toggleClass('show');
+                    })
+            $("#hardwareDropdown").click(function() {
+                        $(".ddmenu_left_111").toggleClass('show');
+                    })
+             $("#softwareDropdown").click(function() {
+                        $(".ddmenu_left_112").toggleClass('show');
+                    })
+            $("#servicesDropdown").click(function() {
+                        $(".ddmenu_left_113").toggleClass('show');
+                    })
+            $("#sales_link").click(function() {
+                        $(".colum-2-menu").toggleClass('show');
+                    })
+            $("#aboutUsDropDown").click(function() {
+                        $(".ddmenu_left_114").toggleClass('show');
+                    })
+        })
+
+
+
+        </script>
+    </header>
+	<!--ZOOMSTOP-->
+	<script>
+  $(document).ready(function(){
+    $(".mob-dropd").click(function() {
+      $("#mob-drop").toggle();
+    });
+
+    $(window).on( "resize", function() {
+      if( $(window).width() > 992 )
+      {
+        $("#mob-drop").css("display", "flex");
+      }
+      else
+      {
+        $("#mob-drop").css("display", "none");
+      }
+    });
+  });
+</script>
+<div id="tabs">
+  <div class="wrap-tub">
+    <a href="/"><img src="/img/home-1.svg" alt="iconcharts"></a>
+    <div class="mob-dropd" style="display: none;">
+      <h2>CPU Benchmarks</h2>
+    </div>
+  </div>
+  <ul class="container" id="mob-drop">
+    <li><a href="//www.cpubenchmark.net/"><span class="currenttab2"><span class="currenttab">CPU Benchmarks</span></span></a></li>
+    <li><a href="//www.videocardbenchmark.net/"><span class="othertab2"><span class="othertab">Video Card Benchmarks</span></span></a></li>
+    <li><a href="//www.harddrivebenchmark.net/"><span class="othertab2"><span class="othertab">Hard Drive Benchmarks</span></span></a></li>
+    <li><a href="//www.memorybenchmark.net/"><span class="othertab2"><span class="othertab">Memory Benchmarks</span></span></a></li>
+    <li><a href="//www.pcbenchmarks.net/"><span class="othertab2"><span class="othertab">PC Benchmarks</span></span></a></li>
+    <li><a href="//www.softwaremarketshare.net/"><span class="othertab2"><span class="othertab">Software Marketshare</span></span></a></li>
+    <li><a href="//www.databasebenchmarks.net/"><span class="othertab2"><span class="othertab">Database Benchmarks</span></span></a></li>
+    <li><a href="//www.androidbenchmark.net/"><span class="othertab2"><span class="othertab">Android Benchmarks</span></span></a></li>
+    <li><a href="//www.iphonebenchmark.net/"><span class="othertab2"><span class="othertab">iOS Benchmarks</span></span></a></li>
+  </ul>
+  <div class="cmp-header">
+  	  <a href="/singleCompare.php?redirect">
+    <svg viewBox="0 0 40 40" style="width: 45px; height: 35px;"><use href="#icon-header-compare"></use></svg>
+    <span id="indexcmp" class="number-cmp">0</span>
+  </a>  </div>
+</div>
+	<div class="main-title">
+		<div class="container">
+			<h2>CPU Benchmarks</h2>
+			<p>Over 1,000,000 CPUs Benchmarked</p>
+		</div>
+	</div>
+	<div class="block_content">
+		<div class="container">
+			<div id="main_content">
+				<div class="productheader">
+					<h1>AMD Ryzen 7 5800H</h1>
+				</div>
+				<div class="main-text-cmps">
+					<div class="main-cmps-head">
+						<P>
+							Benchmarks for the AMD Ryzen 7 5800H can be found below. Release dates, price and performance
+							comparisons are also listed when available. This is made using thousands of <a href="https://www.passmark.com/products/pt.htm">PerformanceTest</a>
+							benchmark results and is updated daily.
+						</P>
+						<ul>
+							<li>The first graph shows the relative performance of the CPU compared to the 10 other common (single) CPUs in terms of PassMark CPU Mark.</li>
+							<li>The 2nd graph shows the value for money, in terms of the CPUMark per dollar.</li>
+							<li>The pricing history data shows the price for a single Processor. For multiple Processors, multiply the price shown by the number of CPUs.</li>
+						</ul>
+						<p style="font-weight:bold;">Is the AMD Ryzen 7 5800H Good for Gaming?</p>
+<p>This is a fairly old CPU that is no longer competitive with newer CPUs. But this CPU contains 8 Cores and 16 Threads. Paired with a good <a style="font-size:initial;" href="https://www.videocardbenchmark.net/high_end_gpus.html">videocard</a>, <span style="font-style: italic;">is this CPU Good for Gaming?</span> This CPU should be able to play most games.&nbsp;[<a href="#gamescore">More ...</a>]</p>
+					</div>
+					<div class="banner-block">
+											</div>
+				</div>
+				<div class="wrapper">
+					<script>
+	$(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.hight-end  li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.hight-end ').addClass('hightcurrentul')
+			}
+
+		});
+	});
+	jQuery(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.best-value   li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.best-value  ').addClass('bestcurrentul')
+			}
+
+		});
+	});
+	$(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.new-desctop  li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.new-desctop ').addClass('desccurrentul')
+			}
+
+		});
+	});
+	$(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.single-thread  li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.single-thread ').addClass('threadcurrentul')
+			}
+
+		});
+	});
+	$(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.search-sidebar  li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.search-sidebar').addClass('searchcurrentul')
+			}
+
+		});
+	});
+	jQuery(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.compare-sidebar  li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.compare-sidebar').addClass('comparecurrentul')
+			}
+
+		});
+	});
+	jQuery(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.new-common  li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.new-common').addClass('commoncurrentul')
+			}
+
+		});
+	});
+	$(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.compare-sidebarvs li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.compare-sidebarvs').addClass('comparevscurrentul')
+			}
+
+		});
+	});
+	$(function() {
+		var location = window.location.href;
+		var cur_url = '/' + location.split('/').pop();
+
+		jQuery('.main-href li').each(function() {
+			var link = jQuery(this).find('a').attr('href');
+
+
+			if (cur_url == link) {
+				jQuery(this).addClass('currentbar');
+				jQuery('.main-href').addClass('maincurrentul')
+			}
+
+		});
+	});
+</script>
+<style>
+	.paging {
+		font-size: small !important;
+		padding-left: 46px !important;
+	}
+
+	.paging a {
+		font-size: small !important;
+	}
+</style>
+<div class="sidebar">
+	<div class="sidebar-list">
+		<ul class="main-href">
+			<li>
+				<a href="/"><img src="/img/home-1.svg" alt="iconcharts">
+					<p>cpus</p>
+				</a>
+			</li>
+		</ul>
+		<ul class="hight-end">
+			<li style="padding-bottom: 0px;"><a href="/multithread"><img src="/img/chartssb.svg" alt="iconcharts">Multithread</a></li>
+			<li class="paging" style="padding-right: 54px;">Page:&nbsp;<a href="/multithread">1,</a><a href="/multithread/page2">2,</a><a href="/multithread/page3">3,</a><a href="/multithread/page4">4</a></li>
+			<li class="padding-left-align" style="padding-bottom: 0px;"><a href="/single-thread">Single Thread</a></li>
+			<li class="paging" style="padding-right: 54px;">Page:&nbsp;<a href="/single-thread">1,</a><a href="/single-thread/page2">2,</a><a href="/single-thread/page3">3,</a><a href="/single-thread/page4">4</a></li>
+		</ul>
+		<ul class="best-value">
+			<li><a href="/cpu_value_available.html"><img src="/img/bw-icon.svg" alt="icon">Best Value (On Market)</a></li>
+			<li class="padding-left-align" onClick="location.href='http://dev.cpubenchmark.net/cpu_value_available.html#xy_scatter_graph';window.location.reload();"><a href="/cpu_value_available.html#xy_scatter_graph">Best Value XY Scatter</a></li>
+			<li class="padding-left-align"><a href="/cpu_value_alltime.html">Best Value (All time)</a></li>
+		</ul>
+		<ul class="new-desctop">
+			<li><a href="/desktop.html"><img src="/img/descicon.svg" alt="iconcharts"> New Desktop</a></li>
+			<li class="padding-left-align"><a href="/laptop.html">New Laptop</a></li>
+			<li class="padding-left-align"><a href="/server.html">New Server</a></li>
+			<li class="padding-left-align"><a href="/mobile-embedded.html">New Mobile</a></li>
+		</ul>
+		<ul class="single-thread">
+			<li><a href="/multi_cpu.html"><img src="/img/single-threadsb.svg" alt="iconcharts">Systems with Multiple CPUs</a></li>
+			<li class="padding-left-align"><a href="/overclocked_cpus.html">Overclocked</a></li>
+			<li class="padding-left-align"><a href="/power_performance.html">Power Performance</a></li>
+			<li class="padding-left-align"><a href="/socket-type">CPU Mark by Socket Type</a></li>
+			<li class="padding-left-align"><a href="/cross-platform.html">Cross-Platform CPU Performance</a></li>
+			<li class="padding-left-align"><a href="/top-gaming-cpus.html">Top Gaming CPUs</a></li>
+		</ul>
+		<ul class="search-sidebar">
+
+			<li><a href="/CPU_mega_page.html"><img src="/img/searchsb.svg" alt="icon">CPU Mega List</a></li>
+			<li><a class="padding-left-align" href="/cpu-list/">Search Model</a></li>
+		</ul>
+		<ul class="compare-sidebar">
+			<li><a href="/singleCompare.php"><img src="/img/conpare.svg" alt="icon">Compare<span id="indexcmp2" class="number-cmp">0 </span></a></li>
+		</ul>
+		<ul class="new-common">
+			<li><a href="/common_cpus.html"><img src="/img/star-sb.svg" alt="iconcharts"> Common</a></li>
+			<li class="padding-left-align"><a href="/share30.html">Most Benchmarked</a></li>
+		</ul>
+		<ul class="compare-sidebarvs">
+			<li><a href="/market_share.html"><img src="/img/vs-sb.svg" alt="icon">AMD vs Intel Market Share</a></li>
+			<li class="padding-left-align"><a href="/year-on-year.html">Year on Year Performance</a></li>
+		</ul>
+	</div>
+	<br>
+	<div class="sidebar-banner">
+			</div>
+</div>					<div class="main-cmps">
+						<div class="hiden-cmp" style="display: none;"><div id="sidebar">
+	<div id="sb_restore" style=" font-size: 14px;  background: transparent; padding: .25em;text-align: right;	">
+		<a href="#" id="sidebar_restore"> Minimize _</a>
+	</div>
+	<h2>Add CPUs to start comparisons</h2>
+	<p id="sidebar_default_text">Compare the performance of up to 5 different CPUs</p>
+	<div id="wrap-compare-hide">
+		<div id="div_sidebar_table" class="compare_table">
+			<table id="sidebar_table">
+				<thead><tr><td>Compare List</td><td class="ta-center"></td></tr></thead>
+
+				<tbody id="compbody">
+					<tr id="selectCPU" class="">
+					<td colspan="2"><label for="autocomplete" style="color: #00496B; font-size:10px;">Add other CPU:</label><br>
+						<img class="icon-s-comp" src="/img/compsearch.svg">
+						<input id="autocomplete" placeholder="Intel Core ..." type="text" autocomplete="off">
+					</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div class="compare-footer">
+						<button id="sidebar_button">Compare</button>
+		</div>
+	</div>
+</div>
+<script src="/portamento-min.js"></script>
+<script src="/jquery.autocomplete.js"></script>
+<script>
+
+	var MAX_COMPARE = 5;
+
+	class CPU {
+		constructor(CPUId, CPUName, CPUCount) {
+			this.CPUId = CPUId;
+			this.CPUName = CPUName;
+			this.CPUCount = CPUCount;
+		}
+	}
+
+	class MyCompare {
+		constructor() {
+			this.CPUs = [];
+		}
+
+		UpdateGUI()
+		{
+			if( $("#indexcmp").length > 0)
+				$("#indexcmp").empty().append(this.CPUs.length);
+			if( $("#indexcmp2").length > 0)
+				$("#indexcmp2").empty().append(this.CPUs.length);
+			if( $("#indexcmp3").length > 0)
+				$("#indexcmp3").empty().append(this.CPUs.length);
+
+			updateSidebar();
+		}
+
+		addCPU(CPUId, CPUName, CPUCount) {
+			if( this._AddCPU(CPUId,CPUName,CPUCount) )
+			{
+				let _this = this;
+				$.ajax({
+					type: "POST",
+					url: "/compareAjax.php",
+					data: {
+						action: "add",
+						cpuid: CPUId,
+						cpuname: CPUName,
+						cpucount: CPUCount
+					},
+					success: function( data ) {
+						console.log(data);
+						_this.UpdateGUI();
+					},
+				});
+			}
+			else
+			{
+				var toast 		= document.getElementById("toast");
+				var oldText 	= toast.innerHTML;
+				var oldBgColor 	= toast.style.backgroundColor;
+				var newMsg 		= "You can only compare " + MAX_COMPARE + " CPUs.";
+				toast.innerHTML = '<div id="img"><svg viewBox="0 0 30 30"><use xlink:href="#icon-header-compare"></use></svg></div><div id="desc">' + newMsg + '</div>';
+				toast.style.backgroundColor = "#AE0034";
+				launch_toast();
+				//toast.innerHTML = oldText;
+				//toast.style.backgroundColor = oldBgColor;
+			}
+		}
+
+		_AddCPU(CPUId, CPUName, CPUCount) {
+			CPUCount = typeof CPUCount !== 'undefined' ? parseInt(CPUCount) : 1;
+			CPUId = parseInt(CPUId);
+
+			for( var i = 0; i < this.CPUs.length; i++ )
+				if( this.CPUs[i].CPUId == CPUId && this.CPUs[i].CPUCount == CPUCount )
+					return true; // Already added
+
+			if( this.CPUs.length < MAX_COMPARE )
+			{
+								this.CPUs.push(new CPU(CPUId, CPUName, CPUCount));
+				return true;
+			}
+
+			return false;
+		}
+
+		removeCPU(CPUId, CPUCount) {
+			if( this._RemoveCPU(CPUId, "", CPUCount) )
+			{
+				let _this = this;
+				$.ajax({
+					type: "POST",
+					url: "/compareAjax.php",
+					data: {
+						action: "remove",
+						cpuid: CPUId,
+						cpucount: CPUCount
+					},
+					success: function( data ) {
+						console.log(data);
+						_this.UpdateGUI();
+					},
+				});
+			}
+		}
+
+		_RemoveCPU(CPUId, CPUName, CPUCount) {
+			CPUCount = typeof CPUCount !== 'undefined' ? CPUCount : 1;
+
+			for( var i = 0; i < this.CPUs.length; i++ )
+				if( this.CPUs[i].CPUId == CPUId && this.CPUs[i].CPUCount == CPUCount )
+				{
+					this.CPUs.splice(i,1);
+					return true;
+				}
+
+			return false;
+		}
+
+		removeAll() {
+			this.CPUs.length = 0;
+			let _this = this;
+			$.ajax({
+					type: "POST",
+					url: "/compareAjax.php",
+					data: {
+						action: "removeAll"
+					},
+					success: function( data ) {
+						console.log(data);
+						_this.UpdateGUI();
+					},
+				});
+		}
+
+		_RemoveAll() {
+			this.CPUs.length = 0;
+		}
+
+		CompareCPUs(interactive) {
+			if( this.CPUs.length < 2 )
+			{
+				if(interactive) alert( "Minimum of 2 CPUs are required for comparison");
+				return;
+			}
+
+			// Build Param String
+			let paramString1 = "";
+			let paramString2 = "";
+			for( let i = 0; i < this.CPUs.length; i++ )
+			{
+				if( i )
+				{
+					paramString1 += " vs ";
+					paramString2 += "vs";
+				}
+
+				var name = this.CPUs[i].CPUName;
+				var n = name.indexOf("@");
+				if( n > 0 )
+				{
+					name = name.substr( 0, n-1 );
+				}
+
+				name = name.replace( /\//g, "", name );
+				name = name.replace( /Intel\sCore\b/i, "Intel " );
+				name = name.replace( /\s+/g, " ", name );
+
+				paramString1 += name;
+				paramString2 += "" + this.CPUs[i].CPUId;
+
+				if( typeof this.CPUs[i].CPUCount !== 'undefined' && Number.isInteger( this.CPUs[i].CPUCount ) && this.CPUs[i].CPUCount > 1 )
+					paramString2 += "." + this.CPUs[i].CPUCount.toString();
+			}
+
+			// Redirect to comparison page
+			let locationHref = "/compare";
+			window.location.href = encodeURI(locationHref +
+									"/" + paramString2 +
+									"/" + paramString1.replace(/\s/g, "-"));
+		}
+	}
+
+	function updateSidebar()
+	{
+		let objSidebar = document.getElementById("sidebar");
+		if( !objSidebar )
+		{
+			console.log( "Error: Object 'sidebar' not found!" );
+			return;
+		}
+		//console.log( "UpdateSideBar() Max Compare: " + MAX_COMPARE );
+		//console.log( myCmp.CPUs );
+
+		let pSidebar 		= document.getElementById("sidebar_default_text");
+		let tableSidebar 	= document.getElementById( "sidebar_table" );
+		let buttonSidebar 	= document.getElementById( "sidebar_button" );
+		let divTableSidebar = document.getElementById( "div_sidebar_table" );
+
+		pSidebar.style.display = (myCmp.CPUs.length < 2) ? "block":"none";
+		divTableSidebar.style.display = "block";
+		buttonSidebar.style.display = "block";
+
+		// Remove all CPUs
+		const tbody = document.getElementById('compbody');
+		if (tbody) {
+			// Get all tr elements inside the tbody
+			const rows = tbody.querySelectorAll('tr');
+
+			// Iterate over each row
+			rows.forEach(row => {
+				// If the row's id doesn't match the one to keep, remove it
+				if (row.id !== 'selectCPU') {
+					row.remove();
+				}
+			});
+		}
+
+
+		let i;
+		for( i = 0; i < myCmp.CPUs.length; i++ )
+		{
+			row = document.createElement( "TR" );
+			row.setAttribute( "id", "" + myCmp.CPUs[i].CPUId );
+			if( i % 2 )	row.setAttribute( "class", "alt" );
+			tableSidebar.tBodies[0].insertBefore(row, document.getElementById('selectCPU'));
+
+			col2 = row.insertCell();
+			col2.appendChild( document.createTextNode( "" + (i+1) + ": " + myCmp.CPUs[i].CPUName ));
+
+			col1 = row.insertCell( -1 );
+			col1.setAttribute( "class", "ta-center" );
+			let but = document.createElement( "button" );
+			but.appendChild( document.createTextNode("X") );
+			but.onclick = function(id, numCPUs) {
+				return function(){
+					myCmp.removeCPU(id, numCPUs );
+					anim();
+				};
+			}(myCmp.CPUs[i].CPUId, myCmp.CPUs[i].CPUCount > 1 ? myCmp.CPUs[i].CPUCount : 1);
+			col1.appendChild( but );
+		}
+
+		if( i < MAX_COMPARE )
+		{
+			$('#selectCPU').show();
+
+			if( i % 2 )
+				$('#selectCPU').addClass('alt');
+			else
+				$('#selectCPU').removeClass('alt');
+		}
+		else
+		{
+			$('#selectCPU').hide();
+		}
+	}
+
+	var myCmp = new MyCompare();
+
+	
+	$(document).ready( function($) {
+		// Floating sidebar
+	  	$('#sidebar').portamento();
+		myCmp.UpdateGUI();
+	});
+
+	$('#autocomplete').autocomplete({
+		//lookup: lookupCPUs,
+		serviceUrl: '/autocomplete/cpu/',
+		onSelect: function(suggestion){
+			myCmp.addCPU( suggestion.data, suggestion.value, 1 );
+		},
+		noCache: false,
+		transformResult: function(response) {
+
+			let jsonObj = JSON.parse(response);
+			let abc = jsonObj.suggestions.slice(0,10);
+			return {suggestions: abc};
+
+		},
+		onSearchStart: function(params) {
+			//console.log("Before: "+params.query);
+			params.query = params.query.trim();
+			params.query = params.query.substring(0,40);
+			params.query = params.query.replace(/\(TM\)/i, "");
+			params.query = params.query.replace(/\(R\)/i, "");
+
+			if(/^(int|inte|intel)\b/i.test(params.query))
+				params.query = params.query.replace(/^(int|inte|intel)\b/i, "Intel ");
+			if(/\b(Xe|Xeo|Xeon)\b/i.test(params.query))
+				params.query = params.query.replace(/\b(Xe|Xeo|Xeon)\b/i, "Xeon ");
+			if(/\b(Ryz|Ryze|Ryzen)\b/i.test(params.query))
+				params.query = params.query.replace(/\b(Ryz|Ryze|Ryzen)\b/i, "Ryzen ");
+			if(/^(AM|AMD)\b/i.test(params.query))
+				params.query = params.query.replace(/^(AM|AMD)\b/i, "AMD ");
+			if(/^(Qua|Qual|Qualc)\b/i.test(params.query))
+				params.query = params.query.replace(/^(Qua|Qual|Qualc)\b/i, "Qualcomm ");
+			if(/\b(Pen|Pent)\b/i.test(params.query))
+				params.query = params.query.replace(/\b(Pen|Pent)\b/i, "Pentium ");
+			if(/^(App|Appl)\b/i.test(params.query))
+				params.query = params.query.replace(/^(App|Appl)\b/i, "Apple ");
+
+			params.query = params.query.replace(/\s+/g, ' ');
+			//console.log("After: "+params.query);
+		},
+		showNoSuggestionNotice: true,
+		noSuggestionNotice: "<span style=\"color: red\">Failed to locate CPU model. Try looking at <a style=\"font-size: 1em;\" href=\"/CPU_mega_page.html\">mega list</a> to see all names instead.</span>",
+		width: 300,
+		minChars: 3,
+		lookupLimit: 10,
+		preventBadQueries: true,
+		params: {"compact": 1},
+		deferRequestBy: 500,
+		preserveInput: true
+	});
+
+
+	$("#sidebar_minimize, #sidebar_restore").click( function(event) {
+		event.preventDefault();
+		jQuery('#portamento_container').toggle(	);
+		jQuery('#sb_restore').toggle();
+	});
+
+
+	$("#sidebar_button").on( "click", function() {
+		myCmp.CompareCPUs(true);
+	});
+
+	function anim() {
+
+		var indexcmp = document.getElementById('indexcmp');
+			if(indexcmp.innerHTML < MAX_COMPARE) {
+				$(".cmp-header a svg").addClass("anim-class");
+				$(".cmp-header .number-cmp").addClass("anim-bounce-class");
+				setTimeout(function () {
+					$(".cmp-header a svg").removeClass('anim-class');
+				}, 1500); }
+
+	}
+
+	function anim2() {
+
+		$(".cmp-header a svg").addClass("anim-class");
+		setTimeout(function () {
+				$(".cmp-header a  svg").removeClass('anim-class');
+		}, 1500);
+
+	}
+
+	function launch_toast(toastID) {
+		//var indexcmp = document.getElementById("indexcmp");
+    var toast = document.getElementById("toast");
+    //toast.top = indexcmp.top+30;
+    toast.className = "show";
+    toast.style.display = "block";
+    setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 5000);
+	}
+</script>
+</div>
+						<div style="text-align:center;">
+							<!-- Other names Loaded From Cache -->
+<!-- Additional Details Loaded From Cache -->
+		<div class="ov-scroll">
+			<div class="desc">
+				<div class="desc-body">
+					<div class="desc-header">
+						<span class="cpuname">AMD Ryzen 7 5800H</span>
+					</div>
+					<div class="desc-foot">
+						<p><strong>Description:</strong> with Radeon Graphics</p>
+					</div>
+					<div class="left-desc-cpu">
+						<p><strong>Class:</strong> Laptop</p>
+						<p><strong>Socket:</strong> FP6</p>
+<p><strong>Clockspeed:</strong> 3.2 GHz</p><p><strong>Turbo Speed:</strong> 4.4 GHz</p><p class='mobile-column'><strong>Cores:</strong> 8 <strong>Threads:</strong> 16</p><p><strong>Typical TDP:</strong> 45 W</p><p><strong>TDP Down:</strong> 35 W</p></div>
+<div class="left-desc-cpu"><p><strong>Cache per CPU Package:</strong><br/>L1 Instruction Cache: 8 x 32 KB<br/>L1 Data Cache: 8 x 32 KB<br/>L2 Cache: 8 x 512 KB<br/>L3 Cache: 16 MB<br/></p></div>
+
+				<p class="alt empt-p"></p>
+				<div class="desc-foot">
+					<p style="text-align:left;"><strong>Other names:</strong> <em>AMD Ryzen 7 5800H with Radeon Graphics</em></p>
+					<p class="alt"><strong class="bg-table-row">CPU First Seen on Charts:</strong> Q1 2021</p>
+					<p><strong>CPUmark/$Price:</strong> NA</p>
+					<p class="alt"><strong>Overall Rank:</strong><br/>
+993rd fastest in multithreading out of 6021 CPUs<br/>900th fastest in single threading out of 6021 CPUs<br/>198th fastest in out of 1652 Laptop CPUs<br/>						</p>
+						<p><strong>Last Price Change:</strong> NA</p>
+					</div>
+				</div>
+				<div class="right-desc" style="text-align: center">
+					<div class="right-header" style="padding-bottom: 7px; white-space: nowrap;">
+						<span style="float: left; padding-left: 1em; font-family: Arial, Helvetica, sans-serif;font-size: 18px; font-weight: bold;">Average CPU Mark</span>
+						<span class="speedicon"><img src="/images/speedicon.svg" alt="rating"></span>
+					</div>
+					<div>Multithread Rating</div>
+					<div style="font-family: Arial, Helvetica, sans-serif;font-size: 44px;font-weight: bold; color: #F48A18;">20461</div>	<div style="padding-top: 10px;">Single Thread Rating</div>
+	<div style="font-family: Arial, Helvetica, sans-serif;font-size: 44px;font-weight: bold; color: #F48A18;">2987</div>
+	
+	
+	<br/>					<strong>Samples:</strong> 10745*
+					<br/>
+					*<a href="graph_notes.html#samples"><strong>Margin for error</strong></a>: <span style="color: green;">Low</span>
+					<br/>
+					<br/>
+					<button class="compare-button" onclick="anim();myCmp.addCPU('3907','AMD Ryzen 7 5800H', 1);launch_toast();">+ Compare</button>
+				</div>
+			</div>
+</div><div class="history outer">
+<h2>CPU Test Suite Average Results for AMD Ryzen 7 5800H</h2>
+<table id="test-suite-results" class="table">
+<tr><th>Integer Math</th><td>78,995 MOps/Sec</td></tr>
+<tr><th>Floating Point Math</th><td>43,824 MOps/Sec</td></tr>
+<tr><th>Find Prime Numbers</th><td>48 Million Primes/Sec</td></tr>
+<tr><th>Random String Sorting</th><td>27,738 Thousand Strings/Sec</td></tr>
+<tr><th>Data Encryption</th><td>16,644 MBytes/Sec</td></tr>
+<tr><th>Data Compression</th><td>266,401 KBytes/Sec</td></tr>
+<tr><th>Physics</th><td>822 Frames/Sec</td></tr>
+<tr><th>Extended Instructions</th><td>17,986 Million Matrices/Sec</td></tr>
+<tr><th>Single Thread</th><td>2,987 MOps/Sec</td></tr>
+</table>
+<div class="notes"><em>From submitted results to PerformanceTest V10 as of 24th of September 2026.</em></div></div>
+<script>
+var distributionData = [{
+  type: "column",
+  color: "#d8c039",
+  showInLegend: true,
+  legendMarkerColor: "blue",
+  legendText: "Median: 21,075",
+  dataPoints: [
+{ x: 10200, y: 4} ,
+{ x: 10350, y: 7} ,
+{ x: 10500, y: 5} ,
+{ x: 10650, y: 11} ,
+{ x: 10800, y: 13} ,
+{ x: 10950, y: 16} ,
+{ x: 11100, y: 15} ,
+{ x: 11250, y: 30} ,
+{ x: 11400, y: 19} ,
+{ x: 11550, y: 19} ,
+{ x: 11700, y: 5} ,
+{ x: 11850, y: 11} ,
+{ x: 12000, y: 7} ,
+{ x: 12150, y: 15} ,
+{ x: 12300, y: 9} ,
+{ x: 12450, y: 12} ,
+{ x: 12600, y: 12} ,
+{ x: 12750, y: 13} ,
+{ x: 12900, y: 14} ,
+{ x: 13050, y: 6} ,
+{ x: 13200, y: 12} ,
+{ x: 13350, y: 3} ,
+{ x: 13500, y: 11} ,
+{ x: 13650, y: 10} ,
+{ x: 13800, y: 10} ,
+{ x: 13950, y: 15} ,
+{ x: 14100, y: 11} ,
+{ x: 14250, y: 11} ,
+{ x: 14400, y: 14} ,
+{ x: 14550, y: 17} ,
+{ x: 14700, y: 23} ,
+{ x: 14850, y: 22} ,
+{ x: 15000, y: 28} ,
+{ x: 15150, y: 29} ,
+{ x: 15300, y: 37} ,
+{ x: 15450, y: 42} ,
+{ x: 15600, y: 37} ,
+{ x: 15750, y: 38} ,
+{ x: 15900, y: 42} ,
+{ x: 16050, y: 54} ,
+{ x: 16200, y: 42} ,
+{ x: 16350, y: 61} ,
+{ x: 16500, y: 46} ,
+{ x: 16650, y: 54} ,
+{ x: 16800, y: 61} ,
+{ x: 16950, y: 54} ,
+{ x: 17100, y: 75} ,
+{ x: 17250, y: 74} ,
+{ x: 17400, y: 83} ,
+{ x: 17550, y: 80} ,
+{ x: 17700, y: 95} ,
+{ x: 17850, y: 88} ,
+{ x: 18000, y: 85} ,
+{ x: 18150, y: 114} ,
+{ x: 18300, y: 111} ,
+{ x: 18450, y: 112} ,
+{ x: 18600, y: 113} ,
+{ x: 18750, y: 111} ,
+{ x: 18900, y: 138} ,
+{ x: 19050, y: 158} ,
+{ x: 19200, y: 148} ,
+{ x: 19350, y: 179} ,
+{ x: 19500, y: 193} ,
+{ x: 19650, y: 200} ,
+{ x: 19800, y: 228} ,
+{ x: 19950, y: 221} ,
+{ x: 20100, y: 223} ,
+{ x: 20250, y: 258} ,
+{ x: 20400, y: 263} ,
+{ x: 20550, y: 245} ,
+{ x: 20700, y: 255} ,
+{ x: 20850, y: 258} ,
+{ x: 21000, y: 280, color: "blue"} ,
+{ x: 21150, y: 285} ,
+{ x: 21300, y: 303} ,
+{ x: 21450, y: 310} ,
+{ x: 21600, y: 333} ,
+{ x: 21750, y: 377} ,
+{ x: 21900, y: 326} ,
+{ x: 22050, y: 320} ,
+{ x: 22200, y: 349} ,
+{ x: 22350, y: 334} ,
+{ x: 22500, y: 309} ,
+{ x: 22650, y: 287} ,
+{ x: 22800, y: 260} ,
+{ x: 22950, y: 219} ,
+{ x: 23100, y: 211} ,
+{ x: 23250, y: 214} ,
+{ x: 23400, y: 177} ,
+{ x: 23550, y: 139} ,
+{ x: 23700, y: 131} ,
+{ x: 23850, y: 102} ,
+{ x: 24000, y: 72} ,
+{ x: 24150, y: 51} ,
+{ x: 24300, y: 45} ,
+{ x: 24450, y: 1} ,
+{ x: 24600, y: 0} ,
+{ x: 24750, y: 0} ,
+{ x: 24900, y: 0} ,
+{ x: 25050, y: 0 } 
+  ]},];
+$(function () {var distributionChart = new CanvasJS.Chart("percentileChart", {
+						animationEnabled: true,
+						title: {
+
+						},
+						toolTip: {
+							content: function(e) {
+								var content;
+								content = "<strong>CPU Mark:</strong> " + e.entries[0].dataPoint.x + " - " + (e.entries[0].dataPoint.x+150) + "<br />" + e.entries[0].dataPoint.y + " baselines";
+								return content;
+							}
+						},
+						axisX: {
+							gridThickness: 0.2,
+							gridDashType: "longDash",
+							tickLength: 15,
+							tickColor: "#fff",
+							lineColor: "#E2EDF4",
+							lineThickness: 0.5,
+							gridColor: "#E2EDF4",
+							title: "CPU Mark",
+							stripLines: [{
+								value: 20460,
+								label: "Average CPU Mark: 20,461",
+								labelFontColor: "#F48A18",
+								labelAlign: "far",
+								labelFontFamily: "Tahoma,sans-serif",
+								opacity: .75,
+								showOnTop: true
+							}]
+						},
+						axisY: {
+							gridDashType: "longDash",
+							gridThickness: 0.2,
+							lineThickness: 0.5,
+							lineColor: "#E2EDF4",
+							tickLength: 3,
+							gridColor: "#E2EDF4",
+							title: "# Records"
+						},
+						legend: {
+							dockInsidePlotArea: true,
+							horizontalAlign: "middle",
+							verticalAlign: "top"
+					   },
+						data: distributionData
+
+					});
+
+			distributionChart.render();});</script>
+<div id="distribution" class="history outer" >
+  <h2>CPU Mark Distribution for AMD Ryzen 7 5800H</h2>
+<div class="section passmarkBGColorLight">
+					<div style="margin-top: 1em; font-size: large; font-weight: bold; text-align: center;">Submitted Baseline Distribution Graph as of 19th of September 2026</div><div id="percentileChart" style="width:100%;height:400px;margin-right:auto;margin-left:auto;"></div><div class="notes">  <em>From submitted results since PerformanceTest V10 as of 19th of September 2026.</em><br/><em>For distribution graph only: Results are <a style="font-size: 11px;" href="https://en.wikipedia.org/wiki/Trimmed_estimator">trimmed</a> to exclude outliers by disregarding the bottom 1% and top 1% of submissions.</em><br/></div></div>					</div><br/>
+<div class="leaderboard-ad-target"></div><div class="mobile-square-target"></div><!-- Country Code [US] -->
+<table id="price" class="price priceno"><caption class="chart">Search for <span style="color:red">AMD Ryzen 7 5800H</span><br/>from the Featured Merchants below:</caption>  <tr class="desc-body-price-default"><td style="text-align-last: center;"><a target="_blank" href="http://smile.amazon.com/gp/search?ie=UTF8&amp;keywords=AMD+Ryzen+7+5800H&amp;tag=cpubenchmark-20&amp;index=aps"><img class="amazon"  src="images/amazon.png" alt="Amazon.com" width="204" height="63"></a></td></tr>  <tr class="desc-body-price-default"><td style="text-align-last: center;"><a target="_blank" href="http://www.anrdoezrs.net/click-3962334-10439986-1415138759000?sid=1"><img class="newegg" src="img/newegg.png" alt="Newegg.com" width="120" height="63"></a></td></tr>  <tr class="desc-body-price-default"><td style="text-align-last: center;"><a target="_blank" href="https://bestbuy.7tiv.net/QOMG69"><img src="images/bestbuy.png" alt="bestbuy.com" style="width: 194px; height: 42px;"></a></td></tr>  <tr class="desc-body-price-default"><td style="text-align-last: center;"><a target="_blank" href="http://rover.ebay.com/rover/1/711-53200-19255-0/1?icep_ff3=9&amp;pub=5575005161&amp;toolid=10001&amp;campid=5337052761&amp;customid=&amp;icep_uq=AMD+Ryzen+7+5800H&amp;icep_sortBy=12&amp;ipn=psmain&amp;icep_vectorid=229466&amp;kwid=902099&amp;mtid=824&amp;kw=lg"><img class="ebay"  src="images/ebay.png" alt="EBay.com" width="151" height="60"></a></td></tr></table><div class="notes"><em>Note: PassMark Software may earn compensation for sales from links on this site through affiliate programs.</em></div><table id="blocker" class="desc" style="display:none;padding:2em;background-color:yellow">
+<tr  style="color:red"><td style="padding:2em;">Browser adblocker software has been <strong>detected and enabled</strong> for our website.<br>Please consider disabling it to support our site and to <strong>view current prices</strong> for the selected CPU.</td></tr>
+</table>
+<script>
+if( window.canRunAds === undefined ){
+ document.getElementById("blocker").style.display = "";
+}
+</script>
+<div id="relatedproducts" class="outer">
+<h2 id="relprodheader">Machines with this CPU (or similar)</h2>
+<table id="relprodtable">
+					<tr>
+						<td style="width: 80px; text-align-last: center;">
+							<img src="https://m.media-amazon.com/images/I/31DhLXg06EL._SL75_.jpg" alt="Lenovo Legion 5 Pro 16ACH6H 16&quot; Laptop AMD Ryzen 7 5800H NVIDIA GeForce RTX 3070 16GB Ram 1TB SSD W11H" width="75" height="75">
+						</td>
+						<td style="text-align-last: center;">
+							<a href="https://www.amazon.com/dp/B09NS2SMKP?tag=cpubenchmark-20&linkCode=osi&th=1&psc=1" target="_blank">Lenovo Legion 5 Pro 16ACH6H 16&quot; Laptop AMD Ryzen 7 5800H NVIDIA GeForce RTX 3070 16GB Ram 1TB SSD W11H</a>
+						</td>
+						<td style="text-align-last: center;">
+							$1536.90<div style="font-size: 10px;">(www.amazon.com)</div>
+						</td>
+					</tr>					<tr>
+						<td style="width: 80px; text-align-last: center;">
+							<img src="https://m.media-amazon.com/images/I/51SELSNAx2L._SL75_.jpg" alt="HP Victus Gaming Laptop, 15.6&quot; FHD IPS 144Hz Display, AMD Ryzen 7 5800H, GeForce RTX 3050Ti, 16GB RAM, 512GB SSD, Webcam, HDMI, Backlit KB, Wi-Fi 6, Windows 11 Home" width="75" height="75">
+						</td>
+						<td style="text-align-last: center;">
+							<a href="https://www.amazon.com/dp/B0B57NFKL2?tag=cpubenchmark-20&linkCode=osi&th=1&psc=1" target="_blank">HP Victus Gaming Laptop, 15.6&quot; FHD IPS 144Hz Display, AMD Ryzen 7 5800H, GeForce RTX 3050Ti, 16GB RAM, 512GB SSD, Webcam, HDMI, Backlit KB, Wi-Fi 6, Windows 11 Home</a>
+						</td>
+						<td style="text-align-last: center;">
+							$948.99<div style="font-size: 10px;">(www.amazon.com)</div>
+						</td>
+					</tr>					<tr>
+						<td style="width: 80px; text-align-last: center;">
+							<img src="https://m.media-amazon.com/images/I/41FkpjjQvHL._SL75_.jpg" alt="ASUS - Vivobook 16&quot; Laptop - AMD Ryzen 7 5800HS with 12GB Memory - 512GB SSD - Quiet Blue DealExpress Accessories" width="75" height="49">
+						</td>
+						<td style="text-align-last: center;">
+							<a href="https://www.amazon.com/dp/B0CSM24R5X?tag=cpubenchmark-20&linkCode=osi&th=1&psc=1" target="_blank">ASUS - Vivobook 16&quot; Laptop - AMD Ryzen 7 5800HS with 12GB Memory - 512GB SSD - Quiet Blue DealExpress Accessories</a>
+						</td>
+						<td style="text-align-last: center;">
+							$659.99<div style="font-size: 10px;">(www.amazon.com)</div>
+						</td>
+					</tr>					<tr>
+						<td style="width: 80px; text-align-last: center;">
+							<img src="https://m.media-amazon.com/images/I/41NeTCJ19mL._SL75_.jpg" alt="msi Delta 15 15.6&quot; 240Hz Gaming Laptop AMD Ryzen R7-5800H RX6700M 16GB 1TB NVMe SSD Win11 - Gray (A5EFK-097)" width="75" height="75">
+						</td>
+						<td style="text-align-last: center;">
+							<a href="https://www.amazon.com/dp/B0B4TB33CV?tag=cpubenchmark-20&linkCode=osi&th=1&psc=1" target="_blank">msi Delta 15 15.6&quot; 240Hz Gaming Laptop AMD Ryzen R7-5800H RX6700M 16GB 1TB NVMe SSD Win11 - Gray (A5EFK-097)</a>
+						</td>
+						<td style="text-align-last: center;">
+							$1019.99<div style="font-size: 10px;">(www.amazon.com)</div>
+						</td>
+					</tr>					<tr>
+						<td style="width: 80px; text-align-last: center;">
+							<img src="https://m.media-amazon.com/images/I/41nAFBIDFoL._SL75_.jpg" alt="ASUS Vivobook 16 Business Laptop 16.0&quot; IPS WUXGA, Ryzen 7 7730U, 16GB/1TB" width="75" height="50">
+						</td>
+						<td style="text-align-last: center;">
+							<a href="https://www.amazon.com/dp/B0CGR4S4RS?tag=cpubenchmark-20&linkCode=osi&th=1&psc=1" target="_blank">ASUS Vivobook 16 Business Laptop 16.0&quot; IPS WUXGA, Ryzen 7 7730U, 16GB/1TB</a>
+						</td>
+						<td style="text-align-last: center;">
+							$839.99<div style="font-size: 10px;">(www.amazon.com)</div>
+						</td>
+					</tr></table><div class="notes"><em>Note: PassMark Software may earn compensation for sales from links on this site through affiliate programs.</em></div></div>
+<!-- Additional Affiliate Systems Loaded From Cache -->
+<div class="cpumark contentz" ><table class="chartsmall" style="border-spacing:0">
+<caption class="chart">CPU Mark Relative to Top 10 Common Laptop CPUs<br />
+<span class="subcaption">As of 24th of September 2026 - Higher results represent better performance</span><br />
+</caption>
+<tr class="tr-bg-desc"><th class="chart" scope="col"><span class="auraltext">Processor</span></th>
+<th class="chart" scope="col"><span class="auraltext">Average CPU Mark</span></th><th></th></tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721">Intel Core i7-12700H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721"><div><span class="meter blue" style="width: 83%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721">24,936</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040">Apple M4 10 Core</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040"><div><span class="meter pink" style="width: 78%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040">23,583</a></td>
+</tr>
+<tr class="hover-bg "><td style="background: #E2EDF4;" class="chart padding-class">AMD Ryzen 7 5800H</td><td style="background: #E2EDF4;" class="valuesmall "><a><div><span class="meter pink" style="width: 68%; "></span></div></a></td>
+<td class="value-cifre " style="background: #E2EDF4;">
+20,461</td></tr><tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358">Intel Core i7-11800H @ 2.30GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358"><div><span class="meter green" style="width: 65%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358">19,577</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676">AMD Ryzen 7 4800H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676"><div><span class="meter light-purple" style="width: 59%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676">17,810</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274">AMD Ryzen 5 5600H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274"><div><span class="meter red" style="width: 54%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274">16,345</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922">Apple M2 8 Core 3500 MHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922"><div><span class="meter turquoise" style="width: 52%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922">15,647</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104">Apple M1 8 Core 3200 MHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104"><div><span class="meter orange" style="width: 47%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104">14,122</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141">AMD Ryzen 5 5500U</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141"><div><span class="meter brown" style="width: 42%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141">12,592</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425">Intel Core i7-9750H @ 2.60GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425"><div><span class="meter purple" style="width: 35%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425">10,543</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830">Intel Core i5-1135G7 @ 2.40GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830"><div><span class="meter blue" style="width: 31%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830">9,294</a></td>
+</tr>
+</table>
+<table class="chartsmall" style="border-spacing:0">
+<caption class="chart">CPU Value (CPU Mark / $Price )<br />
+<span class="subcaption">As of 24th of September 2026 - Higher results represent better value</span><br />
+</caption>
+<tr class="tr-bg-desc"><th class="chart" scope="col"><span class="auraltext">Processor</span></th>
+<th class="chart" scope="col"><span class="auraltext">CPU Mark / $Price</span></th><th></th></tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721">Intel Core i7-12700H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721"><div><span class="meter blue" style="width: 83%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721">54.56</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358">Intel Core i7-11800H @ 2.30GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358"><div><span class="meter pink" style="width: 75%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358">49.56</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830">Intel Core i5-1135G7 @ 2.40GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830"><div><span class="meter yellow" style="width: 45%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830">30.08</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425">Intel Core i7-9750H @ 2.60GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425"><div><span class="meter green" style="width: 16%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425">10.98</a></td>
+</tr>
+<tr class="hover-bg "><td style="background: #E2EDF4;" class="chart padding-class">AMD Ryzen 7 5800H</td><td style="background: #E2EDF4;" class="valuesmall "><a><div><span class="meter pink" style="width: 0%; "></span></div></a></td>
+<td class="value-cifre " style="background: #E2EDF4;">
+NA</td></tr><tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104">Apple M1 8 Core 3200 MHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104"><div><span class="meter red" style="width: 0%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104">NA</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922">Apple M2 8 Core 3500 MHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922"><div><span class="meter turquoise" style="width: 0%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922">NA</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040">Apple M4 10 Core</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040"><div><span class="meter orange" style="width: 0%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040">NA</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274">AMD Ryzen 5 5600H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274"><div><span class="meter brown" style="width: 0%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274">NA</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676">AMD Ryzen 7 4800H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676"><div><span class="meter purple" style="width: 0%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676">NA</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141">AMD Ryzen 5 5500U</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141"><div><span class="meter blue" style="width: 0%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141">NA</a></td>
+</tr>
+</table>
+<table class="chartsmall" style="border-spacing:0">
+<caption class="chart">Single Thread Rating<br />
+<span class="subcaption">As of 24th of September 2026 - Higher results represent better performance</span><br />
+</caption>
+<tr class="tr-bg-desc"><th class="chart" scope="col"><span class="auraltext">Processor</span></th>
+<th class="chart" scope="col"><span class="auraltext">Average Thread Rating</span></th><th></th></tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040">Apple M4 10 Core</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040"><div><span class="meter blue" style="width: 83%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M4+10+Core&amp;id=6040">4,493</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922">Apple M2 8 Core 3500 MHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922"><div><span class="meter pink" style="width: 71%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M2+8+Core+3500+MHz&amp;id=4922">3,882</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104">Apple M1 8 Core 3200 MHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104"><div><span class="meter yellow" style="width: 68%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Apple+M1+8+Core+3200+MHz&amp;id=4104">3,673</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721">Intel Core i7-12700H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721"><div><span class="meter green" style="width: 64%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-12700H&amp;id=4721">3,480</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358">Intel Core i7-11800H @ 2.30GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358"><div><span class="meter light-purple" style="width: 55%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-11800H+%40+2.30GHz&amp;id=4358">3,005</a></td>
+</tr>
+<tr class="hover-bg "><td style="background: #E2EDF4;" class="chart padding-class">AMD Ryzen 7 5800H</td><td style="background: #E2EDF4;" class="valuesmall "><a><div><span class="meter pink" style="width: 55%; "></span></div></a></td>
+<td class="value-cifre " style="background: #E2EDF4;">
+2,987</td></tr><tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274">AMD Ryzen 5 5600H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274"><div><span class="meter turquoise" style="width: 53%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+5+5600H&amp;id=4274">2,869</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830">Intel Core i5-1135G7 @ 2.40GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830"><div><span class="meter orange" style="width: 48%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i5-1135G7+%40+2.40GHz&amp;id=3830">2,594</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676">AMD Ryzen 7 4800H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676"><div><span class="meter brown" style="width: 47%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+7+4800H&amp;id=3676">2,579</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141">AMD Ryzen 5 5500U</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141"><div><span class="meter purple" style="width: 44%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+5+5500U&amp;id=4141">2,388</a></td>
+</tr>
+<tr class="hover-bg "><td class="chart"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425">Intel Core i7-9750H @ 2.60GHz</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425"><div><span class="meter blue" style="width: 44%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+i7-9750H+%40+2.60GHz&amp;id=3425">2,382</a></td>
+</tr>
+</table>
+</div>
+<!-- Last Benchmarks Loaded From Cache -->
+<div class="cpumark"><table class="chartsmall" style="border-spacing:0;"><caption class="chart">Last 5 Baselines for AMD Ryzen 7 5800H<br />
+<span class="subcaption">Most recent listed first</span><br />
+</caption>
+<tr class="tr-bg-desc"><th class="chart" scope="col"><span class="auraltext">Baseline</span></th>
+<th class="chart" scope="col"><span class="auraltext">CPU Mark</span></th><th></th></tr>
+<tr class="hover-bg"><td class="chart"><a href="https://www.passmark.com/baselines/V11/display.php?id=372127648732">BL3721276 - Sep 17 2026</a></td>
+<td class="valuesmall"><a href="https://www.passmark.com/baselines/V11/display.php?id=372127648732"><div><span class="meter blue" style="width: 83%; "></span></div></a></td>
+<td class="value-cifre"><a href="https://www.passmark.com/baselines/V11/display.php?id=372127648732">
+23826</a></td></tr><tr class="hover-bg"><td class="chart"><a href="https://www.passmark.com/baselines/V11/display.php?id=372035130287">BL3720351 - Sep 16 2026</a></td>
+<td class="valuesmall"><a href="https://www.passmark.com/baselines/V11/display.php?id=372035130287"><div><span class="meter pink" style="width: 60%; "></span></div></a></td>
+<td class="value-cifre"><a href="https://www.passmark.com/baselines/V11/display.php?id=372035130287">
+17250</a></td></tr><tr class="hover-bg"><td class="chart"><a href="https://www.passmark.com/baselines/V11/display.php?id=372025047258">BL3720250 - Sep 16 2026</a></td>
+<td class="valuesmall"><a href="https://www.passmark.com/baselines/V11/display.php?id=372025047258"><div><span class="meter yellow" style="width: 61%; "></span></div></a></td>
+<td class="value-cifre"><a href="https://www.passmark.com/baselines/V11/display.php?id=372025047258">
+17707</a></td></tr><tr class="hover-bg"><td class="chart"><a href="https://www.passmark.com/baselines/V11/display.php?id=371982756221">BL3719827 - Sep 16 2026</a></td>
+<td class="valuesmall"><a href="https://www.passmark.com/baselines/V11/display.php?id=371982756221"><div><span class="meter green" style="width: 58%; "></span></div></a></td>
+<td class="value-cifre"><a href="https://www.passmark.com/baselines/V11/display.php?id=371982756221">
+16680</a></td></tr><tr class="hover-bg"><td class="chart"><a href="https://www.passmark.com/baselines/V11/display.php?id=371943034417">BL3719430 - Sep 16 2026</a></td>
+<td class="valuesmall"><a href="https://www.passmark.com/baselines/V11/display.php?id=371943034417"><div><span class="meter light-purple" style="width: 59%; "></span></div></a></td>
+<td class="value-cifre"><a href="https://www.passmark.com/baselines/V11/display.php?id=371943034417">
+17061</a></td></tr></table>
+	<div class="managebaselines">
+		Additional baselines can be obtained using Windows version of <a href="https://www.passmark.com/products/performancetest/index.php">PerformanceTest's Manage Baselines</a> feature.
+	</div>
+</div>
+<table class="chartsmall" style="border-spacing:0">
+<caption class="chart">Popular comparisons for AMD Ryzen 7 5800H<br />
+<span class="subcaption">As of 24th of September 2026 - Higher results represent better performance</span><br />
+</caption>
+<tr class="tr-bg-desc"><th class="chart" scope="col"><span class="auraltext">Processor</span></th>
+<th class="chart" scope="col"><span class="auraltext">Average CPU Mark</span></th><th></th></tr>
+<tr class="vs_row hover-bg"><td style="background: #E2EDF4;" class="chart padding-class">AMD Ryzen 7 5800H</td><td style="background: #E2EDF4;" class="valuesmall "><a><div><span class="meter pink" style="width: 27%; "></span></div></a></td>
+<td class="value-cifre " style="background: #E2EDF4;">
+20,461</td></tr><tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs3903/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-9-5900HX">AMD Ryzen 9 5900HX <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs3903/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-9-5900HX"><div><span class="meter yellow" style="width: 29%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs3903/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-9-5900HX">21,983</a> <span class="percentage increase">(+7.4%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs3905/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-9-5900HS">AMD Ryzen 9 5900HS <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs3905/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-9-5900HS"><div><span class="meter yellow" style="width: 28%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs3905/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-9-5900HS">20,976</a> <span class="percentage increase">(+2.5%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4400/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11950H">Intel Core i9-11950H @ 2.60GHz <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4400/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11950H"><div><span class="meter yellow" style="width: 27%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4400/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11950H">20,250</a> <span class="percentage decrease">(-1.0%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4436/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11900H">Intel Core i9-11900H @ 2.50GHz <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4436/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11900H"><div><span class="meter yellow" style="width: 26%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4436/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11900H">19,711</a> <span class="percentage decrease">(-3.7%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4358/AMD-Ryzen-7-5800H-vs-Intel-Core-i7-11800H">Intel Core i7-11800H @ 2.30GHz <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4358/AMD-Ryzen-7-5800H-vs-Intel-Core-i7-11800H"><div><span class="meter yellow" style="width: 26%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4358/AMD-Ryzen-7-5800H-vs-Intel-Core-i7-11800H">19,577</a> <span class="percentage decrease">(-4.3%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4342/AMD-Ryzen-7-5800H-vs-Intel-Core-i7-11850H">Intel Core i7-11850H @ 2.50GHz <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4342/AMD-Ryzen-7-5800H-vs-Intel-Core-i7-11850H"><div><span class="meter yellow" style="width: 26%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4342/AMD-Ryzen-7-5800H-vs-Intel-Core-i7-11850H">19,564</a> <span class="percentage decrease">(-4.4%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4198/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-PRO-5850U">AMD Ryzen 7 PRO 5850U <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4198/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-PRO-5850U"><div><span class="meter yellow" style="width: 21%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4198/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-PRO-5850U">16,377</a> <span class="percentage decrease">(-20.0%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4156/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-5700U">AMD Ryzen 7 5700U <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4156/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-5700U"><div><span class="meter yellow" style="width: 20%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4156/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-5700U">15,368</a> <span class="percentage decrease">(-24.9%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4274/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-5-5600H">AMD Ryzen 5 5600H <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4274/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-5-5600H"><div><span class="meter yellow" style="width: 21%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4274/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-5-5600H">16,345</a> <span class="percentage decrease">(-20.1%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4355/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11980HK">Intel Core i9-11980HK @ 2.60GHz <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4355/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11980HK"><div><span class="meter yellow" style="width: 29%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4355/AMD-Ryzen-7-5800H-vs-Intel-Core-i9-11980HK">21,877</a> <span class="percentage increase">(+6.9%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4419/AMD-Ryzen-7-5800H-vs-Intel-Xeon-W-11955M">Intel Xeon W-11955M @ 2.60GHz <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4419/AMD-Ryzen-7-5800H-vs-Intel-Xeon-W-11955M"><div><span class="meter yellow" style="width: 28%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4419/AMD-Ryzen-7-5800H-vs-Intel-Xeon-W-11955M">21,308</a> <span class="percentage increase">(+4.1%)</span></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/compare/3907vs4170/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-5800HS">AMD Ryzen 7 5800HS <span class="smaller">vs AMD Ryzen 7 5800H</span></a></td><td class="valuesmall"><a href="/compare/3907vs4170/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-5800HS"><div><span class="meter yellow" style="width: 25%;"></span></div></a></td>
+<td class="value-cifre"><a style="display: inline;" href="/compare/3907vs4170/AMD-Ryzen-7-5800H-vs-AMD-Ryzen-7-5800HS">19,355</a> <span class="percentage decrease">(-5.4%)</span></td>
+</tr>
+</table>
+<br>
+<table id="gamescoreChart" class="chartsmall" style="border-spacing:0">
+<caption class="chart"><span id="gamescore">Is the AMD Ryzen 7 5800H Good for Gaming?</span><br />
+<span class="subcaption">As of 24th of September 2026 - Higher results represent better performance</span><br />
+</caption>
+<tr class="tr-bg-desc"><th class="chart" scope="col"><span class="auraltext">Processor</span></th>
+<th class="chart" scope="col"><span class="auraltext">Relative <a style="font-size:inherit;" href="graph_notes.html#gamescore">Gaming Score</a></span></th><th></th></tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+9+9955HX3D&amp;id=6641">AMD Ryzen 9 9955HX3D</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+9+9955HX3D&amp;id=6641"><div><span class="meter yellow" style="width: 83%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+9+9955HX3D&amp;id=6641">9,754</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+290HX+Plus&amp;id=7148">Intel Core Ultra 9 290HX Plus</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+290HX+Plus&amp;id=7148"><div><span class="meter yellow" style="width: 79%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+290HX+Plus&amp;id=7148">9,306</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+285HX&amp;id=6608">Intel Core Ultra 9 285HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+285HX&amp;id=6608"><div><span class="meter yellow" style="width: 77%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+285HX&amp;id=6608">9,076</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+275HX&amp;id=6492">Intel Core Ultra 9 275HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+275HX&amp;id=6492"><div><span class="meter yellow" style="width: 76%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+275HX&amp;id=6492">8,941</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+270HX+Plus&amp;id=7373">Intel Core Ultra 7 270HX Plus</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+270HX+Plus&amp;id=7373"><div><span class="meter yellow" style="width: 75%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+270HX+Plus&amp;id=7373">8,855</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+251HX&amp;id=7357">Intel Core Ultra 7 251HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+251HX&amp;id=7357"><div><span class="meter yellow" style="width: 72%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+251HX&amp;id=7357">8,433</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+5+235HX&amp;id=6878">Intel Core Ultra 5 235HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+5+235HX&amp;id=6878"><div><span class="meter yellow" style="width: 68%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+5+235HX&amp;id=6878">8,022</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+265HX&amp;id=6708">Intel Core Ultra 7 265HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+265HX&amp;id=6708"><div><span class="meter yellow" style="width: 66%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+265HX&amp;id=6708">7,820</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+255HX&amp;id=6648">Intel Core Ultra 7 255HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+255HX&amp;id=6648"><div><span class="meter yellow" style="width: 65%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+255HX&amp;id=6648">7,713</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+285H&amp;id=6444">Intel Core Ultra 9 285H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+285H&amp;id=6444"><div><span class="meter yellow" style="width: 65%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+9+285H&amp;id=6444">7,648</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+265H&amp;id=6660">Intel Core Ultra 7 265H</a></td><td class="valuesmall"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+265H&amp;id=6660"><div><span class="meter yellow" style="width: 64%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=Intel+Core+Ultra+7+265H&amp;id=6660">7,594</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td class="chart"><a href="/cpu.php?cpu=AMD+Ryzen+9+9850HX&amp;id=6859">AMD Ryzen 9 9850HX</a></td><td class="valuesmall"><a href="/cpu.php?cpu=AMD+Ryzen+9+9850HX&amp;id=6859"><div><span class="meter yellow" style="width: 62%;"></span></div></a></td>
+<td class="value-cifre"><a href="/cpu.php?cpu=AMD+Ryzen+9+9850HX&amp;id=6859">7,294</a></td>
+</tr>
+<tr class="vs_row hover-bg"><td style="background: #E2EDF4;" class="chart padding-class">AMD Ryzen 7 5800H</td><td style="background: #E2EDF4;" class="valuesmall "><a><div><span class="meter pink" style="width: 17%; "></span></div></a></td>
+<td class="value-cifre " style="background: #E2EDF4;">
+2,105</td></tr></table>
+<br/><br/>
+<div class="leaderboard-ad-target"></div><div class="mobile-square-target"></div>						</div>
+					</div>
+				</div>
+			</div>
+			<script>
+				window.onload = function() {
+
+					if (typeof dataArray !== 'undefined') {
+						var chart = new CanvasJS.Chart("placeholder", {
+							animationEnabled: true,
+							title: {
+
+							},
+							axisX: {
+								gridThickness: 0.2,
+								gridDashType: "longDash",
+								tickLength: 15,
+								tickColor: "#fff",
+								lineColor: "#E2EDF4",
+								lineThickness: 0.5,
+								gridColor: "#E2EDF4",
+								valueFormatString: "MMM 'YY"
+							},
+							axisY: {
+								gridDashType: "longDash",
+								gridThickness: 0.2,
+								lineThickness: 0.5,
+								lineColor: "#E2EDF4",
+								tickLength: 3,
+								gridColor: "#E2EDF4",
+								prefix: "$"
+							},
+							legend: {
+								dockInsidePlotArea: true,
+								horizontalAlign: "left",
+								verticalAlign: "top",
+							},
+							data: [{
+								indexLabelFontColor: "darkSlateGray",
+								legendMarkerType: "square",
+								name: "views",
+								lineColor: "#63A3F7",
+								lineThickness: 2,
+								showInLegend: true,
+								legendText: "Price Summary",
+								fillOpacity: 0.2,
+								type: "area",
+								dataPoints: dataArray.map(item => {
+									return {
+										x: new Date(item.x),
+										y: item.y
+									}
+								})
+							}]
+						});
+
+						chart.render();
+					}
+				}
+
+				jQuery(document).ready(function() {
+					var count = jQuery('.chartsmall tbody tr').length;
+
+					if (count % 2 == 0)
+						jQuery('.chartsmall tbody tr:nth-child(even)').toggleClass("alt");
+					else
+						jQuery('.chartsmall tbody tr:nth-child(odd)').toggleClass("alt");
+				});
+			</script>
+			<script src="jquery.flot.js"></script>
+			<script src="jquery.flot.time.js"></script>
+			<script src="canvasjs.min.js"></script>
+			<script src="js/curvedLines.js"></script>
+		</div>
+		<footer>
+    <div class="container-fluid" id="footer_nav_block">
+        <div class="row">
+            <div class="col-md-2 col-lg-2 col-sm-6 col-6">
+                <span class="menu_header"><a class="nav-link " href="https://www.passmark.com/products/index.php">Software</a></span>
+                <ul class="nav flex-column mobile-collapse">
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://www.passmark.com/products/burnintest/index.php">BurnInTest</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/performancetest/index.php">PerformanceTest</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.osforensics.com/">OSForensics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.memtest86.com/">MemTest86</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/wirelessmonitor/index.php">WirelessMon</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/bitmgtconsole/index.php">Management Console</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.zoomsearchengine.com/zoom/">Zoom Search Engine</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/index.php#2">Free Software</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-2 col-lg-2 col-sm-6 col-6">
+                <span class="menu_header"><a class="nav-link " href="https://www.passmark.com/products/hardware.php">Hardware</a></span>
+                <ul class="nav flex-column mobile-collapse">
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://www.passmark.com/products/usb3loopback/index.php">USB3.0 Loopback Plugs </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/usb2loopback/index.php">USB2.0 Loopback Plugs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/pcie-test-card/index.php">PCIe Test Cards</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/usb-power-delivery-tester/index.php">USB Power Delivery Tester</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/loopback/index.php">Serial and Parallel Loopback Plugs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/products/usb-short-circuit-tester/index.php">USB Short Circuit Testers</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-md-2 col-lg-2 col-sm-6 col-6">
+                <span class="menu_header"><a class="nav-link " href="https://www.cpubenchmark.net/">Benchmarks</a></span>
+                <ul class="nav flex-column mobile-collapse">
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://www.cpubenchmark.net/" target="_blank">CPU Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.videocardbenchmark.net/" target="_blank">Video Card Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.harddrivebenchmark.net/" target="_blank">Hard Drive Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.memorybenchmark.net/" target="_blank">RAM Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.pcbenchmarks.net/" target="_blank">PC Systems Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.softwaremarketshare.net/" target="_blank">Software Marketshare</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.databasebenchmarks.net/" target="_blank">Database Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.androidbenchmark.net/" target="_blank">Android Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.iphonebenchmark.net/" target="_blank">iOS Benchmarks</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.bandwidthtest.net/" target="_blank">Internet Bandwidth</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-md-2 col-lg-2 col-sm-6 col-6">
+                <span class="menu_header"><a class="nav-link " href="https://www.passmark.com/about/index.php">About Us</a></span>
+                <ul class="nav flex-column mobile-collapse">
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/about/index.php">Company</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/about/contact_us.php">Contact Us</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.passmark.com/press/index.php">The Press Room</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-md-2 col-lg-2 col-sm-6 col-6">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/services/index.php">
+                                Services
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/sales/index.php">
+                                Store
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/support/index.php">
+                                Support
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/forum/index.php">
+                                Forums
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/legal/compliance.php">
+                                Compliance
+                            </a>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-md-2 col-lg-2 col-sm-6 col-6">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/international.php">
+                                International
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/legal/disclaimer.php">
+                                Disclaimer
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/legal/refund.php">
+                                Refunds
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <a class="nav-link " href="https://www.passmark.com/legal/privacy-policy.php">
+                                Privacy
+                            </a>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="menu_header">
+                            <span class="nav-link social_footer">
+                                Social
+                                <span class="soc_icon">
+                                    <a href="https://twitter.com/PassMarkInc" target="_blank">
+                                        <img src="/img/tweet.png" alt="twitter icon">
+                                    </a>
+                                    <a class="icon_youtube" href="https://www.youtube.com/user/PassmarkSoftware/videos" target="_blank">
+                                        <img src="/img/youtube.png" alt="youtube icon">
+                                    </a>
+                                </span>
+                            </span>
+                        </span>
+                    </li>
+                    <li class="nav-item"><span class="menu_header"><p><a href="https://www.playwire.com/contact-direct-sales" rel="noopener"><img src="https://www.playwire.com/hubfs/Powered-by-Playwire-Badges/Ads-Powered-by-playwire-2021-standalone-small-white-300px.png" alt="Ads-Powered-by-playwire-2021-standalone-small-white-300px" width="200" height="56" loading="lazy" style="width: 200px; margin-left: auto; margin-right: auto; display: block; height: auto; max-width: 100%;"></a></p><p style="text-align: center;"><a href="https://www.playwire.com/contact-direct-sales" rel="noopener" target="_blank">Advertise on this site.</a></p></span></li>                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid" id="footer_copyright_block">
+        <div class="row">
+            <div id="coryright" class="col-md-6 col-lg-6 col-sm-12 col-12">
+                <p>Copyright &copy; 2026 PassMark&reg; Software</p>
+            </div>
+
+
+        </div>
+    </div>
+
+    <script data-cfasync="false" async src="//cdn.intergient.com/1025896/78127/ramp.js"></script></footer>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-44160635-7"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+        dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+
+    gtag('config', 'UA-44160635-7');
+</script>
+<div id="toast" style="display: none;">
+    <div id="img">
+        <svg viewBox="0 0 30 30">
+            <use xlink:href="#icon-header-compare" />
+        </svg>
+    </div>
+    <div id="desc">Added CPU to Compare!</div>
+</div>	</div>
+	<!--ZOOMRESTART-->
+</body>
+
+</html>
