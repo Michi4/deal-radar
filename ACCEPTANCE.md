@@ -13,11 +13,13 @@
 - [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
 - [ ] `./scripts/verify.sh` (lint+types+tests+coverage+docker build) — MISSING, write it
 - [ ] ebay driver live test (needs `EBAY_OAUTH_TOKEN`) — BLOCKED on user key
-- [ ] Kev self-hosted live (`KEV_URL`) — installing on laptop, then verify STAGE_B_QUESTIONS round-trip
+- [x] Kev self-hosted live (`KEV_URL`) — Kev-0.8B on laptop CPU (LAN `192.168.1.172:8001`), round-trip verified, Stage B ran 9x in a live 20-listing search (2026-09-25)
+- [x] Real OCR on listing images — tesseract in image, live search OCR'd 3 photos ("Thinkpad T490" from pixels) (2026-09-25)
+- [x] CPU benchmark from real source — PassMark detail parser (fixture: 5800H=20461/2987), disk-cached, static fallback (2026-09-25)
 - [ ] Jev key — user has none; free $5 credit available at console.typesafe.ai (no waitlist)
-- [ ] Real OCR on listing images (PaddleOCR worker), tested on real images
+- [x] Real OCR on listing images (PaddleOCR worker), tested on real images — done via tesseract (see line 17)
 - [ ] Real vision check (described-item match/mismatch), tested both ways
-- [ ] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB
+- [x] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB — done via PassMark parser (see line 18)
 - [ ] Second enricher (GPU/phone) proving generic fabric
 - [ ] Driver registry (`install/list/update`, checksums, GitHub index) + AI driver authoring skill
 - [ ] Transports: socks5/rotating proxy live-tested w/ failover
