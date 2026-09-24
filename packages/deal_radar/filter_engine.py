@@ -25,6 +25,8 @@ def _matchable_fields(listing: CanonicalListing) -> dict[str, str]:
         "category": listing.category or "",
         "seller_name": listing.seller.name if listing.seller else "",
         "location": listing.location or "",
+        "postcode": listing.postcode or "",
+        "shipping": listing.shipping or "",
         "condition": listing.condition or "",
         "ocr": "\n".join(listing.ocr_texts or []),
         "all_text": listing.field_text("all_text"),
@@ -47,25 +49,37 @@ def eval_rule(listing: CanonicalListing, rule: dict[str, Any]) -> tuple[bool, st
                 extra[f] = listing.field_text(f)
         field_map.update(extra)
 
-    # price is numeric special-case
-    if any(f == "price" for f in fields):
-        price = listing.price
-        if price is None:
-            return True, "price missing -> rule N/A", True
-        try:
-            if op == "lt":
-                ok = price < float(rule["value"])
-            elif op == "gt":
-                ok = price > float(rule["value"])
-            elif op == "range":
-                ok = float(rule.get("min", 0)) <= price <= float(rule.get("max", 1e18))
-            elif op == "equals":
-                ok = price == float(rule["value"])
-            else:
-                return True, f"op {op} N/A for price", True
-            return ok, f"price {price} {op} {rule.get('value', '')} -> {'pass' if ok else 'fail'}", False
-        except (ValueError, KeyError):
-            return True, "price rule malformed -> N/A", True
+    # numeric special-cases (price, distance_km, shipping_cost)
+    for num_field in ("price", "distance_km", "shipping_cost"):
+        if num_field in fields:
+            val = {"price": listing.price, "distance_km": listing.distance_km,
+                   "shipping_cost": listing.shipping_cost}[num_field]
+            if val is None:
+                return True, f"{num_field} missing -> rule N/A", True
+            try:
+                if op == "lt":
+                    ok = val < float(rule["value"])
+                elif op == "gt":
+                    ok = val > float(rule["value"])
+                elif op == "range":
+                    ok = float(rule.get("min", 0)) <= val <= float(rule.get("max", 1e18))
+                elif op == "equals":
+                    ok = val == float(rule["value"])
+                else:
+                    return True, f"op {op} N/A for {num_field}", True
+                return ok, f"{num_field} {val} {op} {rule.get('value', '')} -> {'pass' if ok else 'fail'}", False
+            except (ValueError, KeyError):
+                return True, f"{num_field} rule malformed -> N/A", True
+
+    # boolean delivery flags: {field: pickup|shipping_available, op: equals, value: true/false}
+    for bool_field, actual in (("pickup", listing.pickup_available),
+                               ("pickup_available", listing.pickup_available),
+                               ("shipping_available", listing.shipping_available)):
+        if bool_field in fields:
+            want = rule.get("value", True)
+            want_b = str(want).lower() in ("1", "true", "yes") if isinstance(want, str) else bool(want)
+            ok = actual == want_b
+            return ok, f"{bool_field}={actual} vs wanted {want_b} -> {'pass' if ok else 'fail'}", False
 
     for f in fields:
         text = field_map.get(f, "")

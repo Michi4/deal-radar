@@ -1,51 +1,118 @@
 """Willhaben driver — public web (permission: unknown; personal hobbyist use only).
-Willhaben has bot detection; driver degrades cleanly and reports instead of failing silently.
-Parsing is fixture-tested so frontend changes are caught by contract tests, not users.
+
+Strategy (researched Sep 2026): plain httpx GET on the marktplatz search URL,
+parse Next.js __NEXT_DATA__ -> props.pageProps.searchResult.advertSummaryList.advertSummary
+(fallback: initialSearchResult), DOM fallback on a[data-testid^='search-result-entry-header-'].
+Bot detection: silent 403/empty on datacenter IPs -> back off, report cleanly, retry via proxy.
 """
 from __future__ import annotations
+import json
 import re
 from urllib.parse import quote_plus
 from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
 from deal_radar.contracts import CanonicalListing, Seller
 
 
-def parse_willhaben_html(html: str, limit: int = 20) -> list[dict]:
-    """Parse search-result cards. Tolerant: returns [] on unknown markup (schema-change signal)."""
-    cards: list[dict] = []
-    # v1: data-testid cards / JSON-LD itemListElement
-    for m in re.finditer(r'"name"\s*:\s*"([^"]{5,160})".*?"url"\s*:\s*"([^"]+)"', html):
-        cards.append({"title": m.group(1), "url": m.group(2)})
-        if len(cards) >= limit:
-            break
-    if not cards:
-        for m in re.finditer(r'<a[^>]+href="(/iad/[^"]+)"[^>]*>([^<]{5,160})</a>', html):
-            cards.append({"title": m.group(2).strip(), "url": "https://www.willhaben.at" + m.group(1)})
-            if len(cards) >= limit:
-                break
-    out = []
-    for c in cards[:limit]:
-        price_m = None
-        out.append({"title": c["title"], "url": c["url"], "price": price_m})
+def _flatten_attrs(ad: dict) -> dict:
+    out: dict = {}
+    for a in (ad.get("attributes", {}).get("attribute") or []):
+        name = str(a.get("name", "")).upper()
+        vals = a.get("values") or []
+        if vals:
+            out[name] = vals[0] if len(vals) == 1 else vals
     return out
 
 
+def parse_next_data(html: str, limit: int = 30) -> list[dict]:
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return []
+    page = (data.get("props", {}).get("pageProps", {}) or {})
+    sr = page.get("searchResult") or page.get("initialSearchResult") or {}
+    ads = ((sr.get("advertSummaryList") or {}).get("advertSummary")) or []
+    out: list[dict] = []
+    for ad in ads[:limit]:
+        at = _flatten_attrs(ad)
+        seo = at.get("SEO_URL", "")
+        url = f"https://www.willhaben.at/iad/{seo}" if seo else ""
+        price_raw = at.get("PRICE", "")
+        price = None
+        if price_raw not in ("", None):
+            try:
+                price = float(str(price_raw).replace(".", "").replace(",", ".").replace("€", "").strip())
+            except ValueError:
+                price = None
+        imgs = []
+        for im in ((ad.get("advertImageList") or {}).get("advertImage") or []):
+            u = im.get("mainImageUrl") or im.get("referenceImageUrl")
+            if u:
+                imgs.append(u if u.startswith("http") else f"https:{u}")
+        body = at.get("BODY_DYN", "") or ad.get("description", "")
+        loc = at.get("LOCATION", "") or at.get("ADDRESS", "")
+        out.append({
+            "id": str(ad.get("id", "")),
+            "title": str(at.get("HEADING", ""))[:300],
+            "url": url,
+            "price": price,
+            "description": str(body)[:2000],
+            "location": str(loc),
+            "postcode": str(at.get("POSTCODE", "")),
+            "images": imgs,
+            "seller": str(at.get("ORGNAME", "")),
+            "private": at.get("ISPRIVATE", True),
+        })
+    return out
+
+
+def parse_dom_fallback(html: str, limit: int = 30) -> list[dict]:
+    out: list[dict] = []
+    for m in re.finditer(r'<a[^>]+data-testid="search-result-entry-header-[^"]*"[^>]+href="([^"]+)"[^>]*>.*?<h3[^>]*>([^<]{3,200})</h3>', html, re.S):
+        href, title = m.group(1), m.group(2).strip()
+        url = href if href.startswith("http") else f"https://www.willhaben.at{href}"
+        out.append({"id": url, "title": title, "url": url, "price": None, "description": "",
+                    "location": "", "postcode": "", "images": [], "seller": "", "private": True})
+        if len(out) >= limit:
+            break
+    return out
+
+
+HEADERS = {"Accept-Language": "de-AT,de;q=0.9,en;q=0.8",
+           "Accept": "text/html,application/xhtml+xml",
+           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"}
+
+
 class WillhabenDriver(MarketplaceDriver):
-    manifest = DriverManifest(id="willhaben", version="0.1.0", display_name="Willhaben",
-                              regions=["at"], capabilities=["search", "images"],
+    manifest = DriverManifest(id="willhaben", version="0.2.0", display_name="Willhaben",
+                              regions=["at"], capabilities=["search", "images", "location"],
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=20)
 
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
-        url = f"https://www.willhaben.at/iad/kaufen?KEYWORD={quote_plus(query.keywords)}"
-        r = await self.transport.get(url, headers={"Accept-Language": "de-AT,de;q=0.9"})
+        rows = min(max(query.limit, 10), 90)
+        url = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
+               f"?KEYWORD={quote_plus(query.keywords)}&rows={rows}&sort=1")
+        if query.max_price:
+            url += f"&PRICE_TO={int(query.max_price)}"
+        r = await self.transport.get(url, headers=HEADERS)
         if r.status_code == 403:
-            raise RuntimeError("willhaben blocked request (403, bot detection) — try proxy transport or later")
+            raise RuntimeError("willhaben blocked request (403, bot detection) — retry later or via AT proxy")
         r.raise_for_status()
-        items = parse_willhaben_html(r.text, query.limit)
-        if not items and len(r.text) > 1000:
-            raise RuntimeError("willhaben markup changed (schema-change) — parser returned 0 items")
+        items = parse_next_data(r.text, query.limit) or parse_dom_fallback(r.text, query.limit)
+        if not items and len(r.text) > 5000:
+            raise RuntimeError("willhaben markup changed (schema-change) — __NEXT_DATA__ + DOM both empty")
         out: list[CanonicalListing] = []
-        for i, it in enumerate(items):
-            out.append(CanonicalListing(id=f"willhaben:{abs(hash(it['url'])) % 10**10}_{i}",
-                                        source="willhaben", native_id=it["url"], url=it["url"],
-                                        title=it["title"], price=it.get("price")))
+        for it in items:
+            blob = f"{it['title']} {it['description']}".lower()
+            pickup = any(k in blob for k in ("abholung", "selbstabholung", "pickup"))
+            shipping = any(k in blob for k in ("versand", "paylivery", "shipping"))
+            out.append(CanonicalListing(
+                id=f"willhaben:{it['id'] or abs(hash(it['url'])) % 10**10}", source="willhaben",
+                native_id=str(it["id"] or it["url"]), url=it["url"], title=it["title"],
+                description=it["description"], price=it["price"], location=it["location"],
+                postcode=it["postcode"], images=it["images"],
+                seller=Seller(name=it["seller"]), shipping="",
+                pickup_available=pickup, shipping_available=shipping))
         return out

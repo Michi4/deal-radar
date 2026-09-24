@@ -98,9 +98,59 @@ def test_orchestrator_offline():
 
 
 def test_driver_fixture_parsing():
-    from willhaben.driver import parse_willhaben_html
-    from kleinanzeigen.driver import parse_kleinanzeigen_html
-    assert parse_willhaben_html("") == []
-    assert parse_kleinanzeigen_html("") == []
+    from willhaben.driver import parse_next_data, parse_dom_fallback
+    from kleinanzeigen.driver import parse_cards, parse_price, next_page_url, slugify
+    assert parse_next_data("") == []
+    assert parse_dom_fallback("") == []
+    assert parse_cards("") == []
+    assert slugify("ThinkPad T14 Ü") == "thinkpad-t14-u"
+    assert parse_price("1.299 €")[0] == 1299.0
+    assert parse_price("Zu verschenken")[0] == 0.0
+    assert parse_price("")[0] is None
+    assert next_page_url("") is None
+    # willhaben __NEXT_DATA__ fixture
+    import json as _json
+    ads = {"props": {"pageProps": {"searchResult": {"advertSummaryList": {"advertSummary": [
+        {"id": 123, "attributes": {"attribute": [
+            {"name": "HEADING", "values": ["ThinkPad T14"]},
+            {"name": "PRICE", "values": ["579"]},
+            {"name": "SEO_URL", "values": ["kaufen-und-verkaufen/d/thinkpad-123/"]},
+            {"name": "LOCATION", "values": ["Wels"]},
+            {"name": "POSTCODE", "values": ["4600"]}]},
+         "advertImageList": {"advertImage": [{"mainImageUrl": "//cache.willhaben.at/x.jpg"}]}}]}}}}}
+    html = '<script id="__NEXT_DATA__" type="application/json">' + _json.dumps(ads) + "</script>"
+    items = parse_next_data(html)
+    assert len(items) == 1 and items[0]["title"] == "ThinkPad T14" and items[0]["price"] == 579.0
+    assert items[0]["url"].startswith("https://www.willhaben.at/iad/")
+    assert items[0]["images"] == ["https://cache.willhaben.at/x.jpg"]
+    # kleinanzeigen 2026-layout fixture
+    khtml = ('<article data-adid="987" data-href="/s-anzeige/rad/987-217-1">'
+             "<h3>Cityrad 28 Zoll</h3>"
+             '<p class="text-secondary">150 € VB</p>'
+             '<p class="text-bodyRegular">Kaum gefahren, Abholung in Berlin</p>'
+             '<div class="text-onSurfaceNonessential"><span>10115 Berlin</span></div>'
+             '<img src="https://img.kleinanzeigen.de/x.jpg"/></article>')
+    kitems = parse_cards(khtml)
+    assert len(kitems) == 1 and kitems[0]["id"] == "987" and kitems[0]["price"] == 150.0
+    assert "Abholung" in kitems[0]["description"]
     fx = Path(__file__).parent / "fixtures"
     fx.mkdir(exist_ok=True)
+
+
+def test_location_delivery_filters():
+    from deal_radar.scoring import total_cost
+    near = L(location="Wels", distance_km=12, pickup_available=True)
+    far = L(location="Wien", distance_km=220, pickup_available=False)
+    assert total_cost(500, 0, 12, 0.3) == round(500 + 12 * 2 * 0.3, 2)
+    assert total_cost(None) is None
+    r = apply_filters(near, {"rules": [{"field": "distance_km", "op": "lt", "value": 100}]}, None, None)
+    assert r.passed
+    r2 = apply_filters(far, {"rules": [{"field": "distance_km", "op": "lt", "value": 100}]}, None, None)
+    assert not r2.passed
+    r3 = apply_filters(near, {"rules": [{"field": "pickup", "op": "equals", "value": True}]}, None, None)
+    assert r3.passed
+    r4 = apply_filters(far, {"rules": [{"field": "pickup", "op": "equals", "value": True}]}, None, None)
+    assert not r4.passed
+    # missing distance never excludes
+    r5 = apply_filters(L(), {"rules": [{"field": "distance_km", "op": "lt", "value": 100}]}, None, None)
+    assert r5.passed and r5.missing_fields

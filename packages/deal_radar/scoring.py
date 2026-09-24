@@ -60,6 +60,17 @@ def value_score(price: float | None, benchmark: float | None,
     return round(sum(parts) / len(parts), 3), why
 
 
+def total_cost(price: float | None, shipping_cost: float | None = 0,
+               distance_km: float | None = None, cost_per_km: float = 0.0) -> float | None:
+    """Total acquisition cost: item + shipping + travel. Sortable, comparable across sources."""
+    if price is None:
+        return None
+    total = price + (shipping_cost or 0)
+    if distance_km is not None:
+        total += distance_km * 2 * cost_per_km  # round trip
+    return round(total, 2)
+
+
 def rank(final_match: float, value: float, risk: float, completeness: float,
          weights: dict | None = None) -> float:
     w = weights or {"match": 0.35, "value": 0.35, "risk": 0.2, "completeness": 0.1}

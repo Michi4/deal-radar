@@ -58,7 +58,13 @@ class CanonicalListing(BaseModel):
     images: list[str] = Field(default_factory=list)
     seller: Seller = Field(default_factory=Seller)
     location: str = ""
+    postcode: str = ""
+    distance_km: float | None = None
     condition: str = ""
+    shipping: str = ""  # raw shipping text, e.g. "Versand möglich", "Nur Abholung"
+    shipping_cost: float | None = None
+    pickup_available: bool = False
+    shipping_available: bool = False
     attributes: dict[str, Any] = Field(default_factory=dict)
     ocr_texts: list[str] = Field(default_factory=list)
     observed_at: datetime = Field(default_factory=utcnow)
