@@ -5,6 +5,10 @@
 </head><body><header><b>deal-radar</b> <span style="opacity:.6">v0.1 · live second-hand intelligence</span> <span id="live" class="badge risk-low">live</span></header>
 <main>
 <div class="row">
+<input id="nl" placeholder='natural language: e.g. iphone which uses a usb c plug to charge' style="flex:3"/>
+<button onclick="runNL()">Ask</button>
+</div>
+<div class="row">
 <input id="q" placeholder="e.g. ThinkPad T14 Ryzen 16GB" style="flex:2" value="ThinkPad"/>
 <input id="max" placeholder="max €" style="width:100px" type="number"/>
 <input id="black" placeholder="blacklist, comma separated"/>
@@ -19,6 +23,9 @@ let SRC=[];
 async function init(){const d=await(await fetch('/drivers')).json();SRC=d.map(x=>x.id);
 document.getElementById('sources').innerHTML=d.map(x=>`<label><input type="checkbox" checked value="${x.id}"/> ${x.display_name}</label>`).join(' ');
 const es=new EventSource('/stream');es.onmessage=e=>{const d=document.createElement('div');d.className='card';d.textContent='⚡ '+e.data;document.getElementById('events').prepend(d)};es.onerror=()=>document.getElementById('live').textContent='reconnecting…'}
+async function runNL(){const r=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:nl.value,limit:20})})).json();
+alert('parsed: '+JSON.stringify(r.parsed));results.innerHTML=(r.results||[]).map(card).join('')||'No results.'}
+function card(s){const l=s.listing;return `<div class="card"><b>${l.title||'(no title)'}</b> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span> <span class="lane">${s.lane} · score ${s.final_score}</span><br/>${l.price??'?'} ${l.currency} · ${l.source} · ${l.location||''} · <a href="${l.url}" target="_blank">open</a> <button onclick="fav('${l.id}')">★</button><br/><small>${(s.why||[]).slice(0,4).join(' · ')}</small></div>`}
 async function run(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
 const body={keywords:q.value,max_price:+max.value||undefined,sources:sel,blacklist:black.value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{hard_filter_enabled:hideRisk.checked},limit:20};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();

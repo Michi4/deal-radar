@@ -39,6 +39,107 @@ async def kev_decide(state: dict | str, questions: dict) -> dict | None:
         return None
 
 
+CLOUD_API_URL = os.getenv("CLOUD_API_URL", "")  # OpenAI-compatible base, e.g. https://api.openai.com/v1
+CLOUD_API_KEY = os.getenv("CLOUD_API_KEY", "")
+CLOUD_MODEL = os.getenv("CLOUD_MODEL", "gpt-4o-mini")
+
+
+async def cloud_json(system: str, user: str, max_tokens: int = 600) -> dict | None:
+    """Generic OpenAI-compatible JSON call. Returns None when unconfigured/failing (offline-first)."""
+    if not (CLOUD_API_URL and CLOUD_API_KEY):
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as c:
+            r = await c.post(f"{CLOUD_API_URL.rstrip('/')}/chat/completions",
+                             headers={"Authorization": f"Bearer {CLOUD_API_KEY}"},
+                             json={"model": CLOUD_MODEL,
+                                   "messages": [{"role": "system", "content": system},
+                                                {"role": "user", "content": user}],
+                                   "response_format": {"type": "json_object"},
+                                   "temperature": 0.2, "max_tokens": max_tokens})
+            r.raise_for_status()
+            import json as _json
+            return _json.loads(r.json()["choices"][0]["message"]["content"])
+    except Exception:
+        return None
+
+
+NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON SearchIntent. "
+             "Return ONLY JSON with keys: keywords (core product words for marketplace search), "
+             "category, hard {max_price, min_price, rules[]}, blacklist[] ({fields,op,value}), "
+             "attributes {} (inferred requirements like connector:usb-c, display:oled), "
+             "risk_note. Rules use {field,op,value} with op in contains,not_contains,regex,lt,gt,range,equals. "
+             "Example: 'iphone which uses a usb c plug to charge' -> "
+             '{"keywords":"iphone","attributes":{"connector":"usb-c"},"hard":{"rules":[{"field":"all_text","op":"contains","value":"usb"}]}}. '
+             "Never invent prices. Missing info -> omit the key.")
+
+
+async def nl_to_intent(text: str) -> dict:
+    """Natural language -> SearchIntent. Cloud model when configured, deterministic fallback otherwise."""
+    cloud = await cloud_json(NL_SYSTEM, text)
+    if cloud and isinstance(cloud.get("keywords"), str):
+        return {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
+                "hard": cloud.get("hard", {}), "blacklist": cloud.get("blacklist", []),
+                "whitelist": [], "attributes": cloud.get("attributes", {}),
+                "risk": {}, "enrich": True, "limit": 20}
+    return nl_fallback(text)
+
+
+def nl_fallback(text: str) -> dict:
+    """Offline NL parse: prices, exclusions, quoted phrases, attribute hints. No AI needed."""
+    import re
+    t = text
+    tl = t.lower()
+    hard: dict = {"rules": []}
+    m = re.search(r"(?:unter|max|bis|<=?)\s*(\d[\d\.\s]*)\s*€?", tl)
+    if m:
+        try:
+            hard["max_price"] = float(m.group(1).replace(".", "").replace(" ", ""))
+        except ValueError:
+            pass
+    m = re.search(r"(?:über|min|ab|>=?)\s*(\d[\d\.\s]*)\s*€?", tl)
+    if m and "unter" not in tl and "max" not in tl:
+        try:
+            hard["min_price"] = float(m.group(1).replace(".", "").replace(" ", ""))
+        except ValueError:
+            pass
+    blacklist: list[dict] = []
+    for cue in re.finditer(r"(?:ohne|kein(?:e|er)?|nicht|ausschlie[ßs]en|no)\s+([a-zäöüß\- ]{2,30}?)(?:,| und | oder |$)", tl):
+        blacklist.append({"fields": ["title", "description"], "op": "not_contains",
+                          "value": cue.group(1).strip()})
+    attrs: dict = {}
+    if re.search(r"usb[\s\-]?c", tl):
+        attrs["connector"] = "usb-c"
+        hard["rules"].append({"field": "all_text", "op": "regex", "value": r"usb[\s\-]?c|typ\s*c"})
+    if "oled" in tl:
+        attrs["display"] = "oled"
+    if "lightning" in tl:
+        attrs["connector"] = "lightning"
+    # core keywords: strip price/exclusion/connector clauses
+    kw = re.sub(r"(unter|max|bis|über|min|ab)\s*\d[\d\.\s]*\s*€?", " ", tl)
+    kw = re.sub(r"(ohne|keine?r?|nicht|ausschlie[ßs]en)\s+[a-zäöüß\- ]{2,30}?(,| und | oder |$)", " ", kw)
+    kw = re.sub(r"(welche[rs]?|mit|mit einem|der|die|das|ein(?:e|er|em)?|und|oder|zum|für|to|with|a|an|the|that|uses?|use|which|charge[sd]?|plug|to)\b", " ", kw)
+    kw = re.sub(r"\s+", " ", kw).strip()
+    return {"keywords": kw or tl[:80], "category": "", "hard": hard, "blacklist": blacklist,
+            "whitelist": [], "attributes": attrs, "risk": {}, "enrich": True, "limit": 20}
+
+
+async def stage_b_via_cloud(title: str, description: str, price: float | None,
+                            keywords: str) -> dict[str, float]:
+    out = await cloud_json(
+        "You assess a marketplace listing. Return ONLY JSON: "
+        "{exact (0..1: is it the requested product, not accessory/parts), "
+        " risk (0..1 scam-risk), condition (0..1), note (one line why)}.",
+        f"Looking for: {keywords}\nTitle: {title}\nPrice: {price}\nDescription: {(description or '')[:1500]}")
+    if not out:
+        return {}
+    try:
+        return {"exact": float(out.get("exact", 0.5)), "risk_ai": float(out.get("risk", 0.5)),
+                "condition_ai": float(out.get("condition", 0.5)), "note": str(out.get("note", ""))[:200]}
+    except (ValueError, TypeError):
+        return {}
+
+
 def heuristic_decide(title: str, description: str, price: float | None,
                      keywords: str) -> dict[str, Any]:
     """Stage A: deterministic, offline, ~µs. Returns match 0..1 + flags."""

@@ -177,3 +177,16 @@ def test_signal_notifier_graceful_without_account():
     from deal_radar.notifications import SignalNotifier
     n = SignalNotifier("http://127.0.0.1:9", "+430000000000")
     assert asyncio.run(n.send("t", "b")) is False
+
+
+def test_nl_fallback():
+    import asyncio
+    from deal_radar.decision import nl_fallback, nl_to_intent
+    p = nl_fallback("iphone which uses a usb c plug to charge")
+    assert "iphone" in p["keywords"] and p["attributes"].get("connector") == "usb-c"
+    assert any("usb" in r.get("value", "") for r in p["hard"]["rules"])
+    p2 = nl_fallback("ThinkPad unter 700 ohne defekt")
+    assert p2["hard"].get("max_price") == 700
+    assert any("defekt" in b.get("value", "") for b in p2["blacklist"])
+    # cloud unconfigured -> falls back deterministically, never raises
+    assert asyncio.run(nl_to_intent("oled laptop unter 1000"))["keywords"]

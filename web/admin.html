@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/><title>deal-radar admin</title>
+<style>body{font-family:system-ui,sans-serif;background:#0b0e14;color:#e6e9ef;margin:0}main{padding:16px;max-width:1100px;margin:auto}.card{background:#141a26;border:1px solid #263049;border-radius:10px;padding:12px;margin:10px 0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #263049;padding:6px 8px;text-align:left;font-size:13px}small{opacity:.7}a{color:#7aa2ff}</style>
+</head><body><main><h2>deal-radar admin</h2><p><a href="/">← search</a> · auto-refreshes every 15s</p>
+<div class="card"><h3>Drivers</h3><div id="drivers"></div></div>
+<div class="card"><h3>Pipeline metrics</h3><div id="metrics"></div></div>
+<div class="card"><h3>Searches (<span id="nsearch">0</span>)</h3><div id="searches"></div></div>
+<div class="card"><h3>Live events (<span id="nev">0</span>)</h3><div id="events"></div></div>
+</main><script>
+async function tick(){try{
+const m=await(await fetch('/metrics.json')).json();
+document.getElementById('drivers').innerHTML='<table><tr><th>driver</th><th>ok</th><th>degraded</th><th>failures</th><th>last error</th></tr>'+
+Object.entries(m.drivers).map(([k,v])=>`<tr><td>${k}</td><td>${v.ok}</td><td>${v.degraded}</td><td>${v.consecutive_failures}</td><td>${(v.last_error||'').slice(0,120)}</td></tr>`).join('')+'</table>';
+const m2=m.metrics;
+document.getElementById('metrics').innerHTML='<table>'+
+Object.entries(m2.counters).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+
+Object.entries(m2.latency_avg_ms).map(([k,v])=>`<tr><td>latency ${k}</td><td>${v} ms</td></tr>`).join('')+'</table>';
+}catch(e){}}
+setInterval(tick,15000);tick();
+</script></body></html>
