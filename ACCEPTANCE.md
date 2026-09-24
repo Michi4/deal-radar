@@ -1,0 +1,26 @@
+# ACCEPTANCE.md — evidence-backed checklist. Check only with a passing run in-session.
+
+- [x] `pytest` green — `PYTHONPATH=packages:drivers .venv/bin/python -m pytest -q` → 14 passed (2026-09-25)
+- [x] willhaben live parse — `__NEXT_DATA__` fixture + live search returned real listings w/ images/location (2026-09-24)
+- [x] kleinanzeigen live parse — real `ka.html` (8 cards: titles/prices/locations/DHL badges) (2026-09-24)
+- [x] Multi-source search, concurrent, failing source → `driver_errors`, rest served (fake-driver test + live willhaben+kleinanzeigen, 2026-09-24)
+- [x] Scam % + evidence + rescue lane — great deal w/ mild risk kept as `review`, test asserts (2026-09-24)
+- [x] NL search via real AI — OpenRouter `liquid/lfm-2.5-2.6b:free`, "iphone usb-c" → keywords+attrs+5 live results (2026-09-25)
+- [x] Per-field filters + delivery/location (`distance_km`, `pickup`, `shipping_available`, `shipping_cost`, total cost) (2026-09-24)
+- [x] Notifications fan-out (signal/telegram/email/ntfy/webhook/log), graceful failure tests (2026-09-25)
+- [x] Signal path wired — container → homeserver signal-api over WG verified; account attach pending user SIM verify (2026-09-25)
+- [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25)
+- [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
+- [ ] `./scripts/verify.sh` (lint+types+tests+coverage+docker build) — MISSING, write it
+- [ ] ebay driver live test (needs `EBAY_OAUTH_TOKEN`) — BLOCKED on user key
+- [ ] Kev self-hosted live (`KEV_URL`) — installing on laptop, then verify STAGE_B_QUESTIONS round-trip
+- [ ] Jev key — user has none; free $5 credit available at console.typesafe.ai (no waitlist)
+- [ ] Real OCR on listing images (PaddleOCR worker), tested on real images
+- [ ] Real vision check (described-item match/mismatch), tested both ways
+- [ ] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB
+- [ ] Second enricher (GPU/phone) proving generic fabric
+- [ ] Driver registry (`install/list/update`, checksums, GitHub index) + AI driver authoring skill
+- [ ] Transports: socks5/rotating proxy live-tested w/ failover
+- [ ] Cross-platform favorites with change history UI
+- [ ] Playwright E2E for web UI
+- [ ] CI green + LICENSE + README quickstart from clean clone
