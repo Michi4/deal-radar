@@ -30,6 +30,72 @@ store = Store(os.getenv("DB_PATH", "data/dealradar.db"))
 notifier = notifier_from_env(os.environ)
 SEARCHES: dict[str, dict] = {}
 EVENT_LOG: list[dict] = []
+SEEN_IDS: dict[str, set[str]] = {}
+LAST_RUN: dict[str, float] = {}
+RESULT_CACHE: dict[str, tuple[float, dict]] = {}
+CACHE_TTL = float(os.getenv("CACHE_TTL_S", "120"))
+
+
+def _intent_key(intent: dict) -> str:
+    import hashlib
+    return hashlib.sha256(json.dumps(intent, sort_keys=True, default=str).encode()).hexdigest()[:32]
+
+
+async def _run_cached(intent: dict, force: bool = False) -> dict:
+    key = _intent_key(intent)
+    now = time.time()
+    if not force and key in RESULT_CACHE and now - RESULT_CACHE[key][0] < CACHE_TTL:
+        metrics.inc("cache_hits")
+        return RESULT_CACHE[key][1]
+    metrics.inc("cache_miss")
+    out = await run_search(intent, registry, store, notifier)
+    RESULT_CACHE[key] = (now, out)
+    return out
+
+
+async def _watcher() -> None:
+    """Live loop: re-poll watched searches, push new-match events to SSE + notifiers."""
+    await asyncio.sleep(5)
+    while True:
+        try:
+            for sid, intent in list(SEARCHES.items()):
+                if not intent.get("watch"):
+                    continue
+                interval = max(45, int(intent.get("poll_interval_s", 300)))
+                if time.time() - LAST_RUN.get(sid, 0) < interval:
+                    continue
+                LAST_RUN[sid] = time.time()
+                out = await _run_cached(intent, force=True)
+                seen = SEEN_IDS.setdefault(sid, set())
+                fresh = [r for r in out.get("results", []) if r["listing"]["id"] not in seen]
+                for r in out.get("results", []):
+                    seen.add(r["listing"]["id"])
+                notify_on = intent.get("notify_on", ["new_top", "price_drop"])
+                for r in fresh:
+                    if r["lane"] in ("hidden",):
+                        continue
+                    if "new_top" in notify_on and r["lane"] in ("top", "good") and r["final_score"] >= 0.5:
+                        ev = {"kind": "new_match", "listing_id": r["listing"]["id"],
+                              "title": r["listing"]["title"], "price": r["listing"]["price"],
+                              "url": r["listing"]["url"], "score": r["final_score"]}
+                        EVENT_LOG.append(ev)
+                        await notifier.send(
+                            f"New match {r['final_score']:.2f}: {(r['listing']['title'] or '')[:80]}",
+                            f"{r['listing']['price']} {r['listing']['currency']} @ {r['listing']['source']} "
+                            f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n{r['listing']['url']}",
+                            {"url": r["listing"]["url"]})
+                for ev in out.get("events", []):
+                    EVENT_LOG.append(ev)
+                    if ev.get("kind") == "price_drop" or (ev.get("kind") == "price" and "notify_on" in intent and "price_drop" in notify_on):
+                        pass  # price-change notifies already handled in orchestrator via store diff
+        except Exception as e:  # noqa: BLE001 - watcher never dies
+            print(f"[watcher] {e}", flush=True)
+        await asyncio.sleep(15)
+
+
+@app.on_event("startup")
+async def _start_watcher():
+    asyncio.create_task(_watcher())
 
 
 def load_drivers() -> None:
@@ -66,7 +132,11 @@ class SearchIntent(BaseModel):
     enrich: bool = True
     limit: int = 20
     watch: bool = False
-    poll_interval_s: int = 120
+    poll_interval_s: int = 300
+    notify_on: list[str] = ["new_top", "price_drop"]
+    max_distance_km: float | None = None
+    require_pickup: bool = False
+    require_shipping: bool = False
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -96,8 +166,19 @@ async def create_search(intent: SearchIntent):
     data = intent.model_dump()
     if not data["sources"]:
         data["sources"] = registry.ids()
+    # location/delivery shorthand -> hard rules (fully inspectable in stored intent)
+    rules = list((data.get("hard") or {}).get("rules", []) or [])
+    if data.get("max_distance_km") is not None:
+        rules.append({"field": "distance_km", "op": "lt", "value": data["max_distance_km"]})
+    if data.get("require_pickup"):
+        rules.append({"field": "pickup", "op": "equals", "value": True})
+    if data.get("require_shipping"):
+        rules.append({"field": "shipping_available", "op": "equals", "value": True})
+    data["hard"] = {**(data.get("hard") or {}), "rules": rules}
     SEARCHES[sid] = data
-    out = await run_search(data, registry, store, notifier)
+    LAST_RUN[sid] = time.time()
+    out = await _run_cached(data, force=True)
+    SEEN_IDS[sid] = {r["listing"]["id"] for r in out.get("results", [])}
     EVENT_LOG.extend(out.get("events", []))
     return {"id": sid, **out}
 
@@ -107,9 +188,9 @@ async def get_search(sid: str):
     intent = SEARCHES.get(sid)
     if not intent:
         return {"error": "unknown search id"}
-    out = await run_search(intent, registry, store, notifier)
+    out = await _run_cached(intent)
     EVENT_LOG.extend(out.get("events", []))
-    return {"id": sid, **out}
+    return {"id": sid, "cached": True, **out}
 
 
 @app.get("/stream")

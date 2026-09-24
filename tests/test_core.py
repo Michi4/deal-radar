@@ -158,3 +158,22 @@ def test_location_delivery_filters():
     # missing distance never excludes
     r5 = apply_filters(L(), {"rules": [{"field": "distance_km", "op": "lt", "value": 100}]}, None, None)
     assert r5.passed and r5.missing_fields
+
+
+def test_notifier_fanout():
+    import asyncio
+    from deal_radar.notifications import notifier_from_env, LogNotifier, MultiNotifier
+    n = notifier_from_env({})
+    assert isinstance(n, LogNotifier)
+    m = notifier_from_env({"NOTIFIERS_JSON": '[{"type":"log"},{"type":"webhook","url":"http://127.0.0.1:9/nope"}]'})
+    assert isinstance(m, MultiNotifier)
+    # webhook to closed port fails, log succeeds -> overall False but no raise
+    assert asyncio.run(m.send("t", "b")) is False
+    assert asyncio.run(notifier_from_env({}).send("t", "b")) is True
+
+
+def test_signal_notifier_graceful_without_account():
+    import asyncio
+    from deal_radar.notifications import SignalNotifier
+    n = SignalNotifier("http://127.0.0.1:9", "+430000000000")
+    assert asyncio.run(n.send("t", "b")) is False
