@@ -496,3 +496,28 @@ def unfav(listing_id: str):
 @app.get("/favorites")
 def favs():
     return store.favorites_with_history()
+
+
+@app.get("/market")
+def market(limit: int = 60, offset: int = 0, source: str = ""):
+    """Marketplace view: recent live inventory across all searches (newest first)."""
+    q = "SELECT id, source, url, title, price, currency, last_seen, data FROM listings"
+    args: list = []
+    if source:
+        q += " WHERE source=?"
+        args.append(source)
+    q += " ORDER BY last_seen DESC LIMIT ? OFFSET ?"
+    args += [max(1, min(limit, 200)), max(0, offset)]
+    rows = store.db.execute(q, args).fetchall()
+    import json as _j
+    items = []
+    for lid, src, url, title, price, cur, seen, data in rows:
+        try:
+            d = _j.loads(data)
+            imgs = d.get("images", [])[:1]
+        except Exception:
+            imgs = []
+        items.append({"id": lid, "source": src, "url": url, "title": title, "price": price,
+                      "currency": cur, "last_seen": seen, "image": imgs[0] if imgs else None,
+                      "favorite": store.is_favorite(lid)})
+    return {"items": items, "limit": limit, "offset": offset}
