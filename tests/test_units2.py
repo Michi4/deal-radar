@@ -330,8 +330,8 @@ def test_marketplace_index():
     sys.path.insert(0, "apps")
     import os
     os.environ.pop("API_KEY", None)
-    from fastapi.testclient import TestClient
     import api.main as m
+    from fastapi.testclient import TestClient
     c = TestClient(m.app)
     r = c.get("/marketplace")
     assert r.status_code == 200
