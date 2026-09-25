@@ -129,21 +129,24 @@ def hotload_enricher(path: Path) -> dict:
         spec = importlib.util.spec_from_file_location(f"lab_{path.stem}", path)
         assert spec is not None and spec.loader is not None
         mod = importlib.util.module_from_spec(spec)
+        from deal_radar.enrich import REGISTRY as _REG
+        _before = set(_REG.keys())
         spec.loader.exec_module(mod)
-        # live fire-check: run enrich() against a matching + non-matching sample listing
+        # live fire-check: run the NEWLY registered enricher(s) against samples
         from deal_radar.contracts import CanonicalListing, Seller
         from deal_radar.enrich import REGISTRY
         mk = lambda t, d: CanonicalListing(id="labtest", source="lab", native_id="x", url="u",
                                            title=t, description=d, price=1.0, seller=Seller(name="s"))
         fired = False
         for eid, enr in REGISTRY.items():
-            if path.stem.replace("-", "_") in eid or eid in path.stem.replace("-", "_"):
-                try:
-                    r1 = enr.enrich(mk("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"), {})
-                    enr.enrich(mk("plain thing", "nothing special here"), {})
-                    fired = bool(r1)
-                except Exception as e:
-                    return {"ok": False, "error": f"enrich() raised on sample: {e}"}
+            if eid in _before:
+                continue
+            try:
+                r1 = enr.enrich(mk("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"), {})
+                enr.enrich(mk("plain thing", "nothing special here"), {})
+                fired = bool(r1)
+            except Exception as e:
+                return {"ok": False, "error": f"enrich() raised on sample: {e}"}
         return {"ok": True, "enrichers": sorted(REGISTRY.keys()), "fired_on_sample": fired}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
