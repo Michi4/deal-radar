@@ -1,59 +1,163 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b0e14"/><title>deal-radar</title>
-<style>body{font-family:system-ui,sans-serif;background:#0b0e14;color:#e6e9ef;margin:0}header{padding:12px 16px;border-bottom:1px solid #222}main{padding:16px;max-width:1100px;margin:auto}.card{background:#141a26;border:1px solid #263049;border-radius:10px;padding:12px;margin:10px 0}.row{display:flex;gap:8px;flex-wrap:wrap}input,select,button{padding:8px;border-radius:8px;border:1px solid #334;background:#0f1522;color:#e6e9ef}button{cursor:pointer;background:#1d4ed8;border-color:#1d4ed8}.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px}.risk-low{background:#064e3b}.risk-medium{background:#92400e}.risk-high{background:#7f1d1d}.lane{opacity:.85;font-size:12px}#events{position:fixed;right:12px;bottom:12px;max-width:340px}</style>
-</head><body><header><b>deal-radar</b> <span style="opacity:.6">v0.1 · live second-hand intelligence</span> <span id="live" class="badge risk-low">live</span></header>
+<style>
+:root{--bg:#0b0e14;--panel:#141a26;--line:#263049;--txt:#e6e9ef;--dim:#8b93a7;--acc:#3b82f6;--good:#10b981;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);margin:0}
+header{position:sticky;top:0;z-index:20;background:#0d1220;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header b{font-size:18px}main{padding:14px;max-width:1200px;margin:auto}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--good);display:inline-block}.dot.off{background:var(--bad)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button{padding:9px 10px;border-radius:9px;border:1px solid #334;background:#0f1522;color:var(--txt);font-size:14px}
+button{cursor:pointer;background:#1d4ed8;border-color:#1d4ed8;font-weight:600}button.ghost{background:transparent;border-color:var(--line)}
+button:disabled{opacity:.5;cursor:wait}small{color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.card img.thumb{width:100%;height:160px;object-fit:cover;background:#0a0d15}
+.card .body{padding:10px}.card h4{margin:0 0 6px;font-size:14px;line-height:1.3}
+.listrow{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin:8px 0;cursor:pointer;align-items:center}
+.listrow img{width:90px;height:70px;object-fit:cover;border-radius:8px;background:#0a0d15}
+.price{font-weight:700;font-size:16px}.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.risk-low{background:#064e3b}.risk-medium{background:#92400e}.risk-high{background:#7f1d1d}
+.lane{font-size:11px;color:var(--dim)}
+.skel{background:linear-gradient(90deg,#141a26,#1d2540,#141a26);border-radius:12px;min-height:220px;animation:p 1.2s infinite}
+@keyframes p{50%{opacity:.55}}
+#drawer{position:fixed;inset:0;z-index:50;display:none}#drawer.open{display:block}
+#drawer .scrim{position:absolute;inset:0;background:rgba(0,0,0,.65)}
+#drawer .sheet{position:absolute;right:0;top:0;bottom:0;width:min(560px,100%);background:#0d1220;border-left:1px solid var(--line);overflow-y:auto;padding:16px}
+.car{position:relative;background:#000;border-radius:10px;overflow:hidden}
+.car img{width:100%;max-height:340px;object-fit:contain;display:block;touch-action:pan-y}
+.car button{position:absolute;top:45%;background:rgba(0,0,0,.55);border:none;font-size:20px}
+.car .prev{left:6px}.car .next{right:6px}.car .cnt{position:absolute;bottom:6px;right:10px;font-size:12px;color:#fff;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:99px}
+.bar{height:6px;background:#222a40;border-radius:99px;overflow:hidden;margin:3px 0}.bar i{display:block;height:100%;background:var(--acc)}
+table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.cmp th{border:1px solid var(--line);padding:6px 8px;text-align:left}
+#toasts{position:fixed;right:12px;bottom:12px;z-index:60;max-width:340px}.toast{background:var(--panel);border:1px solid var(--acc);border-radius:10px;padding:10px;margin-top:8px;font-size:13px}
+.hist{border-left:2px solid var(--line);margin:6px 0 6px 4px;padding-left:10px;font-size:12px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:4px 10px;cursor:pointer}input:checked+.chip, .chip.on{background:#1d4ed8}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;margin:14px 0}
+.err{background:#2a1215;border:1px solid var(--bad);border-radius:10px;padding:10px;margin:8px 0;font-size:13px}
+.empty{text-align:center;color:var(--dim);padding:40px 10px}
+.tabs{display:flex;gap:6px}
+</style>
+</head><body>
+<header><b>deal-radar</b><span class="dot" id="livedot"></span><small id="livetxt">live</small>
+<div class="tabs"><button class="ghost" onclick="tab('search')">Search</button><button class="ghost" onclick="showFavs()">★ <span id="favn">0</span></button><button class="ghost" onclick="tab('watches')">Watches</button><button class="ghost" onclick="cmp()">⇄ Compare</button><a href="/admin" style="color:#7aa2ff;font-size:13px">admin</a></div>
+<div class="tabs"><button class="ghost" id="vgrid" onclick="setView('grid')">▦</button><button class="ghost" id="vlist" onclick="setView('list')">☰</button></div>
+</header>
 <main>
-<div class="row">
-<input id="nl" placeholder='natural language: e.g. iphone which uses a usb c plug to charge' style="flex:3"/>
-<button onclick="runNL()">Ask</button>
-</div>
-<div class="row">
-<input id="q" placeholder="e.g. ThinkPad T14 Ryzen 16GB" style="flex:2" value="ThinkPad"/>
-<input id="max" placeholder="max €" style="width:100px" type="number"/>
-<input id="black" placeholder="blacklist, comma separated"/>
-<button onclick="run()">Search</button>
+<div class="panel" id="searchpanel">
+<div class="row"><input id="nl" placeholder='Ask: iphone with USB-C charging, ThinkPad under €700 without defects…' style="flex:3"/><button id="askbtn" onclick="runNL()">Ask</button></div>
+<div class="row" style="margin-top:8px"><input id="q" placeholder="keywords: ThinkPad T14 Ryzen 16GB" style="flex:2" value="ThinkPad"/>
+<input id="max" placeholder="max €" style="width:90px" type="number"/><input id="black" placeholder="blacklist, comma separated" style="flex:1"/><button id="searchbtn" onclick="run()">Search</button></div>
+<div class="row" id="sources" style="margin-top:8px"></div>
+<div class="row" style="margin-top:8px">
 <label><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
+<label><input type="checkbox" id="hideGesuche" checked/> hide Gesuche/parts</label>
+<label title="OCR photos"><input type="checkbox" id="fOcr" checked/> OCR</label>
+<label title="CPU benchmarks"><input type="checkbox" id="fBench" checked/> bench</label>
+<label title="photo vision check"><input type="checkbox" id="fVision" checked/> vision</label>
+<label title="detail pages"><input type="checkbox" id="fDet" checked/> details</label>
+<input id="warnT" title="risk warn %" style="width:76px" type="number" value="35" min="0" max="100"/>
+<input id="blockT" title="risk block %" style="width:76px" type="number" value="85" min="0" max="100"/>
 </div>
-<div class="row" id="sources"></div>
-<div class="row"><button onclick="showFavs()">★ Favorites</button> <button onclick="cmp()">⇄ Compare</button> <a href="/admin" style="color:#7aa2ff">admin</a>
-<select id="sort"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option></select>
-<span id="lanes"></span></div>
+<div class="row" style="margin-top:8px"><select id="sort"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option></select>
+<select id="perpage" onchange="render()"><option>20</option><option>50</option><option>100</option></select><span id="lanes" style="display:flex;gap:6px;flex-wrap:wrap"></span></div>
+<div class="row" style="margin-top:8px"><small>history:</small><span id="hist" style="display:flex;gap:6px;flex-wrap:wrap"></span></div>
+</div>
+<div id="status"></div>
 <div id="results"></div>
-</main><div id="events"></div>
+<div class="pager" id="pager" style="display:none"><button class="ghost" onclick="page(-1)">←</button><span id="pinfo"></span><button class="ghost" onclick="page(1)">→</button></div>
+</main>
+<div id="drawer"><div class="scrim" onclick="closeD()"></div><div class="sheet" id="sheet"></div></div>
+<div id="toasts"></div>
 <script>
-let SRC=[];
-async function init(){const d=await(await fetch('/drivers')).json();SRC=d.map(x=>x.id);
-document.getElementById('sources').innerHTML=d.map(x=>`<label><input type="checkbox" checked value="${x.id}"/> ${x.display_name}</label>`).join(' ');
-const es=new EventSource('/stream');es.onmessage=e=>{const d=document.createElement('div');d.className='card';d.textContent='⚡ '+e.data;document.getElementById('events').prepend(d)};es.onerror=()=>document.getElementById('live').textContent='reconnecting…'}
-let LAST=[];let SID=null;
+let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
+const $=id=>document.getElementById(id);
+function setView(v){VIEW=v;localStorage.setItem('drv',v);render()}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('toasts').prepend(d);setTimeout(()=>d.remove(),9000)}
 function perfEur(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark');return (b&&s.listing.price)?b.value/s.listing.price:0}
-function perfEur(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark');return (b&&s.listing.price)?b.value/s.listing.price:0}
-function render(){let arr=[...LAST];const hide=[...document.querySelectorAll('.lanef:checked')].map(i=>i.value);
-arr=arr.filter(s=>!hide.includes(s.lane));
-const m=sort.value;
+function thumb(l){return (l.images&&l.images[0])?`<img class="thumb" loading="lazy" src="${l.images[0]}" onerror="this.remove()">`:''}
+function card(s){const l=s.listing;const fav=isFav(l.id)?'★':'☆';
+const inner=`${thumb(l)}<div class="body"><h4>${l.title||'(no title)'}</h4>
+<div><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
+<div class="lane">${s.lane} · ${s.final_score} · ${l.source} · ${l.location||''}</div>
+<div style="margin-top:6px"><button class="ghost" onclick="event.stopPropagation();fav('${l.id}')">${fav}</button></div></div>`;
+return VIEW==='grid'?`<div class="card" onclick='openD("${l.id}")'>${inner}</div>`
+:`<div class="listrow" onclick='openD("${l.id}")'>${(l.images&&l.images[0])?`<img loading="lazy" src="${l.images[0]}" onerror="this.remove()">`:''}<div><b>${l.title||'(no title)'}</b><br/><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${s.lane} · ${l.source}</span> <button class="ghost" onclick="event.stopPropagation();fav('${l.id}')">${fav}</button></div></div>`}
+let FAVS=new Set();
+async function loadFavs(){try{const f=await(await fetch('/favorites')).json();FAVS=new Set(f.map(x=>x.listing_id));$('favn').textContent=f.length}catch(e){}$('favn').textContent=FAVS.size}
+function isFav(id){return FAVS.has(id)}
+async function fav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});await loadFavs();render()}
+async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});await loadFavs();showFavs()}
+function filtered(){let arr=[...LAST];
+if($('hideGesuche').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/demoted/));
+const hide=[...document.querySelectorAll('.lanef:checked')].map(i=>i.value);arr=arr.filter(s=>!hide.includes(s.lane));
+const m=$('sort').value;
 if(m==='plo')arr.sort((a,b)=>(a.listing.price??1e18)-(b.listing.price??1e18));
 else if(m==='phi')arr.sort((a,b)=>(b.listing.price??-1)-(a.listing.price??-1));
-else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));
-else arr.sort((a,b)=>b.final_score-a.final_score);
+else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));else arr.sort((a,b)=>b.final_score-a.final_score);
+return arr}
+function render(){const arr=filtered();const pp=+$('perpage').value;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
 const lanes=[...new Set(LAST.map(s=>s.lane))];
-document.getElementById('lanes').innerHTML=lanes.map(l=>`<label><input type="checkbox" class="lanef" value="${l}" onchange="render()"/> hide ${l}</label>`).join(' ');
-results.innerHTML=arr.map(card).join('')||'<p>No results (lane filter?).</p>'}
-sort.onchange=render;
-async function runNL(){const r=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:nl.value,limit:20})})).json();
-alert('parsed: '+JSON.stringify(r.parsed));LAST=r.results||[];SID=r.id;render()}
-async function cmp(){if(!SID)return alert('run a search first');const r=await(await fetch('/searches/'+SID+'/compare')).json();
-results.innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="card"><b>${m}</b> (${rows.length})<br/>${rows.map(x=>`${x.price??'?'} ${x.currency||''} · ${x.source} · risk ${(x.risk*100).toFixed(0)}% · score ${x.score} ${x.cpu?('· '+x.cpu+' ('+x.benchmark+')'):''} · <a href="${x.url}" target="_blank">open</a>`).join('<br/>')}</div>`).join('')||'No groups.'}
-function card(s){const l=s.listing;const en=(s.enrichments||[]).map(e=>`${e.field}: ${e.value}`).join(' · ');
-const dna=Object.entries(s.deal_dna||{}).map(([k,v])=>`${k} ${(v*100).toFixed(0)}%`).join(' · ');
-return `<div class="card"><b>${l.title||'(no title)'}</b> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span> <span class="lane">${s.lane} · score ${s.final_score}</span><br/>${l.price??'?'} ${l.currency} · ${l.source} · ${l.location||''} · <a href="${l.url}" target="_blank">open</a> <button onclick="fav('${l.id}')">★</button>${en?`<br/><small>⚙ ${en}</small>`:''}<br/><small>${(s.why||[]).slice(0,4).join(' · ')}</small><br/><small style="opacity:.6">DNA: ${dna}</small></div>`}
+$('lanes').innerHTML=lanes.map(l=>`<label><input type="checkbox" class="lanef" value="${l}" onchange="render()"/> hide ${l}</label>`).join(' ');
+const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
+$('results').innerHTML=VIEW==='grid'?`<div class="grid">${slice.map(card).join('')}</div>`:slice.map(card).join('');
+$('results').innerHTML+=arr.length?'':`<div class="empty">No results. Try fewer filters or another query.</div>`;
+$('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`}
+function page(d){PAGE+=d;render();window.scrollTo(0,0)}
+function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="grid">${'<div class="skel"></div>'.repeat(n)}</div>`:'<div class="skel"></div>'.repeat(3)}
+function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
+function pushHist(q){HIST=[q,...HIST.filter(x=>x!==q)].slice(0,8);localStorage.setItem('drh',JSON.stringify(HIST));drawHist()}
+function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" onclick="nl.value=${JSON.stringify(h)};runNL()">${h.slice(0,30)}</button>`).join('')}
+function intent(){return{blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30}}
 async function run(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
-const body={keywords:q.value,max_price:+max.value||undefined,sources:sel,blacklist:black.value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{hard_filter_enabled:hideRisk.checked},limit:20};
+const max=+$('max').value||undefined;const body={keywords:$('q').value,sources:sel,hard:max?{max_price:max}:{},...intent()};
+$('searchbtn').disabled=true;skel(6);status('Searching '+sel.join(' + ')+' …');PAGE=0;
+try{const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+LAST=r.results||[];SID=r.id;pushHist($('q').value);render();
+status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${JSON.stringify(r.driver_errors||{})}</small>`)}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
+$('searchbtn').disabled=false}
+async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
+$('askbtn').disabled=true;skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
+try{const r=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:30})})).json();
+LAST=r.results||[];SID=r.id;pushHist(t);render();
+const p=r.parsed||{};status(`<small>understood as <b>${p.keywords||''}</b> · models: ${(p.models||[]).slice(0,6).join(', ')} · ${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`)}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
+$('askbtn').disabled=false}
+async function showFavs(){tab('search');status('★ favorites');try{const f=await(await fetch('/favorites')).json();
+$('results').innerHTML=f.map(x=>`<div class="card" style="padding:10px"><b>${x.title||x.listing_id}</b><br/><span class="price">${x.price??'?'}</span> · <a href="${x.url||'#'}" target="_blank">open</a> <button class="ghost" onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${h.kind}: ${h.old} → ${h.new}</div>`).join('')||'no changes tracked yet'}</div></div>`).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+async function unfavWrap(){}
+function tab(t){if(t==='watches')showWatches()}
+async function showWatches(){status('Watches — re-polled automatically, survive restarts');$('results').innerHTML='<div class="empty">loading watches…</div>';
+$('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" placeholder="watch query" style="flex:2"/><input id="wmax" placeholder="max €" type="number" style="width:90px"/><button onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div></div>`;refreshWatches()}
+async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
+async function mkWatch(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
+const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
-LAST=r.results||[];SID=r.id;render()}
-async function fav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});alert('saved ★')}
-async function showFavs(){const f=await(await fetch('/favorites')).json();
-results.innerHTML=f.map(x=>`<div class="card"><b>${x.title||x.listing_id}</b><br/>${x.price??'?'} · <a href="${x.url||'#'}" target="_blank">open</a> <button onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<br/><small>history: ${(x.history||[]).map(h=>`${h.kind}: ${h.old} → ${h.new}`).join(' · ')||'no changes yet'}</small></div>`).join('')||'<p>No favorites yet.</p>'}
-async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});showFavs()}
+toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
+async function cmp(){if(!SID)return toast('run a search first');status('Comparing…');
+const r=await(await fetch('/searches/'+SID+'/compare')).json();
+$('results').innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
+let CAR=[];
+function openD(id){const s=LAST.find(x=>x.listing.id===id);if(!s)return toast('result expired — re-run search');const l=s.listing;CAR=l.images||[];let ci=0;
+const dna=Object.entries(s.deal_dna||{}).map(([k,v])=>`${k}<div class="bar"><i style="width:${(v*100).toFixed(0)}%"></i></div>`).join('');
+const en=(s.enrichments||[]).map(e=>`<div>${e.field}: <b>${e.value}</b> <small>(${(e.confidence*100).toFixed(0)}% · ${e.status})</small></div>`).join('');
+$('sheet').innerHTML=`<div class="row"><button class="ghost" onclick="closeD()">← back</button><button onclick="fav('${l.id}');closeD()">${isFav(l.id)?'★ saved':'☆ save'}</button><a href="${l.url}" target="_blank"><button>open original ↗</button></a></div>
+<h3>${l.title||'(no title)'}</h3><div><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span> <span class="lane">${s.lane} · ${s.final_score}</span></div>
+<div class="car" style="margin:10px 0">${CAR.length?`<img id="carimg" src="${CAR[0]}"/>`:''}${CAR.length>1?`<button class="prev" onclick="cgo(-1)">‹</button><button class="next" onclick="cgo(1)">›</button><span class="cnt" id="carcnt">1/${CAR.length}</span>`:''}</div>
+<div class="lane">${l.location||''} · ${l.source} · seller: ${l.seller?.name||'—'} · pickup ${l.pickup_available?'✓':'—'} · shipping ${l.shipping_available?'✓':'—'}</div>
+<p style="white-space:pre-wrap;font-size:14px">${(l.description||'no description').slice(0,3000)}</p>
+<h4>Deal DNA</h4>${dna}${en?'<h4>Specs</h4>'+en:''}
+<h4>Why</h4><small>${(s.why||[]).join('<br/>')}</small>
+<h4>Risk evidence</h4><small>${(s.risk.reasons||[]).join('<br/>')||'none'}${(s.risk.counter_evidence||[]).length?'<br/>counter: '+s.risk.counter_evidence.join(', '):''}</small>`;
+$('drawer').classList.add('open');window._ci=0}
+function cgo(d){if(!CAR.length)return;window._ci=(window._ci+d+CAR.length)%CAR.length;$('carimg').src=CAR[window._ci];$('carcnt').textContent=(window._ci+1)+'/'+CAR.length}
+function closeD(){$('drawer').classList.remove('open')}
+document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
+document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
+async function init(){try{const d=await(await fetch('/drivers')).json();
+$('sources').innerHTML=d.map(x=>`<label><input type="checkbox" checked value="${x.id}"/> ${x.display_name}</label>`).join(' ')}catch(e){}
+drawHist();loadFavs();setView(VIEW);
+try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){toast('⚡ '+e.data.slice(0,120))}};es.onerror=()=>{$('livedot').className='dot off';$('livetxt').textContent='reconnecting…'}}catch(e){$('livedot').className='dot off'}}
 init();
 </script></body></html>
