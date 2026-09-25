@@ -16,6 +16,8 @@ import sys
 import urllib.request
 from pathlib import Path
 
+from deal_radar.driver_sdk import DriverManifest
+
 ROOT = Path(__file__).resolve().parents[2]
 DRIVERS_DIR = ROOT / "drivers"
 COMMUNITY = DRIVERS_DIR / "community"
@@ -62,7 +64,7 @@ def check(driver_id: str) -> dict:
     if not drivers:
         return {"ok": False, "error": "no *Driver subclass with manifest found"}
     cls = drivers[0]
-    mani = getattr(cls, "manifest")
+    mani: DriverManifest = cls.manifest  # type: ignore[attr-defined]  # dynamic driver classes
     errors: list[str] = []
     try:
         m = mani
