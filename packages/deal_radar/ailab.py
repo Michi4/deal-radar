@@ -130,9 +130,9 @@ def hotload_enricher(path: Path) -> dict:
         assert spec is not None and spec.loader is not None
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        from deal_radar.enrich import REGISTRY
         # live fire-check: run enrich() against a matching + non-matching sample listing
         from deal_radar.contracts import CanonicalListing, Seller
+        from deal_radar.enrich import REGISTRY
         mk = lambda t, d: CanonicalListing(id="labtest", source="lab", native_id="x", url="u",
                                            title=t, description=d, price=1.0, seller=Seller(name="s"))
         fired = False
