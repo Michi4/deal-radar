@@ -12,6 +12,44 @@ CPU_DB = {
     "m1": 17500, "m2": 19500, "m3": 23000, "i5-1135g7": 13500,
 }
 
+# model family -> candidate CPUs (seed knowledge; AI extends per query, cached on disk)
+MODEL_CPU_SEED = {
+    "hp elitebook 845 g8": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U"],
+    "hp 835 g8": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U"],
+    "thinkpad t14 gen 2": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U", "i5-1135G7", "i7-1165G7"],
+}
+
+
+async def resolve_cpu_candidates(model_name: str) -> list[str]:
+    """Which CPUs ship in this laptop model? Seed table + AI, disk-cached."""
+    import json as _json
+    key = model_name.strip().lower()
+    if not key:
+        return []
+    if key in MODEL_CPU_SEED:
+        return MODEL_CPU_SEED[key]
+    try:
+        from pathlib import Path as _P
+        p = _P("data/cpu_models.json")
+        cache = _json.loads(p.read_text()) if p.exists() else {}
+        if key in cache:
+            return cache[key]
+    except Exception:
+        cache = {}
+    from .decision import cloud_json
+    out = await cloud_json(
+        "You know laptop hardware lineups. Return ONLY JSON {cpus: [exact CPU model names]}.",
+        f"Which CPU options exist for the laptop model '{model_name}'? List 1-6 exact names.")
+    cpus = [str(c) for c in (out.get("cpus", []) if out else [])][:6]
+    if cpus:
+        try:
+            cache[key] = cpus
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(_json.dumps(cache))
+        except Exception:
+            pass
+    return cpus
+
 
 def extract_cpu(text: str) -> tuple[str | None, float, str]:
     t = text.lower()

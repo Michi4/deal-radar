@@ -14,7 +14,7 @@ import time
 from typing import Any
 
 from . import metrics
-from .contracts import Evidence, ScoredListing
+from .contracts import EnrichmentFact, Evidence, FactStatus, ScoredListing
 from .decision import (
     STAGE_B_QUESTIONS,
     heuristic_decide,
@@ -145,20 +145,69 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
         if intent.get("benchmarks", True):
             cpu_fact = next((e for e in enrich if e.field == "cpu"), None)
+            # manual override wins (user-corrected in the drawer; AI-checked below)
+            override = (store.get_facts(l.id).get("cpu") if store else None) if intent.get("overrides", True) else None
+            if override:
+                cpu_fact = EnrichmentFact(field="cpu", value=override, confidence=1.0,
+                                          status=FactStatus.VERIFIED,
+                                          sources=[Evidence(type="description", detail="user-corrected")])
+                enrich = [e for e in enrich if e.field not in ("cpu", "cpu_benchmark")] + [cpu_fact]
+                why.append(f"CPU manually set to {override} (AI-checking against PassMark)")
+            # model-family resolution: "hp 835 g8" -> candidate CPUs -> disambiguate from text/photos
+            if not cpu_fact and want_models:
+                try:
+                    from .scoring import resolve_cpu_candidates
+                    blob = f"{l.title}\n{l.description}\n{' '.join(l.ocr_texts)}".lower()
+                    for model in want_models[:3]:
+                        cands = await resolve_cpu_candidates(model)
+                        hit = next((c for c in cands if c.lower() in blob), None)
+                        if hit:
+                            cpu_fact = EnrichmentFact(field="cpu", value=hit, confidence=0.7,
+                                                      status=FactStatus.AI_INFERRED,
+                                                      sources=[Evidence(type="description", detail=f"resolved for {model}")])
+                            enrich = [e for e in enrich if e.field not in ("cpu",)] + [cpu_fact]
+                            why.append(f"CPU {hit} inferred for {model}")
+                            break
+                    if not cpu_fact:
+                        why.append("CPU unknown for this model — open the drawer to set it manually")
+                        metrics.inc("cpu_unresolved")
+                except Exception:
+                    pass
+            # contradiction: title names a different known CPU than resolved
+            if cpu_fact:
+                try:
+                    from .scoring import extract_cpu as _xc
+                    other, conf, _ = _xc(f"{l.title}".lower())
+                    if other and other.lower() != str(cpu_fact.value).lower() and conf >= 0.8:
+                        why.append(f"CONTRADICTION: title says {other} but resolved {cpu_fact.value}")
+                        metrics.inc("cpu_contradicted")
+                        r.score = min(1.0, r.score + 0.2)
+                except Exception:
+                    pass
             if cpu_fact:
                 try:
                     from .benchmarks import fetch_passmark_cpu
                     real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
                     if real:
-                        for e in enrich:
-                            if e.field == "cpu_benchmark":
-                                e.value = real["multi"]
-                                e.confidence = 0.97
-                                e.sources = [Evidence(type="external",
-                                                      detail=f"cpubenchmark.net multithread={real['multi']} single={real['single']}")]
-                                metrics.inc("benchmark_real")
+                        enrich = [e for e in enrich if e.field not in ("cpu_benchmark",)]
+                        enrich.append(EnrichmentFact(field="cpu_benchmark", value=real["multi"], confidence=0.97,
+                                                     status=FactStatus.EXTERNAL,
+                                                     sources=[Evidence(type="external", detail="cpubenchmark.net")]))
+                        for sf in ("single", "class", "socket", "clockspeed", "turbo", "tdp", "cores",
+                                   "threads", "cache_l1i", "cache_l1d", "cache_l2", "cache_l3",
+                                   "rank_mt", "rank_st", "first_seen", "samples"):
+                            if real.get(sf) is not None:
+                                enrich.append(EnrichmentFact(field=f"cpu_{sf}", value=real[sf], confidence=0.95,
+                                                             status=FactStatus.EXTERNAL,
+                                                             sources=[Evidence(type="external", detail="cpubenchmark.net")]))
+                        metrics.inc("benchmark_real")
+                        if override:
+                            cpu_fact.status = FactStatus.VERIFIED
+                            why.append(f"AI-check: {override} exists on PassMark ✓")
                     else:
                         metrics.inc("benchmark_static_fallback")
+                        if override:
+                            why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
                 except Exception:
                     pass
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)

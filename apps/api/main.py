@@ -354,6 +354,25 @@ class LabRequest(BaseModel):
     publish: bool = False
 
 
+class FactOverride(BaseModel):
+    field: str = "cpu"
+    value: str = ""
+
+
+@app.post("/listings/{lid}/facts")
+def set_fact(lid: str, f: FactOverride):
+    from urllib.parse import unquote
+    lid = unquote(lid)
+    store.set_fact(lid, f.field, f.value, by="user")
+    return {"ok": True, "listing": lid, "field": f.field, "value": f.value}
+
+
+@app.get("/listings/{lid}/facts")
+def get_facts(lid: str):
+    from urllib.parse import unquote
+    return {"listing": unquote(lid), "facts": store.get_facts(unquote(lid))}
+
+
 @app.get("/lab/status")
 def lab_status():
     from deal_radar.enrich import REGISTRY

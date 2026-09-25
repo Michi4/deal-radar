@@ -26,16 +26,21 @@ def _flatten_attrs(ad: dict) -> dict:
     return out
 
 
-def parse_next_data(html: str, limit: int = 30) -> list[dict]:
+def parse_next_data(html: str, limit: int = 30) -> tuple[list[dict], int | None]:
     m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
     if not m:
-        return []
+        return [], None
     try:
         data = json.loads(m.group(1))
     except json.JSONDecodeError:
-        return []
+        return [], None
     page = (data.get("props", {}).get("pageProps", {}) or {})
     sr = page.get("searchResult") or page.get("initialSearchResult") or {}
+    total = sr.get("rowsFound") or sr.get("total")
+    try:
+        total = int(total) if total is not None else None
+    except (ValueError, TypeError):
+        total = None
     ads = ((sr.get("advertSummaryList") or {}).get("advertSummary")) or []
     out: list[dict] = []
     for ad in ads[:limit]:
@@ -68,7 +73,7 @@ def parse_next_data(html: str, limit: int = 30) -> list[dict]:
             "seller": str(at.get("ORGNAME", "")),
             "private": at.get("ISPRIVATE", True),
         })
-    return out
+    return out, total
 
 
 def parse_dom_fallback(html: str, limit: int = 30) -> list[dict]:
@@ -124,18 +129,40 @@ class WillhabenDriver(MarketplaceDriver):
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=20)
 
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
-        rows = 90  # max per page: over-fetch, filter/rank locally (one request)
-        url = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
-               f"?KEYWORD={quote_plus(query.keywords)}&rows={rows}&sort=1")
+        import asyncio as _aio
+        base = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
+                f"?KEYWORD={quote_plus(query.keywords)}&rows=90&sort=1")
         if query.max_price:
-            url += f"&PRICE_TO={int(query.max_price)}"
-        r = await self.transport.get(url, headers=HEADERS)
-        if r.status_code == 403:
-            raise RuntimeError("willhaben blocked request (403, bot detection) — retry later or via AT proxy")
-        r.raise_for_status()
-        items = parse_next_data(r.text, query.limit) or parse_dom_fallback(r.text, query.limit)
-        if not items and len(r.text) > 5000:
-            raise RuntimeError("willhaben markup changed (schema-change) — __NEXT_DATA__ + DOM both empty")
+            base += f"&PRICE_TO={int(query.max_price)}"
+        max_pages = max(1, min(10, (query.limit + 89) // 90 + 2))
+        items: list[dict] = []
+        seen: set[str] = set()
+        for page_no in range(1, max_pages + 1):  # sequential, polite
+            url = f"{base}&page={page_no}"
+            r = await self.transport.get(url, headers=HEADERS)
+            if r.status_code == 403:
+                if not items:
+                    raise RuntimeError("willhaben blocked request (403, bot detection) — retry later or via AT proxy")
+                break
+            r.raise_for_status()
+            cards, total = parse_next_data(r.text, 90)
+            if not cards:
+                cards = parse_dom_fallback(r.text, 90)
+                total = None
+            if not cards and len(r.text) > 5000 and not items:
+                raise RuntimeError("willhaben markup changed (schema-change) — __NEXT_DATA__ + DOM both empty")
+            new = 0
+            for it in cards:
+                if it["url"] not in seen:
+                    seen.add(it["url"])
+                    items.append(it)
+                    new += 1
+            if total is not None and len(items) >= total:
+                break  # every page collected
+            if new == 0 or (total is None and page_no >= 3 and len(items) >= query.limit):
+                break
+            if page_no > 1:
+                await _aio.sleep(1.2)
         out: list[CanonicalListing] = []
         for it in items:
             blob = f"{it['title']} {it['description']}".lower()

@@ -105,7 +105,7 @@ def test_orchestrator_offline():
 def test_driver_fixture_parsing():
     from kleinanzeigen.driver import next_page_url, parse_cards, parse_price, slugify
     from willhaben.driver import parse_dom_fallback, parse_next_data
-    assert parse_next_data("") == []
+    assert parse_next_data("") == ([], None)
     assert parse_dom_fallback("") == []
     assert parse_cards("") == []
     assert slugify("ThinkPad T14 Ü") == "thinkpad-t14-u"
@@ -124,7 +124,7 @@ def test_driver_fixture_parsing():
             {"name": "POSTCODE", "values": ["4600"]}]},
          "advertImageList": {"advertImage": [{"mainImageUrl": "//cache.willhaben.at/x.jpg"}]}}]}}}}}
     html = '<script id="__NEXT_DATA__" type="application/json">' + _json.dumps(ads) + "</script>"
-    items = parse_next_data(html)
+    items, _total = parse_next_data(html)
     assert len(items) == 1 and items[0]["title"] == "ThinkPad T14" and items[0]["price"] == 579.0
     assert items[0]["url"].startswith("https://www.willhaben.at/iad/")
     assert items[0]["images"] == ["https://cache.willhaben.at/x.jpg"]
@@ -391,7 +391,32 @@ def test_willhaben_real_search_fixture():
     from willhaben.driver import parse_next_data
     html = Path(__file__).parent.joinpath("fixtures/willhaben-search.html").read_text(
         encoding="utf-8", errors="ignore")
-    items = parse_next_data(html, 30)
+    items, total = parse_next_data(html, 30)
+    assert total is None or total >= len(items)
     assert len(items) >= 10
     assert all(i["title"] and i["url"].startswith("https://www.willhaben.at/iad/") for i in items)
     assert any(i["price"] for i in items) and any(i["images"] for i in items)
+
+
+def test_passmark_full_fixture():
+    from pathlib import Path as _P
+
+    from deal_radar.benchmarks import parse_passmark_full
+    html = _P(__file__).parent.joinpath("fixtures/passmark-5650u.html").read_text(encoding="utf-8", errors="ignore")
+    d = parse_passmark_full(html)
+    assert d["multi"] == 13841 and d["single"] == 2727
+    assert d["cores"] == 6 and d["threads"] == 12 and d["socket"] == "FP6"
+    assert d["tdp"] == "15 W" and d["rank_mt"] == "1431 of 6021"
+    assert len(d.get("suite", {})) >= 8
+
+
+def test_fact_overrides():
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    p = os.path.join(tempfile.mkdtemp(), "o.db")
+    s = Store(p)
+    s.set_fact("l1", "cpu", "Ryzen 5 PRO 5650U")
+    assert s.get_facts("l1") == {"cpu": "Ryzen 5 PRO 5650U"}
+    s.close()
