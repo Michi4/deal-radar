@@ -330,7 +330,7 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             await notifier.send(f"Search done: {len(merged['results'])} results",
                                 f"{base.get('keywords', '')} :: {len(merged['results'])} hits, "
                                 f"{merged['filtered_out']} filtered", {"url": "/?sid=" + sid})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         JOBS[sid].update({"status": "error", "error": f"{type(e).__name__}: {e}"})
 
 
