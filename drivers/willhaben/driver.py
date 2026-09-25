@@ -80,14 +80,44 @@ def parse_dom_fallback(html: str, limit: int = 30) -> list[dict]:
     return out
 
 
+def parse_detail(html: str) -> dict:
+    """advertDetails from /iad/object?adId= — full description + seller profile."""
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    if not m:
+        return {}
+    try:
+        ad = json.loads(m.group(1)).get("props", {}).get("pageProps", {}).get("advertDetails", {})
+    except Exception:
+        return {}
+    at = _flatten_attrs(ad)
+    sp = ad.get("sellerProfileUserData") or {}
+    age = None
+    if sp.get("registerDate"):
+        try:
+            from datetime import datetime, timezone
+            reg = datetime.fromisoformat(str(sp["registerDate"]).replace("Z", "+00:00"))
+            age = max(0, (datetime.now(timezone.utc) - reg).days)
+        except Exception:
+            pass
+    price = None
+    if at.get("PRICE"):
+        try:
+            price = float(str(at["PRICE"]).replace(".", "").replace(",", "."))
+        except ValueError:
+            pass
+    return {"description": str(ad.get("description", ""))[:4000], "price": price,
+            "seller": str(sp.get("name", "")), "account_age_days": age,
+            "location": str(sp.get("location", "")) or str(sp.get("district", ""))}
+
+
 HEADERS = {"Accept-Language": "de-AT,de;q=0.9,en;q=0.8",
            "Accept": "text/html,application/xhtml+xml",
            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"}
 
 
 class WillhabenDriver(MarketplaceDriver):
-    manifest = DriverManifest(id="willhaben", version="0.2.0", display_name="Willhaben",
-                              regions=["at"], capabilities=["search", "images", "location"],
+    manifest = DriverManifest(id="willhaben", version="0.3.0", display_name="Willhaben",
+                              regions=["at"], capabilities=["search", "fetch_detail", "images", "location", "seller"],
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=20)
 
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
@@ -116,3 +146,21 @@ class WillhabenDriver(MarketplaceDriver):
                 seller=Seller(name=it["seller"]), shipping="",
                 pickup_available=pickup, shipping_available=shipping))
         return out
+
+    async def fetch_detail(self, native_id_or_url: str) -> CanonicalListing | None:
+        import re as _re
+        m = _re.search(r"(\d{6,})", native_id_or_url)
+        if not m:
+            return None
+        url = f"https://www.willhaben.at/iad/object?adId={m.group(1)}"
+        r = await self.transport.get(url, headers=HEADERS)
+        r.raise_for_status()
+        d = parse_detail(r.text)
+        if not d:
+            return None
+        return CanonicalListing(id=f"willhaben:{m.group(1)}", source="willhaben",
+                                native_id=m.group(1), url=url,
+                                description=d.get("description", ""), price=d.get("price"),
+                                location=d.get("location", ""),
+                                seller=Seller(name=d.get("seller", ""),
+                                              account_age_days=d.get("account_age_days")))

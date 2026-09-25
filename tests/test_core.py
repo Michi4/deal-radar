@@ -306,3 +306,13 @@ def test_transports_config():
     assert isinstance(transport_from_config(None), DirectTransport)
     assert isinstance(transport_from_config({"type": "proxy", "url": "http://u:p@h:1"}), ProxyTransport)
     assert isinstance(transport_from_config({"type": "rotating", "urls": ["http://h:1", "http://h:2"]}), RotatingProxyTransport)
+
+
+def test_willhaben_detail_live():
+    import asyncio
+    from willhaben.driver import WillhabenDriver
+    async def go():
+        d = await WillhabenDriver().fetch_detail("866637457")
+        assert d and d.price == 8.0 and d.seller.account_age_days is not None
+        assert "Selbstabholung" in d.description
+    asyncio.run(go())
