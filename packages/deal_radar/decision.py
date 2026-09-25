@@ -343,13 +343,16 @@ def heuristic_decide(title: str, description: str, price: float | None,
     from rapidfuzz import fuzz
     kw = [k for k in keywords.lower().split() if k]
     hay = f"{title}\n{description}".lower()
+    import re as _re
+    hay_words = set(_re.findall(r"[a-z0-9]+", hay))
     if not kw:
         token_score = 0.5
     else:
-        hits = sum(1 for k in kw if k in hay)
+        # whole-word hits; short tokens (hp, g8) only as words, longer ones may substring-match
+        hits = sum(1 for k in kw if k in hay_words or (len(k) >= 4 and k in hay))
         token_score = hits / max(1, len(kw))
     fuzzy = fuzz.token_set_ratio(keywords.lower(), f"{title}".lower()) / 100.0 if keywords else 0.5
-    match = round(0.6 * token_score + 0.4 * fuzzy, 3)
+    match = round(0.7 * token_score + 0.3 * fuzzy, 3)
     import re as _re
     # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
     want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch)\b|[\s(](gesucht|ankauf|tausche)\b", hay))
