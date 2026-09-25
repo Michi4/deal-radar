@@ -210,7 +210,7 @@ async def create_nl_search(q: NLQuery):
                 "enrich": True, "limit": max(6, q.limit // max(1, len(queries))),
                 "watch": False, "poll_interval_s": q.poll_interval_s,
                 "notify_on": ["new_top", "price_drop"]}
-        outs.append(await _run_cached(data, force=True))
+        outs.append(await _run_cached(data, force=False))
     # merge + dedupe across model queries
     seen: set[str] = set()
     merged: list[dict] = []
@@ -264,7 +264,7 @@ async def create_search(intent: SearchIntent):
     SEARCHES[sid] = data
     store.save_search(sid, data)
     LAST_RUN[sid] = time.time()
-    out = await _run_cached(data, force=True)
+    out = await _run_cached(data, force=False)
     SEEN_IDS[sid] = {r["listing"]["id"] for r in out.get("results", [])}
     EVENT_LOG.extend(out.get("events", []))
     return {"id": sid, **out}
