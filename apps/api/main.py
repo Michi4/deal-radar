@@ -36,7 +36,24 @@ RESULT_CACHE: dict[str, tuple[float, dict]] = {}
 CACHE_TTL = float(os.getenv("CACHE_TTL_S", "120"))
 
 
+def default_sources() -> list[str]:
+    import os as _os
+    out = []
+    for d in registry.manifests():
+        if d.id == "ebay" and not _os.getenv("EBAY_OAUTH_TOKEN"):
+            continue  # needs credentials; user said ignore for now
+        out.append(d.id)
+    return out or registry.ids()
+
+
 def _intent_key(intent: dict) -> str:
+    import os as _os
+    out = []
+    for d in registry.manifests():
+        if d.id == "ebay" and not _os.getenv("EBAY_OAUTH_TOKEN"):
+            continue  # needs credentials; user said ignore for now
+        out.append(d.id)
+    return out or registry.ids()
     import hashlib
     return hashlib.sha256(json.dumps(intent, sort_keys=True, default=str).encode()).hexdigest()[:32]
 
@@ -193,7 +210,7 @@ async def create_nl_search(q: NLQuery):
     outs: list[dict] = []
     for kw in queries:
         data = {"keywords": kw, "category": parsed.get("category", ""),
-                "sources": q.sources or registry.ids(), "hard": parsed.get("hard", {}),
+                "sources": q.sources or default_sources(), "hard": parsed.get("hard", {}),
                 "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
                 "ranking": None, "attributes": parsed.get("attributes", {}),
                 "models": parsed.get("models", []) or [],
@@ -220,7 +237,7 @@ async def create_nl_search(q: NLQuery):
     merged = merged[:q.limit]
     sid = f"s_{int(time.time() * 1000)}"
     base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
-            "sources": q.sources or registry.ids(), "hard": parsed.get("hard", {}),
+            "sources": q.sources or default_sources(), "hard": parsed.get("hard", {}),
             "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
             "ranking": None, "attributes": parsed.get("attributes", {}),
             "models": parsed.get("models", []) or [],
@@ -241,7 +258,7 @@ async def create_search(intent: SearchIntent):
     sid = f"s_{int(time.time() * 1000)}"
     data = intent.model_dump()
     if not data["sources"]:
-        data["sources"] = registry.ids()
+        data["sources"] = default_sources()
     # location/delivery shorthand -> hard rules (fully inspectable in stored intent)
     rules = list((data.get("hard") or {}).get("rules", []) or [])
     if data.get("max_distance_km") is not None:
