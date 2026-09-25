@@ -16,7 +16,7 @@
 - [x] Kev self-hosted live (`KEV_URL`) — Kev-0.8B on laptop CPU (LAN `192.168.1.172:8001`), round-trip verified, Stage B ran 9x in a live 20-listing search (2026-09-25)
 - [x] Real OCR on listing images — tesseract in image, live search OCR'd 3 photos ("Thinkpad T490" from pixels) (2026-09-25)
 - [x] CPU benchmark from real source — PassMark detail parser (fixture: 5800H=20461/2987), disk-cached, static fallback (2026-09-25)
-- [ ] Jev key — user has none; free $5 credit available at console.typesafe.ai (no waitlist)
+- [x] Jev key — DROPPED per user (Kev + local/cloud models cover all AI slots; free $5 credit noted)
 - [x] Real OCR on listing images (PaddleOCR worker), tested on real images — done via tesseract (see line 17)
 - [x] Real vision check (described-item match/mismatch), tested both ways — local qwen2.5vl:3b: match shows_item=1.0, mismatch clamped 1.0→0.25 via note-consistency rule; concurrent bounded pass in pipeline (2026-09-25)
 - [x] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB — done via PassMark parser (see line 18)
