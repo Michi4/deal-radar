@@ -184,20 +184,51 @@ class NLQuery(BaseModel):
 async def create_nl_search(q: NLQuery):
     from deal_radar.decision import nl_to_intent
     parsed = await nl_to_intent(q.text)
-    data = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
+    models = (parsed.get("models", []) or [])[:6]  # bound fan-out
+    queries = models or [parsed.get("keywords", q.text)]
+    outs: list[dict] = []
+    for kw in queries:
+        data = {"keywords": kw, "category": parsed.get("category", ""),
+                "sources": q.sources or registry.ids(), "hard": parsed.get("hard", {}),
+                "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
+                "ranking": None, "attributes": parsed.get("attributes", {}),
+                "models": parsed.get("models", []) or [],
+                "enrich": True, "limit": max(6, q.limit // max(1, len(queries))),
+                "watch": False, "poll_interval_s": q.poll_interval_s,
+                "notify_on": ["new_top", "price_drop"]}
+        outs.append(await _run_cached(data, force=True))
+    # merge + dedupe across model queries
+    seen: set[str] = set()
+    merged: list[dict] = []
+    events: list[dict] = []
+    errors: dict = {}
+    filt = 0
+    for o in outs:
+        filt += o.get("filtered_out", 0)
+        events.extend(o.get("events", []))
+        errors.update(o.get("driver_errors", {}))
+        for r in o.get("results", []):
+            lid = r["listing"]["id"]
+            if lid not in seen:
+                seen.add(lid)
+                merged.append(r)
+    merged.sort(key=lambda r: r.get("final_score", 0), reverse=True)
+    merged = merged[:q.limit]
+    sid = f"s_{int(time.time() * 1000)}"
+    base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
             "sources": q.sources or registry.ids(), "hard": parsed.get("hard", {}),
             "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
             "ranking": None, "attributes": parsed.get("attributes", {}),
             "models": parsed.get("models", []) or [],
             "enrich": True, "limit": q.limit, "watch": q.watch,
             "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
-    sid = f"s_{int(time.time() * 1000)}"
-    SEARCHES[sid] = data
+    SEARCHES[sid] = base
     LAST_RUN[sid] = time.time()
-    out = await _run_cached(data, force=True)
-    SEEN_IDS[sid] = {r["listing"]["id"] for r in out.get("results", [])}
-    EVENT_LOG.extend(out.get("events", []))
-    return {"id": sid, "parsed": parsed, **out}
+    SEEN_IDS[sid] = {r["listing"]["id"] for r in merged}
+    EVENT_LOG.extend(events)
+    return {"id": sid, "parsed": parsed, "results": merged, "events": events,
+            "driver_errors": errors, "filtered_out": filt, "median": None,
+            "sources": base["sources"], "subqueries": queries}
 
 
 @app.post("/searches")
