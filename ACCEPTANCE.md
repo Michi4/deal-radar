@@ -29,3 +29,8 @@
 - [x] AI Lab v1 — chat builds enrichers/drivers, syntax+contract checks, hot-load, persists across rebuilds, PR publish path; proven live (refurbished_enricher) (2026-09-25)
 - [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
 - [x] Lazy detail enrichment — top-3 results get full text + seller age via fetch_detail; live metric `detail_enriched` increments, risk/CPU re-run (2026-09-25)
+- [x] Vinted driver live (SSR cards, fee-inclusive prices, paging, fixture) + shared eu_price parser (2026-09-25)
+- [x] All-pages pagination (willhaben rows=90 + page loop to total; kleinanzeigen to last page) (2026-09-25)
+- [x] Market tab + /market endpoint (live inventory grid) + E2E (2026-09-25)
+- [x] Full PassMark spec facts (class/socket/clocks/cores/TDP/cache/ranks/suite) + title-verified lookup + vague-CPU refusal (2026-09-25)
+- [x] CPU resolution pipeline (override > mention > model-family + partial + ambiguity guard) + contradiction flags + drawer correction UI (2026-09-25)
