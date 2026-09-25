@@ -310,6 +310,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     except Exception:
         pass
     metrics.inc("listings_scored", len(scored))
+    metrics.inc("search_runs")
     metrics.observe_latency("search", time.time() - t0)
     metrics.set_gauge("last_search_results", len(scored))
     return {"results": [s.model_dump() for s in scored], "events": events,
