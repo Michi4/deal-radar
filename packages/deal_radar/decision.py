@@ -368,7 +368,7 @@ def heuristic_decide(title: str, description: str, price: float | None,
     match = round(0.7 * token_score + 0.3 * fuzzy, 3)
     import re as _re
     # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
-    want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch|tausche?)\b|[\s(](gesucht|ankauf|tausch\w*)\b", hay))
+    want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch|tausch\w*)\b|[\s(](gesucht|ankauf|tausch\w*)\b", hay))
     parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
     accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|box|schachtel|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff)\b", hay))
     if want_ad:
