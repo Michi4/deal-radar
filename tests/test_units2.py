@@ -254,7 +254,6 @@ def test_cpu_override_contradiction_unresolved():
     p = os.path.join(tempfile.mkdtemp(), "cpu.db")
     st = Store(p)
     st.set_fact("t:x", "cpu", "Ryzen 5 5600H")  # conflicts with title 5800H
-    fake_bench = {"multi": 100, "single": 10, "source": "t", "ts": 0}
     with patch("deal_radar.benchmarks.fetch_passmark_cpu", return_value=None):
         out = asyncio.run(run_search(
             {"keywords": "legion", "sources": ["t"], "limit": 5, "models": ["Legion 5"],
