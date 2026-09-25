@@ -115,6 +115,10 @@ def load_drivers() -> None:
 
 
 load_drivers()
+for _sid, _intent in store.load_searches().items():
+    SEARCHES[_sid] = _intent
+    if _intent.get("watch"):
+        LAST_RUN[_sid] = 0  # re-poll watched searches right after restart
 static_dir = Path(__file__).resolve().parents[2] / "web"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -223,6 +227,7 @@ async def create_nl_search(q: NLQuery):
             "enrich": True, "limit": q.limit, "watch": q.watch,
             "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
     SEARCHES[sid] = base
+    store.save_search(sid, base)
     LAST_RUN[sid] = time.time()
     SEEN_IDS[sid] = {r["listing"]["id"] for r in merged}
     EVENT_LOG.extend(events)
@@ -247,6 +252,7 @@ async def create_search(intent: SearchIntent):
         rules.append({"field": "shipping_available", "op": "equals", "value": True})
     data["hard"] = {**(data.get("hard") or {}), "rules": rules}
     SEARCHES[sid] = data
+    store.save_search(sid, data)
     LAST_RUN[sid] = time.time()
     out = await _run_cached(data, force=True)
     SEEN_IDS[sid] = {r["listing"]["id"] for r in out.get("results", [])}
@@ -279,6 +285,15 @@ async def stream(request: Request):
             yield ": keep-alive\n\n"
             await asyncio.sleep(2)
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@app.delete("/searches/{sid}")
+def delete_search(sid: str):
+    SEARCHES.pop(sid, None)
+    SEEN_IDS.pop(sid, None)
+    LAST_RUN.pop(sid, None)
+    store.delete_search(sid)
+    return {"ok": True}
 
 
 @app.post("/favorites/{listing_id}")
