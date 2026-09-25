@@ -13,13 +13,24 @@ def runs():
 
 
 if __name__ == "__main__":
-    s = api("/searches", {"keywords": "ThinkPad X1", "sources": ["kleinanzeigen"],
+    s = api("/searches", {"keywords": "ThinkPad X1 Carbon", "sources": ["kleinanzeigen"],
                           "limit": 4, "watch": True, "poll_interval_s": 45,
                           "ocr": False, "vision": False, "details": False})
-    print("watch job:", s["id"], s["status"])
-    time.sleep(75)
-    print("search_runs now:", runs())
-    print("WATCH_POLLS: check metrics delta in output above (must grow)")
+    sid = s["id"]
+    print("watch job:", sid)
+    time.sleep(20)
+    m1 = runs()
+    print("baseline search_runs:", m1)
+    # wait long enough for initial job + one watcher repoll (interval 45s)
+    for _ in range(10):
+        time.sleep(30)
+        m2 = runs()
+        print("search_runs:", m2)
+        if m2 > m1:
+            print("WATCH_REPOLL_OK")
+            break
+    else:
+        print("WATCH_REPOLL_FAIL")
     urllib.request.urlopen(urllib.request.Request(
-        f"http://localhost:8099/searches/{s['id']}", method="DELETE"), timeout=15)
+        f"http://localhost:8099/searches/{sid}", method="DELETE"), timeout=15)
     print("watch deleted")
