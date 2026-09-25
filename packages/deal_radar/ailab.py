@@ -20,17 +20,19 @@ LAB_DIR = Path(os.getenv("LAB_DIR", str(ROOT / "enrichers" / "custom")))
 LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(ROOT / "drivers" / "community")))
 
 ENRICHER_PROMPT = """You write a deal-radar enricher plugin (Python, no new dependencies beyond httpx/pydantic).
-Contract (exact):
+Contract (exact — listing is a CanonicalListing OBJECT with attribute access, NOT a dict):
 from deal_radar.enrich import Enricher, register
 from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence
 class <Name>Enricher(Enricher):
     id = "<id>"; version = "0.1.0"
     def supports(self, listing) -> bool: return <True or a cheap field check>
     def enrich(self, listing, ctx):
+        title = listing.title or ""; desc = listing.description or ""
         ... return [EnrichmentFact(field="<field>", value=<v>, confidence=<0..1>,
             status=FactStatus.EXTERNAL, sources=[Evidence(type="external", detail="<src>")])]
 register(<Name>Enricher())
-Rules: never raise (catch everything, return [] on failure); polite HTTP (<=1 req/s, 15s timeout,
+Rules: attribute access ONLY (listing.title, listing.description, listing.price, listing.images);
+never raise (catch everything, return [] on failure); polite HTTP (<=1 req/s, 15s timeout,
 browser UA); evidence in every fact; no API keys (none available).
 TASK: {instruction}
 Return ONLY the Python code, no markdown fences."""
@@ -129,6 +131,19 @@ def hotload_enricher(path: Path) -> dict:
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         from deal_radar.enrich import REGISTRY
-        return {"ok": True, "enrichers": sorted(REGISTRY.keys())}
+        # live fire-check: run enrich() against a matching + non-matching sample listing
+        from deal_radar.contracts import CanonicalListing, Seller
+        mk = lambda t, d: CanonicalListing(id="labtest", source="lab", native_id="x", url="u",
+                                           title=t, description=d, price=1.0, seller=Seller(name="s"))
+        fired = False
+        for eid, enr in REGISTRY.items():
+            if path.stem.replace("-", "_") in eid or eid in path.stem.replace("-", "_"):
+                try:
+                    r1 = enr.enrich(mk("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"), {})
+                    r2 = enr.enrich(mk("plain thing", "nothing special here"), {})
+                    fired = bool(r1)
+                except Exception as e:
+                    return {"ok": False, "error": f"enrich() raised on sample: {e}"}
+        return {"ok": True, "enrichers": sorted(REGISTRY.keys()), "fired_on_sample": fired}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
