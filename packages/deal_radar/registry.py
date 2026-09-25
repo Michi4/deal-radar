@@ -62,7 +62,7 @@ def check(driver_id: str) -> dict:
     if not drivers:
         return {"ok": False, "error": "no *Driver subclass with manifest found"}
     cls = drivers[0]
-    mani = cls.manifest
+    mani = getattr(cls, "manifest")
     errors: list[str] = []
     try:
         m = mani
