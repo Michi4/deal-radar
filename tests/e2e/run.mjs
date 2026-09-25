@@ -11,7 +11,7 @@ check('index loads', await page.locator('#q').count() === 1);
 check('sources listed', (await page.locator('#sources input').count()) >= 2);
 
 await page.fill('#q', 'ThinkPad');
-await page.click('text=Search');
+await page.click('#searchbtn');
 await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0, null, { timeout: 90000 });
 const n = await page.locator('#results .card').count();
 check(`keyword search renders cards (n=${n})`, n > 0);

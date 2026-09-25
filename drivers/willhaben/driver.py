@@ -121,7 +121,7 @@ class WillhabenDriver(MarketplaceDriver):
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=20)
 
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
-        rows = min(max(query.limit, 10), 90)
+        rows = 90  # max per page: over-fetch, filter/rank locally (one request)
         url = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
                f"?KEYWORD={quote_plus(query.keywords)}&rows={rows}&sort=1")
         if query.max_price:

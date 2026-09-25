@@ -164,7 +164,7 @@ class KleinanzeigenDriver(MarketplaceDriver):
         url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
         items: list[dict] = []
         seen_urls: set[str] = set()
-        for _page in range(3):  # sequential + polite delay; never concurrent from one IP
+        for _page in range(5):  # sequential + polite delay; never concurrent from one IP
             try:
                 cards, nxt = await self._fetch_page(url)
             except RuntimeError:
