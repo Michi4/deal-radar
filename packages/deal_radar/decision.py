@@ -217,7 +217,8 @@ async def nl_to_intent(text: str) -> dict:
             return _re2.sub(r"[^a-z0-9]+", "", v.lower()) in makers
         bl = [b for b in bl if not (_selfterm(str(b.get("value", ""))) or _maker(str(b.get("value", ""))))]
         intent = {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
-                  "hard": cloud.get("hard", {}), "blacklist": bl,
+                  "hard": cloud.get("hard", {}) if isinstance(cloud.get("hard"), dict) else {"rules": cloud.get("hard", [])},
+                  "blacklist": bl,
                   "whitelist": [], "attributes": cloud.get("attributes", {}),
                   "models": models,
                   "risk": {}, "enrich": True, "limit": 20}
