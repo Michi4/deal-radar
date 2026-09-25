@@ -72,6 +72,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     scored: list[ScoredListing] = []
     filtered_out = 0
     events: list[dict] = []
+    _vision_queue: list = []
 
     jev_key = os.getenv("JEV_API_KEY", "")
     use_stage_b = bool(os.getenv("JEV_API_KEY") or os.getenv("KEV_URL") or os.getenv("CLOUD_API_KEY"))
@@ -185,31 +186,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 final = rank(dna["match"], val, r.score, completeness, weights)
                 lane = apply_risk_policy(r, val, risk_policy)
 
-        # vision check (free VLM via OpenRouter): only Stage-B listings with photos
-        if intent.get("vision", True) and l.images and h.get("needs_stage_b"):
-            try:
-                from .vision import vision_check
-                vc = await vision_check(l.images[0], l.title, l.description)
-                if vc:
-                    metrics.inc("vision_total")
-                    dna["visual_consistency"] = round(vc.get("shows_item", 0.5), 3)
-                    if vc.get("is_stock", 0) >= 0.7:
-                        r.score = min(1.0, r.score + 0.15)
-                        why.append("vision: looks like a stock photo (+risk)")
-                    if vc.get("shows_item", 1) < 0.4:
-                        dna["match"] = round(dna["match"] * 0.6, 3)
-                        why.append(f"vision: photo may not show the item ({vc.get('note', '')})")
-                    else:
-                        why.append(f"vision: photo consistent ({vc.get('note', '')})")
-                    if vc.get("visible_text"):
-                        l.ocr_texts = [*l.ocr_texts, f"VLM: {vc['visible_text']}"[:500]]
-                    final = rank(dna["match"], val, r.score, completeness, weights)
-                    lane = apply_risk_policy(r, val, risk_policy)
-            except Exception:
-                pass
-
         s = ScoredListing(listing=l, match_score=h["match"], deal_dna=dna, risk=r,
                           enrichments=enrich, value_score=val, final_score=final, lane=lane, why=why)
+        # vision check (VLM): only Stage-B listings with photos — collected, run concurrently after loop
+        if intent.get("vision", True) and l.images and h.get("needs_stage_b"):
+            _vision_queue.append(s)
         scored.append(s)
         if store is not None:
             ch = store.upsert(l)
@@ -221,6 +202,53 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                         f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
+    # concurrent vision pass over Stage-B candidates (each is slow on CPU — parallelize)
+    if _vision_queue:
+        from .vision import vision_check
+
+        async def _one(s):
+            try:
+                async with _vision_sem:
+                    vc = await vision_check(s.listing.images[0], s.listing.title, s.listing.description)
+            except Exception:
+                vc = {}
+            if not vc:
+                return
+            metrics.inc("vision_total")
+            s.deal_dna["visual_consistency"] = round(vc.get("shows_item", 0.5), 3)
+            if vc.get("is_stock", 0) >= 0.7:
+                s.risk.score = min(1.0, s.risk.score + 0.15)
+                s.why.append("vision: looks like a stock photo (+risk)")
+            if vc.get("shows_item", 1) < 0.4:
+                s.deal_dna["match"] = round(s.deal_dna.get("match", s.match_score) * 0.6, 3)
+                s.why.append(f"vision: photo may not show the item ({vc.get('note', '')})")
+            else:
+                s.why.append(f"vision: photo consistent ({vc.get('note', '')})")
+            if vc.get("visible_text"):
+                s.listing.ocr_texts = [*s.listing.ocr_texts, f"VLM: {vc['visible_text']}"[:500]]
+
+        _vision_sem = asyncio.Semaphore(2)
+        await asyncio.gather(*(_one(it) for it in _vision_queue[:8]))  # bound cost
+        for s in scored:  # re-rank after vision evidence
+            s.final_score = rank(s.match_score, s.value_score, s.risk.score,
+                                 s.deal_dna.get("completeness", 0.5),
+                                 intent.get("ranking", None))
+            s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
+        scored.sort(key=lambda s: s.final_score, reverse=True)
+    # cross-listing same-item detection (same photo hash on multiple sources)
+    try:
+        from .imgdup import image_hash, find_dupes
+        hashes = {s.listing.id: (image_hash(s.listing.images[0]) if s.listing.images else None)
+                  for s in scored}
+        for a, b, dist in find_dupes(hashes):
+            metrics.inc("duplicates_cross_source")
+            for s in scored:
+                if s.listing.id in (a, b):
+                    other = next(x for x in scored if x.listing.id == (b if s.listing.id == a else a))
+                    s.why.append(f"same item also on {other.listing.source} "
+                                 f"for {other.listing.price} {other.listing.currency} (img-dist {dist})")
+    except Exception:
+        pass
     metrics.inc("listings_scored", len(scored))
     metrics.observe_latency("search", time.time() - t0)
     metrics.set_gauge("last_search_results", len(scored))

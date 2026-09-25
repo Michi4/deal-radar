@@ -24,7 +24,9 @@ def _tesseract_ok() -> bool:
 def download_image(url: str, timeout: float = 12.0) -> bytes | None:
     try:
         r = httpx.get(url, timeout=timeout, follow_redirects=True,
-                      headers={"User-Agent": "Mozilla/5.0"})
+                      headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0",
+                               "Accept": "image/*,*/*;q=0.8",
+                               "Referer": "https://www.kleinanzeigen.de/"})
         r.raise_for_status()
         if len(r.content) > 8_000_000:
             return None
@@ -74,7 +76,7 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
     import os
     api, key = os.getenv("CLOUD_API_URL", ""), os.getenv("CLOUD_API_KEY", "")
     vmodel = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")
-    local_base, local_vl = os.getenv("LOCAL_API_URL", ""), os.getenv("LOCAL_MODEL_VISION", "")
+    local_base, local_vl = os.getenv("LOCAL_VISION_API_URL", "") or os.getenv("LOCAL_API_URL", ""), os.getenv("LOCAL_MODEL_VISION", "")
     prompt = ("Listing title: " + title[:300] +
               "\nDescription: " + (description or "")[:800] +
               "\nReturn ONLY JSON: {shows_item (0..1: photo shows THIS item), "
@@ -89,13 +91,20 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
                              "temperature": 0.1, "max_tokens": 400, "think": False}
     try:
         import httpx
-        # 1) local
+        # 1) local (ollama needs base64 data URLs — it won't fetch remote URLs itself)
         if local_base and local_vl:
             try:
-                async with httpx.AsyncClient(timeout=120.0) as c:
-                    r = await c.post(f"{local_base.rstrip('/')}/chat/completions", json=payload(local_vl))
-                    r.raise_for_status()
-                    return _parse_vision(r.json())
+                img = download_image(image_url)
+                if img:
+                    import base64 as _b64
+                    data_url = "data:image/jpeg;base64," + _b64.b64encode(img).decode()
+                    body = payload(local_vl)
+                    body["messages"][0]["content"][1] = {"type": "image_url",
+                                                         "image_url": {"url": data_url}}
+                    async with httpx.AsyncClient(timeout=180.0) as c:
+                        r = await c.post(f"{local_base.rstrip('/')}/chat/completions", json=body)
+                        r.raise_for_status()
+                        return _parse_vision(r.json())
             except Exception:
                 pass
         # 2) cloud free VLM
@@ -120,9 +129,15 @@ def _parse_vision(data: dict) -> dict:
         content = (msg.get("content") or "").strip() or msg.get("reasoning", "")
         m = _re.search(r"(\{.*\})", content, _re.S)
         out = _json.loads(m.group(1)) if m else {}
-        return {"shows_item": float(out.get("shows_item", 0.5)),
+        shows = float(out.get("shows_item", 0.5))
+        note = str(out.get("note", ""))
+        # small VLMs sometimes score high while describing a mismatch — trust the words
+        if _re.search(r"not match|doesn.?t (show|match)|different (product|item)|wrong item|unrelated",
+                      note, _re.I):
+            shows = min(shows, 0.25)
+        return {"shows_item": shows,
                 "is_stock": float(out.get("is_stock", 0.5)),
                 "visible_text": str(out.get("visible_text", ""))[:500],
-                "note": str(out.get("note", ""))[:200]}
+                "note": note[:200]}
     except Exception:
         return {}
