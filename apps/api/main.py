@@ -437,6 +437,43 @@ def lab_status():
             "drivers": installed()}
 
 
+@app.get("/marketplace")
+def marketplace():
+    """Public plugin/driver marketplace index (versioned JSON, PR-contributed)."""
+    import json as _j
+    p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
+    idx = _j.loads(p.read_text()) if p.exists() else {"drivers": [], "enrichers": []}
+    from deal_radar.registry import installed
+    from deal_radar.enrich import REGISTRY
+    inst = set(installed())
+    for d in idx.get("drivers", []):
+        d["installed"] = d["id"] in inst
+        reqs = d.get("requires", [])
+        d["configured"] = all(os.getenv(r) for r in reqs)
+    for e in idx.get("enrichers", []):
+        e["installed"] = e["id"] in REGISTRY or e.get("source") == "builtin"
+    return idx
+
+
+class InstallRequest(BaseModel):
+    id: str = ""
+
+
+@app.post("/marketplace/install")
+def marketplace_install(req: InstallRequest):
+    """Single-click install from the marketplace index (checksummed + contract-checked)."""
+    import json as _j
+    p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
+    idx = _j.loads(p.read_text()) if p.exists() else {"drivers": []}
+    entry = next((d for d in idx.get("drivers", []) if d["id"] == req.id), None)
+    if not entry:
+        return {"ok": False, "error": f"unknown marketplace id: {req.id}"}
+    if entry.get("source") == "builtin":
+        return {"ok": True, "installed": req.id, "note": "built in — enable per search"}
+    from deal_radar.registry import install
+    return install(entry)
+
+
 @app.get("/notifications/status")
 def notifications_status():
     chans = []
