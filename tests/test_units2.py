@@ -293,8 +293,14 @@ def test_market_endpoint():
 
 def test_cpu_transfer_same_model():
     import asyncio
+
     from deal_radar.contracts import CanonicalListing, Seller
-    from deal_radar.driver_sdk import DriverRegistry, MarketplaceDriver, DriverManifest, SearchQuery
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
     from deal_radar.orchestrator import run_search
 
     def mk(tid, title):
