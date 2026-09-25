@@ -8,6 +8,7 @@ COPY packages packages/
 COPY drivers drivers/
 COPY apps apps/
 COPY web web/
+COPY marketplace marketplace/
 RUN pip install --no-cache-dir -e .
 ENV PYTHONPATH=/app/packages:/app/drivers:/app/apps DB_PATH=/data/dealradar.db
 VOLUME /data
