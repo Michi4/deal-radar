@@ -52,7 +52,7 @@ def parse_gpu_list(html: str) -> dict[str, dict]:
             r'<TR id="gpu\d+"><TD><A HREF="video_lookup\.php\?gpu=([^"&]+)&amp;id=(\d+)">([^<]{2,120})</A></TD><TD>(\d+)</TD>',
             html):
         _slug, gid, name, g3d = m.group(1), m.group(2), m.group(3), m.group(4)
-        key = name.strip().lower()
+        key = _norm(name.strip())
         try:
             out[key] = {"name": name.strip(), "g3d": int(g3d), "id": gid}
         except ValueError:

@@ -470,7 +470,7 @@ def test_gpu_table_and_extract():
     html = _P(__file__).parent.joinpath("fixtures/gpu-list.html").read_text(encoding="utf-8", errors="ignore")
     table = parse_gpu_list(html)
     assert len(table) > 1000
-    assert table["geforce rtx 3060"]["g3d"] == 16882
+    assert table["geforcertx3060"]["g3d"] == 16882
     g, conf, _ = extract_gpu("Legion 5 RTX 3060 16GB")
     assert g == "rtx 3060" and conf >= 0.7
     assert extract_gpu("nice laptop")[0] is None
