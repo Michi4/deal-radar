@@ -299,3 +299,10 @@ def test_parts_ad_penalty():
     parts = heuristic_decide("iPhone 16 Backcover Rückglas Ersatzteil", "Nur Backcover", 59, "iphone 16")
     assert parts["kind"] == "parts" and offer["kind"] == "offer"
     assert parts["match"] < offer["match"]
+
+
+def test_transports_config():
+    from deal_radar.driver_sdk import transport_from_config, DirectTransport, ProxyTransport, RotatingProxyTransport
+    assert isinstance(transport_from_config(None), DirectTransport)
+    assert isinstance(transport_from_config({"type": "proxy", "url": "http://u:p@h:1"}), ProxyTransport)
+    assert isinstance(transport_from_config({"type": "rotating", "urls": ["http://h:1", "http://h:2"]}), RotatingProxyTransport)
