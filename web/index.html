@@ -72,7 +72,7 @@ details.adv{border:1px solid var(--line);border-radius:10px;padding:8px;margin-t
 <input id="warnT" title="risk warn %" style="width:76px" type="number" value="35" min="0" max="100"/>
 <input id="blockT" title="risk block %" style="width:76px" type="number" value="85" min="0" max="100"/>
 </div></details>
-<div class="row" style="margin-top:8px"><select id="sort"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option></select>
+<div class="row" style="margin-top:8px"><select id="sort"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option><option value="mt">multithread</option><option value="gpe">gpu/€</option></select>
 <select id="perpage" onchange="PAGE=0;render()"><option>20</option><option>50</option><option>100</option><option value="100000">all</option></select><span id="lanes" style="display:flex;gap:6px;flex-wrap:wrap"></span></div>
 <div class="row" style="margin-top:8px"><small>history:</small><span id="hist" style="display:flex;gap:6px;flex-wrap:wrap"></span></div>
 </div>
@@ -90,7 +90,8 @@ function setView(v){VIEW=v;localStorage.setItem('drv',v);render()}
 function theme(){const t=document.documentElement.dataset.theme==='light'?'':'light';document.documentElement.dataset.theme=t;localStorage.setItem('drt',t)}
 document.documentElement.dataset.theme=localStorage.getItem('drt')||'';
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('toasts').prepend(d);setTimeout(()=>d.remove(),9000)}
-function perfEur(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark');return (b&&s.listing.price)?b.value/s.listing.price:0}
+function benchOf(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark')||(s.enrichments||[]).find(e=>e.field==='gpu_benchmark');return b?b.value:0}
+function perfEur(s){const b=benchOf(s);return (b&&s.listing.price)?b/s.listing.price:0}
 function thumb(l,idx){const imgs=l.images||[];if(!imgs.length)return '';const i=idx||0;
 return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${imgs[i%imgs.length]}" onerror="this.remove()">${imgs.length>1?`<button class="thumbnav l" onclick="event.stopPropagation();cyc(this,-1,'${l.id}')">‹</button><button class="thumbnav r" onclick="event.stopPropagation();cyc(this,1,'${l.id}')">›</button>`:''}</div>`}
 function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listing.images||[]).length)return;const n=s.listing.images.length;let i=((+btn.parentElement.dataset.i||0)+d+n)%n;btn.parentElement.dataset.i=i;btn.parentElement.querySelector('img').src=s.listing.images[i]}
@@ -112,7 +113,10 @@ const hide=[...document.querySelectorAll('.lanef:checked')].map(i=>i.value);arr=
 const m=$('sort').value;
 if(m==='plo')arr.sort((a,b)=>(a.listing.price??1e18)-(b.listing.price??1e18));
 else if(m==='phi')arr.sort((a,b)=>(b.listing.price??-1)-(a.listing.price??-1));
-else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));else arr.sort((a,b)=>b.final_score-a.final_score);
+else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));
+else if(m==='mt')arr.sort((a,b)=>benchOf(b)-benchOf(a));
+else if(m==='gpe')arr.sort((a,b)=>{const gb=x=>{const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0};return gb(b)-gb(a)});
+else arr.sort((a,b)=>b.final_score-a.final_score);
 return arr}
 function render(){const arr=filtered();const pp=+$('perpage').value;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
 const lanes=[...new Set(LAST.map(s=>s.lane))];
