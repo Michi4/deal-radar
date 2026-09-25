@@ -203,7 +203,7 @@ function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
 async function init(){try{const d=await(await fetch('/drivers')).json();
-$('sources').innerHTML=d.map(x=>`<label><input type="checkbox" checked value="${x.id}"/> ${x.display_name}</label>`).join(' ')}catch(e){}
+$('sources').innerHTML=d.map(x=>{const ok=x.configured!==false;return `<label style="${ok?'':'opacity:.45'}" title="${ok?'':('needs '+(x.requires||[]).join(','))}"><input type="checkbox" ${ok?'checked':''} value="${x.id}"/> ${x.display_name}${ok?'':' 🔒'}</label>`}).join(' ')}catch(e){}
 drawHist();loadFavs();setView(VIEW);
 try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){toast('⚡ '+e.data.slice(0,120))}};es.onerror=()=>{$('livedot').className='dot off';$('livetxt').textContent='reconnecting…'}}catch(e){$('livedot').className='dot off'}}
 init();

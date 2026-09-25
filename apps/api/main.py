@@ -208,7 +208,14 @@ def health():
 
 @app.get("/drivers")
 def drivers():
-    return [m.model_dump() for m in registry.manifests()]
+    out = []
+    for m in registry.manifests():
+        d = m.model_dump()
+        reqs = {"ebay": ["EBAY_OAUTH_TOKEN"]}.get(m.id, [])
+        d["requires"] = reqs
+        d["configured"] = all(os.getenv(r) for r in reqs)
+        out.append(d)
+    return out
 
 
 @app.get("/metrics")
