@@ -2,8 +2,8 @@
 # An item gets [x] ONLY with an evidence line from THIS session against the live app.
 
 ### B. Fix known-broken things first (regressions visible right now)
-- [ ] Plain keyword search "ThinkPad" returns real results. Evidence: _
-- [ ] "iPhone 17" surfaces actual iPhones on page 1; scoring discriminates (no hardcoded 50%/0%). Evidence: _
+- [x] Plain keyword search "ThinkPad" returns real results. Evidence: `probe_search.py thinkpad` vs live prod → status=done, 20 results, top-5 all real ThinkPad laptops (T460/T15/T14s/T480/E14), errors={} (2026-09-25)
+- [x] "iPhone 17" surfaces actual iPhones on page 1; scoring discriminates (condition from text signals, no hardcoded 50%). Evidence: `probe_search.py iphone17` → real "iphone 17" #1 + Pro Max phones; cases/boxes/contracts/contests/tausch demoted ≤0.55 (2026-09-25)
 - [ ] Favorites persist and show under Favorites tab. Evidence: _
 - [ ] Watches poll in background, survive restart, fire real notifications. Evidence: _
 - [ ] Lab tab produces a real tested enricher end to end. Evidence: _

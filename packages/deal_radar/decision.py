@@ -384,8 +384,19 @@ def heuristic_decide(title: str, description: str, price: float | None,
         match = min(match, 0.45)
     low_info = len(description or "") < 40
     kind = "want" if want_ad else ("parts" if parts_ad else ("accessory" if accessory_ad else "offer"))
+    # condition from text signals (replaces placeholder 0.5)
+    cond = 0.65
+    if _re.search(r"\b(neu|neuwertig|ovp|originalverpackt|top|einwandfrei|makellos|kaum benutzt)\b", hay):
+        cond = 0.9
+    if _re.search(r"\b(sehr gut|gut erhalten|gepflegt|voll funktionsf[äa]hig)\b", hay):
+        cond = max(cond, 0.78)
+    if _re.search(r"\b(gebrauchsspuren|normale spuren|b-stock|b-ware)\b", hay):
+        cond = min(cond, 0.55)
+    if _re.search(r"\b(defekt|kaputt|gesprungen|risse?|kratzer|fehler|reparatur|bastler|f[üu]r teile)\b", hay):
+        cond = 0.25
     return {"match": match, "fuzzy": round(fuzzy, 3), "low_info": low_info,
             "want_ad": want_ad or accessory_ad, "parts_ad": parts_ad, "kind": kind,
+            "condition": round(cond, 2),
             "needs_stage_b": bool(0.35 <= match <= 0.75 or low_info)}
 
 
