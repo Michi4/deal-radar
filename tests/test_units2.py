@@ -137,7 +137,9 @@ def test_coverage_sweep():
     s.favorite("x")
     assert s.is_favorite("x") and not s.is_favorite("y")
     s.unfavorite("x")
-    assert s.favorites_with_history() == []
+    s.close()
+    assert Store(p).favorites_with_history() == []
+    s = Store(p)
     l1 = CanonicalListing(id="t:9", source="t", native_id="9", url="u", title="A",
                           description="d1", images=["1"], price=10.0, seller=Seller(name="s"))
     s.upsert(l1)
@@ -145,6 +147,7 @@ def test_coverage_sweep():
                           description="d2", images=["1", "2"], price=10.0, seller=Seller(name="s"))
     evs = s.upsert(l2)
     assert {e["kind"] for e in evs} >= {"description", "images", "title"}
+    s.close()
 
 
 def test_ailab_validate_and_hotload():
@@ -194,3 +197,22 @@ def test_ailab_generate_mocked():
     for f in _P("enrichers/custom").glob("*.py"):
         if "TLab2" in f.read_text():
             f.unlink()
+
+
+def test_ailab_paths():
+    import tempfile, os
+    from deal_radar import ailab
+    tmp = tempfile.mkdtemp()
+    ailab.LAB_DIR = ailab.LAB_DRIVERS = __import__("pathlib").Path(tmp)
+    assert ailab._slug("!!!") .startswith("custom-")
+    p = ailab.save_driver("x = 1", "d1")
+    assert p.name == "driver.py" and ailab.load_custom_enrichers() == []
+    code = ("from deal_radar.enrich import Enricher, register\n"
+            "from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence\n"
+            "class TLab3Enricher(Enricher):\n    id = \"tlab3\"\n    version = \"0.0.1\"\n"
+            "    def enrich(self, listing, ctx):\n        return []\n"
+            "register(TLab3Enricher())\n")
+    pe = ailab.save_enricher(code, "tlab3")
+    assert ailab.load_custom_enrichers() == ["tlab3"]
+    from deal_radar.enrich import REGISTRY
+    REGISTRY.pop("tlab3", None)

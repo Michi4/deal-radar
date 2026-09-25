@@ -94,6 +94,13 @@ class Store:
         self.db.execute("DELETE FROM searches WHERE id=?", (sid,))
         self.db.commit()
 
+    def close(self) -> None:
+        try:
+            self.db.commit()
+            self.db.close()
+        except Exception:
+            pass
+
     def favorites_with_history(self) -> list[dict]:
         favs = self.db.execute("SELECT listing_id, ts, note FROM favorites ORDER BY ts DESC").fetchall()
         out: list[dict] = []
