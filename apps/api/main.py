@@ -296,6 +296,34 @@ def delete_search(sid: str):
     return {"ok": True}
 
 
+@app.get("/searches/{sid}/compare")
+async def compare(sid: str):
+    """Group a search's results by product model: source × price × risk comparison table."""
+    import re as _re
+    intent = SEARCHES.get(sid)
+    if not intent:
+        return {"error": "unknown search id"}
+    out = await _run_cached(intent)
+    groups: dict[str, list] = {}
+    for r in out.get("results", []):
+        models = intent.get("models", []) or []
+        title = r["listing"]["title"] or ""
+        norm = _re.sub(r"[^a-z0-9]+", "", title.lower())
+        key = next((m for m in models
+                    if _re.sub(r"[^a-z0-9]+", "", m.lower()) in norm),
+                   (title[:50] or "unknown"))
+        groups.setdefault(key, []).append({
+            "source": r["listing"]["source"], "price": r["listing"]["price"],
+            "currency": r["listing"]["currency"], "location": r["listing"]["location"],
+            "url": r["listing"]["url"], "risk": r["risk"]["score"],
+            "score": r["final_score"], "lane": r["lane"],
+            "cpu": next((e["value"] for e in r.get("enrichments", []) if e["field"] == "cpu"), None),
+            "benchmark": next((e["value"] for e in r.get("enrichments", []) if e["field"] == "cpu_benchmark"), None)})
+    for rows in groups.values():
+        rows.sort(key=lambda x: (x["price"] is None, x["price"]))
+    return {"id": sid, "groups": groups}
+
+
 @app.post("/favorites/{listing_id}")
 def fav(listing_id: str, note: str = ""):
     store.favorite(listing_id, note)
