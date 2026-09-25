@@ -14,7 +14,8 @@ def ahash(img_bytes: bytes) -> int | None:
     try:
         from PIL import Image
         im = Image.open(io.BytesIO(img_bytes)).convert("L").resize((8, 8), Image.BILINEAR)
-        px = list(im.getdata())
+        getdata = getattr(im, "get_flattened_data", None) or im.getdata
+        px = list(getdata())
         avg = sum(px) / len(px)
         h = 0
         for i, v in enumerate(px):
