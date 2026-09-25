@@ -80,7 +80,6 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
     Returns {shows_item 0..1, is_stock 0..1, visible_text, note}. {} when unavailable."""
     import os
     import time as _t
-    global _vision_failures, _vision_disabled_until
     if _t.time() < _vision_disabled_until:
         return {}
     api, key = os.getenv("CLOUD_API_URL", ""), os.getenv("CLOUD_API_KEY", "")
