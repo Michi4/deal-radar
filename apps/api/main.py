@@ -11,6 +11,8 @@ import sys
 import time
 from pathlib import Path
 
+import httpx
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "packages"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "drivers"))
 
@@ -337,6 +339,61 @@ def delete_search(sid: str):
     LAST_RUN.pop(sid, None)
     store.delete_search(sid)
     return {"ok": True}
+
+
+class LabRequest(BaseModel):
+    kind: str = "enricher"
+    instruction: str = ""
+    publish: bool = False
+
+
+@app.get("/lab/status")
+def lab_status():
+    from deal_radar.enrich import REGISTRY
+    from deal_radar.registry import installed
+    return {"enabled": bool(os.getenv("LAB_ENABLED")), "enrichers": sorted(REGISTRY.keys()),
+            "drivers": installed()}
+
+
+@app.post("/lab/build")
+async def lab_build(req: LabRequest):
+    if not os.getenv("LAB_ENABLED"):
+        return {"ok": False, "error": "LAB_ENABLED=0 (code-writing disabled)"}
+    from deal_radar import ailab
+    out = await ailab.generate(req.kind, req.instruction)
+    if out.get("ok") and req.publish:
+        out["pr"] = await lab_publish(out)
+    return out
+
+
+async def lab_publish(build: dict) -> dict:
+    """Upload generated plugin to GitHub and open a PR (needs GH_TOKEN + LAB_PUBLISH=1)."""
+    import base64
+    tok, repo = os.getenv("GH_TOKEN", ""), os.getenv("LAB_REPO", "Michi4/deal-radar")
+    if not tok or not os.getenv("LAB_PUBLISH"):
+        return {"ok": False, "error": "GH_TOKEN/LAB_PUBLISH not set — code saved locally only"}
+    try:
+        did = build.get("id", "custom")
+        branch = f"lab/{build.get('kind')}-{did}"
+        async with httpx.AsyncClient(timeout=30) as c:
+            h = {"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json"}
+            base = (await c.get(f"https://api.github.com/repos/{repo}", headers=h)).json().get("default_branch", "main")
+            sha = (await c.get(f"https://api.github.com/repos/{repo}/git/ref/heads/{base}", headers=h)).json()["object"]["sha"]
+            await c.post(f"https://api.github.com/repos/{repo}/git/refs", headers=h,
+                         json={"ref": f"refs/heads/{branch}", "sha": sha})
+            from pathlib import Path as _P
+            rel = _P(build["path"]).relative_to(_P.cwd()).as_posix() if _P(build["path"]).is_absolute() else build["path"]
+            content = _P(build["path"]).read_bytes() if _P(build["path"]).exists() else b""
+            await c.put(f"https://api.github.com/repos/{repo}/contents/{rel}", headers=h,
+                        json={"message": f"feat(lab): {build.get('kind')} {did}",
+                              "content": base64.b64encode(content).decode(), "branch": branch})
+            pr = (await c.post(f"https://api.github.com/repos/{repo}/pulls", headers=h,
+                               json={"title": f"feat(lab): {build.get('kind')} {did}",
+                                     "head": branch, "base": base,
+                                     "body": "AI-generated via /lab/build. Contract-checked locally."})).json()
+            return {"ok": True, "pr": pr.get("html_url")}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
 
 @app.get("/searches/{sid}/compare")

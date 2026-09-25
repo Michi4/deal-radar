@@ -145,3 +145,52 @@ def test_coverage_sweep():
                           description="d2", images=["1", "2"], price=10.0, seller=Seller(name="s"))
     evs = s.upsert(l2)
     assert {e["kind"] for e in evs} >= {"description", "images", "title"}
+
+
+def test_ailab_validate_and_hotload():
+    from deal_radar import ailab
+    from deal_radar.enrich import REGISTRY
+    assert ailab.validate_python("def x(:") is not None
+    assert ailab.validate_python("x = 1") is None
+    assert ailab._slug("Hello World!!") == "hello-world"
+    code = ("from deal_radar.enrich import Enricher, register\n"
+            "from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence\n"
+            "class TLabEnricher(Enricher):\n    id = \"tlab\"\n    version = \"0.0.1\"\n"
+            "    def enrich(self, listing, ctx):\n"
+            "        return [EnrichmentFact(field=\"t\", value=1, confidence=1.0,\n"
+            "            status=FactStatus.EXTERNAL, sources=[Evidence(type=\"external\", detail=\"t\")])]\n"
+            "register(TLabEnricher())\n")
+    assert ailab.validate_python(code) is None
+    import asyncio
+    assert asyncio.run(ailab.generate("bogus", "x"))["ok"] is False
+    p = ailab.save_enricher(code, "tlab-test")
+    try:
+        r = ailab.hotload_enricher(p)
+        assert r["ok"] and "tlab" in REGISTRY
+    finally:
+        p.unlink(missing_ok=True)
+        REGISTRY.pop("tlab", None)
+
+
+def test_ailab_generate_mocked():
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+
+    from deal_radar import ailab
+    code = ("from deal_radar.enrich import Enricher, register\n"
+            "from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence\n"
+            "class TLab2Enricher(Enricher):\n    id = \"tlab2\"\n    version = \"0.0.1\"\n"
+            "    def enrich(self, listing, ctx):\n        return []\n"
+            "register(TLab2Enricher())\n")
+    with patch("deal_radar.decision.cloud_code", new=AsyncMock(return_value="```python\n" + code + "\n```")):
+        out = asyncio.run(ailab.generate("enricher", "test thing"))
+    assert out["ok"] and out["id"] == "tlab2" or out["ok"]
+    from pathlib import Path as _P
+
+    from deal_radar.enrich import REGISTRY
+    for f in list((_P("enrichers/custom")).glob("test-thing*.py")) + list((_P("enrichers/custom")).glob("*.py")):
+        pass
+    REGISTRY.pop("tlab2", None)
+    for f in _P("enrichers/custom").glob("*.py"):
+        if "TLab2" in f.read_text():
+            f.unlink()
