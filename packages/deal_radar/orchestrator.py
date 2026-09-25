@@ -189,7 +189,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     # Stage B concurrent pass (cap: most uncertain first; sem bounds slow-model load)
     if _stageb_queue:
         _stageb_queue.sort(key=lambda t: abs(t[1].get("match", 0.5) - 0.55))
-        _sb_sem = asyncio.Semaphore(4)
+        _sb_sem = asyncio.Semaphore(2)  # Frankfurt Kev is 2 shared vCPUs — gentle
 
         async def _sb(item):
             s, h, keywords = item
