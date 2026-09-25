@@ -443,8 +443,8 @@ def marketplace():
     import json as _j
     p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
     idx = _j.loads(p.read_text()) if p.exists() else {"drivers": [], "enrichers": []}
-    from deal_radar.registry import installed
     from deal_radar.enrich import REGISTRY
+    from deal_radar.registry import installed
     inst = set(installed())
     for d in idx.get("drivers", []):
         d["installed"] = d["id"] in inst
