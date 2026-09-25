@@ -5,6 +5,7 @@ data/
 *.db
 .coverage
 coverage.xml
+node_modules/
 .env
 deploy/*/.env
 !deploy/*/.env.sample
