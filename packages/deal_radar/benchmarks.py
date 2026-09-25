@@ -97,9 +97,14 @@ def parse_passmark_full(html: str) -> dict:
     return out
 
 
+def _norm(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
 def fetch_passmark_cpu(cpu: str, cache_days: int = 30) -> dict | None:
-    """Returns {multi, single, source} or None. Cached; static fallback handled by caller."""
-    key = cpu.strip().lower()
+    """Returns {multi, single, ...} or None. Cached; static fallback handled by caller.
+    VERIFIES the result page is actually about the requested CPU (fuzzy endpoint lies)."""
+    key = "v2:" + cpu.strip().lower()  # v2: title-verified entries only
     with _lock:
         if key in _mem:
             return _mem[key]
@@ -120,6 +125,10 @@ def fetch_passmark_cpu(cpu: str, cache_days: int = 30) -> dict | None:
             _last_req = time.time()
         if r.status_code != 200:
             return None
+        # title check: "AMD Ryzen 5 PRO 5650U Benchmark" must contain the requested CPU
+        title = re.search(r"<title>([^<]{3,120})", r.text)
+        if not title or _norm(cpu) not in _norm(title.group(1)):
+            return None  # fuzzy endpoint returned a different CPU — refuse wrong scores
         multi, single = parse_passmark_detail(r.text)
         if multi is None:
             return None

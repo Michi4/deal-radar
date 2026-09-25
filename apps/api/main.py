@@ -246,7 +246,8 @@ async def create_nl_search(q: NLQuery):
     outs: list[dict] = []
     for kw in queries:
         data = {"keywords": kw, "category": parsed.get("category", ""),
-                "sources": q.sources or default_sources(), "hard": parsed.get("hard", {}),
+                "sources": q.sources or default_sources(),
+                "hard": {"min_match": 0.15, **(parsed.get("hard", {}) or {})},
                 "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
                 "ranking": None, "attributes": parsed.get("attributes", {}),
                 "models": parsed.get("models", []) or [],
@@ -278,7 +279,7 @@ async def create_nl_search(q: NLQuery):
     _med = _st.median(_mp) if len(_mp) >= 3 else None
     sid = f"s_{int(time.time() * 1000)}"
     base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
-            "sources": q.sources or default_sources(), "hard": parsed.get("hard", {}),
+            "sources": q.sources or default_sources(), "hard": {"min_match": 0.15, **(parsed.get("hard", {}) or {})},
             "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
             "ranking": None, "attributes": parsed.get("attributes", {}),
             "models": parsed.get("models", []) or [],

@@ -420,3 +420,27 @@ def test_fact_overrides():
     s.set_fact("l1", "cpu", "Ryzen 5 PRO 5650U")
     assert s.get_facts("l1") == {"cpu": "Ryzen 5 PRO 5650U"}
     s.close()
+
+
+def test_benchmark_title_verification():
+    from pathlib import Path as _P
+    from unittest.mock import patch
+
+    from deal_radar import benchmarks as B
+    html = _P(__file__).parent.joinpath("fixtures/passmark-5800h.html").read_text(encoding="utf-8", errors="ignore")
+
+    class R:
+        status_code = 200
+        text = html
+
+    async def _noop(*a, **k):
+        return None
+
+    with patch.object(B.httpx, "get", return_value=R()), \
+         patch.object(B.time, "sleep", return_value=None):
+        B._mem.clear()
+        ok = B.fetch_passmark_cpu("Ryzen 7 5800H")
+        assert ok and ok["multi"] == 20461
+        B._mem.clear()
+        wrong = B.fetch_passmark_cpu("ryzen 5 pro")  # fuzzy page is 5800H -> must refuse
+        assert wrong is None
