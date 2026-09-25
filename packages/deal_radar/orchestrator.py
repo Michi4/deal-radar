@@ -184,10 +184,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                         # multiple partial hits = ambiguous -> stay honest, ask user
                         partials: list[str] = []
                         for c in cands:
-                            words = [w for w in _re3.findall(r"[a-z0-9]+", c.lower()) if not w.isdigit()]
-                            if len(words) >= 2 and all(w in blob_words for w in words):
-                                nobrands = [w for w in words if w not in ("amd", "intel", "apple", "ryzen", "core", "pro")]
-                                if nobrands or len(words) >= 3:
+                            toks = _re3.findall(r"[a-z0-9]+", c.lower())
+                            alpha = [w for w in toks if w.isalpha()]
+                            digits = [w for w in toks if w.isdigit()]
+                            # mixed tokens (5650u) are model numbers: unknowable here, ignore.
+                            # pure digits are family markers (ryzen *5*) and must match exactly.
+                            if len(alpha) >= 2 and all(w in blob_words for w in alpha) \
+                                    and all(d in blob_words for d in digits):
+                                nobrands = [w for w in alpha if w not in ("amd", "intel", "apple", "ryzen", "core", "pro")]
+                                if nobrands or len(alpha) + len(digits) >= 3:
                                     partials.append(c)
                         if len(partials) == 1:
                             c = partials[0]
