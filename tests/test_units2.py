@@ -355,6 +355,7 @@ def test_kind_caps_and_accessories():
 
 def test_vision_breaker():
     import asyncio
+
     from deal_radar import vision as V
     V._vision_failures = 0
     V._vision_disabled_until = 0.0
