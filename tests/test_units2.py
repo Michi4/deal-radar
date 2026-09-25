@@ -386,3 +386,11 @@ def test_accessory_plurals_contracts_contests():
 def test_tausch_is_want():
     from deal_radar.decision import heuristic_decide
     assert heuristic_decide("Nur heute iPhone 17 Pro Max nur Tausch", "x", 5, "iphone 17")["kind"] == "want"
+
+
+def test_condition_signals():
+    from deal_radar.decision import heuristic_decide
+    assert heuristic_decide("iPhone NEU OVP", "neu", 5, "iphone")["condition"] == 0.9
+    assert heuristic_decide("iPhone defekt Display gesprungen", "kaputt", 5, "iphone")["condition"] == 0.25
+    mid = heuristic_decide("iPhone gebraucht", "leichte Gebrauchsspuren", 5, "iphone")["condition"]
+    assert mid == 0.55
