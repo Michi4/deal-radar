@@ -4,6 +4,7 @@
 - [x] willhaben live parse — `__NEXT_DATA__` fixture + live search returned real listings w/ images/location (2026-09-24)
 - [x] kleinanzeigen live parse — real `ka.html` (8 cards: titles/prices/locations/DHL badges) (2026-09-24)
 - [x] Multi-source search, concurrent, failing source → `driver_errors`, rest served (fake-driver test + live willhaben+kleinanzeigen, 2026-09-24)
+- [x] Marketplace drivers — willhaben + kleinanzeigen + **vinted** live (10 real ThinkPads w/ prices 2026-09-25); ebay token-only (decoy refusal documented)
 - [x] Scam % + evidence + rescue lane — great deal w/ mild risk kept as `review`, test asserts (2026-09-24)
 - [x] NL search via real AI — OpenRouter `liquid/lfm-2.5-2.6b:free`, "iphone usb-c" → keywords+attrs+5 live results (2026-09-25)
 - [x] Per-field filters + delivery/location (`distance_km`, `pickup`, `shipping_available`, `shipping_cost`, total cost) (2026-09-24)
