@@ -125,7 +125,8 @@ def eval_rule(listing: CanonicalListing, rule: dict[str, Any]) -> tuple[bool, st
 
 def apply_filters(listing: CanonicalListing, hard: dict[str, Any] | None,
                   blacklist: list[dict] | None = None,
-                  whitelist: list[dict] | None = None) -> FilterResult:
+                  whitelist: list[dict] | None = None,
+                  required: list[dict] | None = None) -> FilterResult:
     reasons: list[str] = []
     missing: list[str] = []
     hard = hard or {}
@@ -158,6 +159,14 @@ def apply_filters(listing: CanonicalListing, hard: dict[str, Any] | None,
                 reasons.append("whitelist N/A (missing fields) -> pass")
             else:
                 return FilterResult(False, ["whitelist: no rule matched"], missing)
+    for rule in (required or []):  # AND-semantics: every required rule must match
+        ok, reason, was_missing = eval_rule(listing, rule)
+        if was_missing:
+            missing.append(reason)
+            continue
+        if not ok:
+            return FilterResult(False, [f"REQUIRED: {reason}"], missing)
+        reasons.append(f"REQUIRED ok: {reason}")
     for rule in hard.get("rules", []) or []:
         ok, reason, was_missing = eval_rule(listing, rule)
         if was_missing:

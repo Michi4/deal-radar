@@ -94,7 +94,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             continue
         seen.add(key)
 
-        fr = apply_filters(l, hard, blacklist, whitelist)
+        fr = apply_filters(l, hard, blacklist, whitelist, intent.get("required", []))
         if not fr.passed:
             filtered_out += 1
             metrics.inc("listings_filtered")
@@ -112,16 +112,14 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         h = heuristic_decide(l.title, l.description, l.price, q.keywords)
         metrics.inc("stage_a_total")
-        min_match = float(hard.get("min_match", 0) or 0)
+        min_match = float(hard.get("min_match", 0) or 0) or 0.12  # relevance floor ALWAYS on
         if h["match"] < min_match:
             filtered_out += 1
             metrics.inc("listings_filtered_match")
             continue
-        want_ad_note = ""
-        if h.get("want_ad"):
-            want_ad_note = "buy-request ad (Ankauf/Suche), demoted"
-        elif h.get("parts_ad"):
-            want_ad_note = "parts/repair ad, demoted"
+        want_ad_note = {"want": "buy-request ad (Ankauf/Suche), demoted",
+                        "parts": "parts/repair ad, demoted",
+                        "accessory": "accessory/box ad, demoted"}.get(h.get("kind", "offer"), "")
 
         # NL attribute requirements (e.g. connector:usb-c): soft gate, evidence-logged
         attr_hits: list[str] = []
