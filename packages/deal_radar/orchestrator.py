@@ -36,7 +36,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     max_price=(intent.get("hard") or {}).get("max_price"),
                     min_price=(intent.get("hard") or {}).get("min_price"),
                     limit=int(intent.get("limit", 20)))
-    hard = intent.get("hard", {})
+    hard = intent.get("hard", {}) or {}
+    if isinstance(hard, list):  # model sometimes returns bare rules list
+        hard = {"rules": hard}
     blacklist = intent.get("blacklist", [])
     whitelist = intent.get("whitelist", [])
     risk_policy = intent.get("risk", {})
