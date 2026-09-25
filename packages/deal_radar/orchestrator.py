@@ -235,11 +235,26 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                  intent.get("ranking", None))
             s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
         scored.sort(key=lambda s: s.final_score, reverse=True)
-    # cross-listing same-item detection (same photo hash on multiple sources)
+    # enrichment-fabric second stage: cohort facts for every scored listing
     try:
-        from .imgdup import image_hash, find_dupes
-        hashes = {s.listing.id: (image_hash(s.listing.images[0]) if s.listing.images else None)
-                  for s in scored}
+        from .enrich import REGISTRY
+        ctx = {"prices": [s.listing.price for s in scored if s.listing.price],
+               "median": median, "sources": sources}
+        for s in scored:
+            for eid, enr in REGISTRY.items():
+                try:
+                    if enr.supports(s.listing):
+                        s.enrichments.extend(enr.enrich(s.listing, ctx))
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    # cross-listing same-item detection (same photo hash on multiple sources; capped for speed)
+    try:
+        if len({s.listing.source for s in scored}) > 1:
+            from .imgdup import image_hash, find_dupes
+            cand = [s for s in scored if s.listing.images][:12]
+            hashes = {s.listing.id: image_hash(s.listing.images[0]) for s in cand}
         for a, b, dist in find_dupes(hashes):
             metrics.inc("duplicates_cross_source")
             for s in scored:

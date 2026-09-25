@@ -260,3 +260,26 @@ def test_registry_check_builtin_drivers():
         r = check(did)
         assert r["ok"], r
     assert load_index() == {"drivers": []} or isinstance(load_index().get("drivers"), list)
+
+
+def test_enrich_fabric_and_imgdup():
+    from deal_radar.enrich import REGISTRY, MarketCohortEnricher
+    from deal_radar.imgdup import ahash, hamming
+    assert "market_cohort" in REGISTRY
+    l = L(price=400)
+    facts = MarketCohortEnricher().enrich(l, {"prices": [400, 500, 600]})
+    assert any(f.field == "market_median" and f.value == 500 for f in facts)
+    assert any(f.field == "discount_vs_median" and f.value > 0 for f in facts)
+    assert MarketCohortEnricher().supports(L(price=None)) is False
+    # ahash: identical bytes -> distance 0; gradient vs inverted gradient -> far
+    from PIL import Image
+    import io
+    def grad(inv=False):
+        im = Image.new("L", (16, 16))
+        im.putdata([255 - x * 16 if inv else x * 16 for x in range(16) for _ in range(16)])
+        b = io.BytesIO()
+        im.save(b, format="PNG")
+        return b.getvalue()
+    h1, h2 = ahash(grad()), ahash(grad())
+    assert hamming(h1, h2) == 0
+    assert hamming(h1, ahash(grad(True))) > 10
