@@ -298,13 +298,17 @@ def heuristic_decide(title: str, description: str, price: float | None,
     fuzzy = fuzz.token_set_ratio(keywords.lower(), f"{title}".lower()) / 100.0 if keywords else 0.5
     match = round(0.6 * token_score + 0.4 * fuzzy, 3)
     import re as _re
-    # buy-request ads (Ankauf/Suche/Gesuch) are not offers — heavy penalty, evidence-logged
+    # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
     want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch)\b|[\s(](gesucht|ankauf|tausche)\b", hay))
+    parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
     if want_ad:
         match = round(match * 0.3, 3)
+    elif parts_ad:
+        match = round(match * 0.5, 3)
     low_info = len(description or "") < 40
+    kind = "want" if want_ad else ("parts" if parts_ad else "offer")
     return {"match": match, "fuzzy": round(fuzzy, 3), "low_info": low_info,
-            "want_ad": want_ad,
+            "want_ad": want_ad, "parts_ad": parts_ad, "kind": kind,
             "needs_stage_b": bool(0.35 <= match <= 0.75 or low_info)}
 
 

@@ -291,3 +291,11 @@ def test_want_ad_penalty():
     want = heuristic_decide("ANKAUF SUCHE iPhone 15 Pro Max", "Ankauf gesucht", 500, "iphone 15")
     assert want["want_ad"] is True and offer["want_ad"] is False
     assert want["match"] < offer["match"]
+
+
+def test_parts_ad_penalty():
+    from deal_radar.decision import heuristic_decide
+    offer = heuristic_decide("iPhone 15 Pro 128GB", "Verkaufe mein iPhone, top Zustand", 500, "iphone 15")
+    parts = heuristic_decide("iPhone 16 Backcover Rückglas Ersatzteil", "Nur Backcover", 59, "iphone 16")
+    assert parts["kind"] == "parts" and offer["kind"] == "offer"
+    assert parts["match"] < offer["match"]
