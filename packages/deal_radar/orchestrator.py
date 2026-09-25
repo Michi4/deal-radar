@@ -103,7 +103,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         h = heuristic_decide(l.title, l.description, l.price, q.keywords)
         metrics.inc("stage_a_total")
-        want_ad_note = "buy-request ad (Ankauf/Suche), demoted" if h.get("want_ad") else ""
+        want_ad_note = ""
+        if h.get("want_ad"):
+            want_ad_note = "buy-request ad (Ankauf/Suche), demoted"
+        elif h.get("parts_ad"):
+            want_ad_note = "parts/repair ad, demoted"
 
         # NL attribute requirements (e.g. connector:usb-c): soft gate, evidence-logged
         attr_hits: list[str] = []
