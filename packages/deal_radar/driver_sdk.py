@@ -93,6 +93,30 @@ def transport_from_config(cfg: dict[str, Any] | None) -> TransportProvider:
     return DirectTransport(timeout=float(cfg.get("timeout", 15.0)))
 
 
+def eu_price(raw: str) -> float | None:
+    """Parse EU/US price strings: '1.299 €'->1299, '140.00 €'->140.0, '1.299,99'->1299.99,
+    '390 € VB'->390, 'Zu verschenken'->0.0, ''->None."""
+    import re as _re
+    t = (raw or "").strip()
+    if not t:
+        return None
+    if "verschenken" in t.lower() or "gratis" in t.lower():
+        return 0.0
+    m = _re.search(r"(\d[\d\.\s,]*\d|\d)\s*(?:€|EUR)?", t)
+    if not m:
+        return None
+    num = _re.sub(r"\s+", "", m.group(1))
+    if "," in num:  # German decimals: 1.299,99
+        num = num.replace(".", "").replace(",", ".")
+    elif _re.fullmatch(r"\d{1,3}(\.\d{3})+", num):  # thousands dots: 1.299
+        num = num.replace(".", "")
+    # else: plain digits or US decimals (140.00) — float() handles it
+    try:
+        return float(num)
+    except ValueError:
+        return None
+
+
 # ---- Circuit breaker ----
 @dataclass
 class CircuitBreaker:

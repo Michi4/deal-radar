@@ -5,6 +5,8 @@
   Fallback active: Frankfurt (11GB RAM) hosts Kev-0.8B + Ollama; laptop keeps dev copies.
 - [ ] eBay driver: no `EBAY_OAUTH_TOKEN`. Driver implemented, reports clean error, excluded from default searches.
   Needed: eBay developer Browse API credentials to enable.
+  (No-token scraping REFUSED on purpose: eBay serves decoy template cards to bots — verified
+  2026-09-25 with TLS impersonation + cookies. Free self-serve token: developer.ebay.com.)
 - [ ] External enrichment sources bot-walled (probed 2026-09-25, single gentle requests each):
   videocardbenchmark 403/404, geekbench 403, gsmarena search Cloudflare-Turnstile, geizhals JS app-shell,
   heureka 403. Working: PassMark CPU detail pages. Needed: official APIs/keys or tolerated source.

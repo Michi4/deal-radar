@@ -1,4 +1,10 @@
-"""eBay driver — official Browse API (permitted access mode). Clean reference driver."""
+"""eBay driver — official Browse API (permitted access mode). Clean reference driver.
+
+NOTE (verified 2026-09-25): eBay's public search HTML is bot-walled — it returns decoy
+template cards ("Shop on eBay", $ prices on .de, no real titles/prices) even with TLS
+impersonation + session cookies. Scraping it would inject FAKE listings, so there is
+deliberately NO web fallback. Get a free token: developer.ebay.com → Browse API
+(self-authorized app) -> EBAY_OAUTH_TOKEN. Until then this driver reports cleanly."""
 from __future__ import annotations
 
 import os
