@@ -283,3 +283,11 @@ def test_enrich_fabric_and_imgdup():
     h1, h2 = ahash(grad()), ahash(grad())
     assert hamming(h1, h2) == 0
     assert hamming(h1, ahash(grad(True))) > 10
+
+
+def test_want_ad_penalty():
+    from deal_radar.decision import heuristic_decide
+    offer = heuristic_decide("iPhone 15 Pro 128GB", "Verkaufe mein iPhone, top Zustand", 500, "iphone 15")
+    want = heuristic_decide("ANKAUF SUCHE iPhone 15 Pro Max", "Ankauf gesucht", 500, "iphone 15")
+    assert want["want_ad"] is True and offer["want_ad"] is False
+    assert want["match"] < offer["match"]

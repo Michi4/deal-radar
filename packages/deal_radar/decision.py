@@ -297,8 +297,14 @@ def heuristic_decide(title: str, description: str, price: float | None,
         token_score = hits / max(1, len(kw))
     fuzzy = fuzz.token_set_ratio(keywords.lower(), f"{title}".lower()) / 100.0 if keywords else 0.5
     match = round(0.6 * token_score + 0.4 * fuzzy, 3)
+    import re as _re
+    # buy-request ads (Ankauf/Suche/Gesuch) are not offers — heavy penalty, evidence-logged
+    want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch)\b|[\s(](gesucht|ankauf|tausche)\b", hay))
+    if want_ad:
+        match = round(match * 0.3, 3)
     low_info = len(description or "") < 40
     return {"match": match, "fuzzy": round(fuzzy, 3), "low_info": low_info,
+            "want_ad": want_ad,
             "needs_stage_b": bool(0.35 <= match <= 0.75 or low_info)}
 
 

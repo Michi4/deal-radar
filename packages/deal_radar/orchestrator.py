@@ -103,6 +103,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         h = heuristic_decide(l.title, l.description, l.price, q.keywords)
         metrics.inc("stage_a_total")
+        want_ad_note = "buy-request ad (Ankauf/Suche), demoted" if h.get("want_ad") else ""
 
         # NL attribute requirements (e.g. connector:usb-c): soft gate, evidence-logged
         attr_hits: list[str] = []
@@ -158,6 +159,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                "completeness": round(completeness, 3), "condition": 0.5, "confidence": r.confidence}
         why = [*fr.reasons, *val_why, *attr_hits, *(f"risk: {x}" for x in r.reasons),
                *(f"ok: {x}" for x in r.counter_evidence)]
+        if want_ad_note:
+            why.append(want_ad_note)
 
         # Stage B escalation: borderline/high-value only.
         # Order: Jev (hosted) -> Kev (self-hosted) -> cloud vision model -> heuristics stand.
