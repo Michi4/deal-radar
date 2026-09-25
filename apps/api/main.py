@@ -231,6 +231,10 @@ class NLQuery(BaseModel):
     watch: bool = False
     poll_interval_s: int = 300
     limit: int = 20
+    ocr: bool = True
+    benchmarks: bool = True
+    vision: bool = True
+    details: bool = True
 
 
 @app.post("/searches/nl")
@@ -246,7 +250,9 @@ async def create_nl_search(q: NLQuery):
                 "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
                 "ranking": None, "attributes": parsed.get("attributes", {}),
                 "models": parsed.get("models", []) or [],
-                "enrich": True, "limit": max(6, q.limit // max(1, len(queries))),
+                "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
+                "vision": q.vision, "details": q.details,
+                "limit": max(6, q.limit // max(1, len(queries))),
                 "watch": False, "poll_interval_s": q.poll_interval_s,
                 "notify_on": ["new_top", "price_drop"]}
         outs.append(await _run_cached(data, force=False))
@@ -276,7 +282,9 @@ async def create_nl_search(q: NLQuery):
             "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
             "ranking": None, "attributes": parsed.get("attributes", {}),
             "models": parsed.get("models", []) or [],
-            "enrich": True, "limit": q.limit, "watch": q.watch,
+            "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
+            "vision": q.vision, "details": q.details,
+            "limit": q.limit, "watch": q.watch,
             "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
     SEARCHES[sid] = base
     store.save_search(sid, base)

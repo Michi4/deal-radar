@@ -354,8 +354,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             if vc.get("visible_text"):
                 s.listing.ocr_texts = [*s.listing.ocr_texts, f"VLM: {vc['visible_text']}"[:500]]
 
-        _vision_sem = asyncio.Semaphore(2)
-        await asyncio.gather(*(_one(it) for it in _vision_queue[:8]))  # bound cost
+        _vision_sem = asyncio.Semaphore(1)  # VLM on laptop CPU is ~100s/call — strictly serial
+        _vision_queue.sort(key=lambda s: s.final_score, reverse=True)
+        await asyncio.gather(*(_one(it) for it in _vision_queue[:3]))  # hard cap: top-3 only
         for s in scored:  # re-rank after vision evidence
             s.final_score = rank(s.match_score, s.value_score, s.risk.score,
                                  s.deal_dna.get("completeness", 0.5),
