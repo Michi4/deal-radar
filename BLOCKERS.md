@@ -5,6 +5,9 @@
   Fallback active: Frankfurt (11GB RAM) hosts Kev-0.8B + Ollama; laptop keeps dev copies.
 - [ ] eBay driver: no `EBAY_OAUTH_TOKEN`. Driver implemented, reports clean error, excluded from default searches.
   Needed: eBay developer Browse API credentials to enable.
+- [ ] External enrichment sources bot-walled (probed 2026-09-25, single gentle requests each):
+  videocardbenchmark 403/404, geekbench 403, gsmarena search Cloudflare-Turnstile, geizhals JS app-shell,
+  heureka 403. Working: PassMark CPU detail pages. Needed: official APIs/keys or tolerated source.
 - [ ] Signal account `+4367763177763`: API up on homeserver, account data on disk, but `/v1/accounts` = `[]`
   and `/v2/send` → "account does not exist". All existing `notify_*.sh` scripts fail silently too
   (always `exit 0`). Needed: re-register/verify the number (phone/SMS) or re-link primary device.

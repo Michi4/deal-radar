@@ -7,7 +7,7 @@
 - [x] Scam % + evidence + rescue lane — great deal w/ mild risk kept as `review`, test asserts (2026-09-24)
 - [x] NL search via real AI — OpenRouter `liquid/lfm-2.5-2.6b:free`, "iphone usb-c" → keywords+attrs+5 live results (2026-09-25)
 - [x] Per-field filters + delivery/location (`distance_km`, `pickup`, `shipping_available`, `shipping_cost`, total cost) (2026-09-24)
-- [x] Notifications fan-out (signal/telegram/email/ntfy/webhook/log), graceful failure tests (2026-09-25)
+- [x] Notifications fan-out (signal/telegram/email/ntfy/webhook/log), graceful failure tests (2026-09-25) + LIVE: ntfy=True, webhook=True from prod container; signal=False graceful (account unlinked, see BLOCKERS) (2026-09-25)
 - [x] Signal path wired — container → homeserver signal-api over WG verified; account attach pending user SIM verify (2026-09-25)
 - [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25)
 - [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
@@ -18,9 +18,11 @@
 - [x] CPU benchmark from real source — PassMark detail parser (fixture: 5800H=20461/2987), disk-cached, static fallback (2026-09-25)
 - [ ] Jev key — user has none; free $5 credit available at console.typesafe.ai (no waitlist)
 - [x] Real OCR on listing images (PaddleOCR worker), tested on real images — done via tesseract (see line 17)
-- [ ] Real vision check (described-item match/mismatch), tested both ways
+- [x] Real vision check (described-item match/mismatch), tested both ways — local qwen2.5vl:3b: match shows_item=1.0, mismatch clamped 1.0→0.25 via note-consistency rule; concurrent bounded pass in pipeline (2026-09-25)
 - [x] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB — done via PassMark parser (see line 18)
-- [ ] Second enricher (GPU/phone) proving generic fabric
+- [ ] Second enricher proving generic fabric: external new-price/spec sources are bot-walled
+  (videocardbenchmark 403, geekbench 403, gsmarena-search Turnstile, geizhals JS-shell, heureka 403 —
+  all probed 2026-09-25, see BLOCKERS). Fallback: internal market-cohort plugin (no network).
 - [ ] Driver registry (`install/list/update`, checksums, GitHub index) + AI driver authoring skill
 - [ ] Transports: socks5/rotating proxy live-tested w/ failover
 - [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
