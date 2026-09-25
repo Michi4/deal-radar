@@ -1,22 +1,23 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="theme-color" content="#0b0e14"/><title>deal-radar</title>
+<meta name="theme-color" content="#0b0e14"/><meta name="color-scheme" content="dark light"/><title>deal-radar</title>
+<link rel="stylesheet" href="/static/pico.min.css"/>
 <style>
 :root{--bg:#0b0e14;--cardbtn:#1d4ed8;--panel:#141a26;--line:#263049;--txt:#e6e9ef;--dim:#8b93a7;--acc:#3b82f6;--good:#10b981;--warn:#f59e0b;--bad:#ef4444}
-*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);margin:0}
-header{position:sticky;top:0;z-index:20;background:#0d1220;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-header b{font-size:18px}main{padding:14px;max-width:1200px;margin:auto}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--good);display:inline-block}.dot.off{background:var(--bad)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-input,select,button{padding:9px 10px;border-radius:9px;border:1px solid #334;background:#0f1522;color:var(--txt);font-size:14px}
-button{cursor:pointer;background:#1d4ed8;border-color:#1d4ed8;font-weight:600}button.ghost{background:transparent;border-color:var(--line)}
-button:disabled{opacity:.5;cursor:wait}small{color:var(--dim)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+header.topbar{position:sticky;top:0;z-index:20;background:var(--pico-background-color);border-bottom:1px solid var(--pico-muted-border-color);padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header.topbar b{font-size:18px;margin:0}
+main.wrap{padding:14px;max-width:1200px;margin:auto}
+.panel{background:var(--pico-card-background-color);border:1px solid var(--pico-muted-border-color);border-radius:12px;padding:12px;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row input,.row select{margin-bottom:0}
+button.ghost{background:transparent;color:var(--pico-primary);border-color:var(--pico-primary)}
+#sort,#perpage{max-width:230px;flex:0 1 auto}
+#min,#max{max-width:110px;flex:0 1 auto}
+#black,#req{flex:2 1 160px}#q{flex:3 1 220px}#nl{flex:4 1 260px}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{background:var(--pico-card-background-color);border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
 .card img.thumb{width:100%;height:160px;object-fit:cover;background:#0a0d15}
 .card .body{padding:10px}.card h4{margin:0 0 6px;font-size:14px;line-height:1.3}
-.listrow{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin:8px 0;cursor:pointer;align-items:center}
+.listrow{display:flex;gap:10px;background:var(--pico-card-background-color);border:1px solid var(--line);border-radius:10px;padding:8px;margin:8px 0;cursor:pointer;align-items:center}
 .listrow img{width:90px;height:70px;object-fit:cover;border-radius:8px;background:#0a0d15}
 .price{font-weight:700;font-size:16px}.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
 .risk-low{background:#064e3b}.risk-medium{background:#92400e}.risk-high{background:#7f1d1d}
@@ -32,32 +33,28 @@ button:disabled{opacity:.5;cursor:wait}small{color:var(--dim)}
 .car .prev{left:6px}.car .next{right:6px}.car .cnt{position:absolute;bottom:6px;right:10px;font-size:12px;color:#fff;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:99px}
 .bar{height:6px;background:#222a40;border-radius:99px;overflow:hidden;margin:3px 0}.bar i{display:block;height:100%;background:var(--acc)}
 table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.cmp th{border:1px solid var(--line);padding:6px 8px;text-align:left}
-#toasts{position:fixed;right:12px;bottom:12px;z-index:60;max-width:340px}.toast{background:var(--panel);border:1px solid var(--acc);border-radius:10px;padding:10px;margin-top:8px;font-size:13px}
+#toasts{position:fixed;right:12px;bottom:12px;z-index:60;max-width:340px}.toast{background:var(--pico-card-background-color);border:1px solid var(--acc);border-radius:10px;padding:10px;margin-top:8px;font-size:13px}
 .hist{border-left:2px solid var(--line);margin:6px 0 6px 4px;padding-left:10px;font-size:12px}
 .chip{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:4px 10px;cursor:pointer}input:checked+.chip, .chip.on{background:#1d4ed8}
 .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin:14px 0}
 .err{background:#2a1215;border:1px solid var(--bad);border-radius:10px;padding:10px;margin:8px 0;font-size:13px}
 .empty{text-align:center;color:var(--dim);padding:40px 10px}
 .tabs{display:flex;gap:6px}
-[data-theme="light"]{--bg:#f3f5f9;--panel:#ffffff;--line:#d5dbe7;--txt:#141821;--dim:#5b6478}
-[data-theme="light"] input,[data-theme="light"] select{background:#fff;color:#141821;border-color:#c9d1e0}
-[data-theme="light"] .card img.thumb{background:#e6eaf2}
 .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .7s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(360deg)}}
 .card{transition:transform .15s ease,box-shadow .15s ease}.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.35)}
 button{transition:filter .15s}.card button:hover{filter:brightness(1.25)}
 .thumbwrap{position:relative}.thumbnav{position:absolute;top:40%;background:rgba(0,0,0,.55);border:none;font-size:18px;padding:4px 8px}.thumbnav.l{left:4px}.thumbnav.r{right:4px}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);border-radius:99px;padding:4px 10px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1}}#results .card,#results .listrow{animation:fadeUp .25s ease}
 .skel{background:linear-gradient(90deg,var(--panel),#1d2540,var(--panel));background-size:200% 100%;animation:sh 1.1s infinite linear}
 @keyframes sh{to{background-position:-200% 0}}
-details.adv{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}details.adv summary{cursor:pointer;font-size:13px;color:var(--dim)}
+details.adv{border:1px solid var(--pico-muted-border-color);border-radius:10px;padding:8px;margin-top:8px}details.adv summary{cursor:pointer;font-size:13px;color:var(--dim)}
 </style>
 </head><body>
-<header><b>deal-radar</b><span class="pill"><span class="dot" id="livedot"></span><span id="livetxt">live</span></span><button class="ghost" onclick="theme()" title="light/dark">◐</button>
+<header class="topbar"><b>deal-radar</b><button class="ghost" onclick="theme()" title="light/dark" aria-label="toggle theme">◐</button>
 <div class="tabs"><button class="ghost" onclick="tab('search')">Search</button><button class="ghost" onclick="showFavs()">★ <span id="favn">0</span></button><button class="ghost" onclick="tab('watches')">Watches</button><button class="ghost" onclick="cmp()">⇄ Compare</button><button class="ghost" onclick="tab('market')">🏪 Market</button><button class="ghost" onclick="tab('store')">🧩 Store</button><button class="ghost" onclick="tab('lab')">🧪 Lab</button><a href="/admin" style="color:#7aa2ff;font-size:13px">admin</a></div>
 <div class="tabs"><button class="ghost" id="vgrid" onclick="setView('grid')">▦</button><button class="ghost" id="vlist" onclick="setView('list')">☰</button></div>
 </header>
-<main>
+<main class="wrap">
 <div class="panel" id="searchpanel">
 <div class="row"><input id="nl" aria-label="natural language search" placeholder='Ask: iphone with USB-C charging, ThinkPad under €700 without defects…' style="flex:3"/><button id="askbtn" onclick="runNL()">Ask</button></div>
 <div class="row" style="margin-top:8px"><input id="q" aria-label="keyword search" placeholder="keywords: ThinkPad T14 Ryzen 16GB" style="flex:2" value="ThinkPad"/>
@@ -88,8 +85,8 @@ details.adv{border:1px solid var(--line);border-radius:10px;padding:8px;margin-t
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
 const $=id=>document.getElementById(id);
 function setView(v){VIEW=v;localStorage.setItem('drv',v);render()}
-function theme(){const t=document.documentElement.dataset.theme==='light'?'':'light';document.documentElement.dataset.theme=t;localStorage.setItem('drt',t)}
-document.documentElement.dataset.theme=localStorage.getItem('drt')||'';
+function theme(){const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;localStorage.setItem('drt',t)}
+document.documentElement.dataset.theme=localStorage.getItem('drt')||'dark';
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('toasts').prepend(d);setTimeout(()=>d.remove(),9000)}
 function benchOf(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark')||(s.enrichments||[]).find(e=>e.field==='gpu_benchmark');return b?b.value:0}
 function perfEur(s){const b=benchOf(s);return (b&&s.listing.price)?b/s.listing.price:0}
@@ -123,11 +120,11 @@ function render(){const arr=filtered();const pp=+$('perpage').value;const pages=
 const lanes=[...new Set(LAST.map(s=>s.lane))];
 $('lanes').innerHTML=lanes.map(l=>`<label><input type="checkbox" class="lanef" value="${l}" onchange="render()"/> hide ${l}</label>`).join(' ');
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
-$('results').innerHTML=VIEW==='grid'?`<div class="grid">${slice.map(card).join('')}</div>`:slice.map(card).join('');
+$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map(card).join('')}</div>`:slice.map(card).join('');
 $('results').innerHTML+=arr.length?'':`<div class="empty">No results. Try fewer filters or another query.</div>`;
 $('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`}
 function page(d){PAGE+=d;render();window.scrollTo(0,0)}
-function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="grid">${'<div class="skel"></div>'.repeat(n)}</div>`:'<div class="skel"></div>'.repeat(3)}
+function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${'<div class="skel"></div>'.repeat(n)}</div>`:'<div class="skel"></div>'.repeat(3)}
 function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
 function pushHist(q){HIST=[q,...HIST.filter(x=>x!==q)].slice(0,8);localStorage.setItem('drh',JSON.stringify(HIST));drawHist()}
 function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" onclick="nl.value=${JSON.stringify(h)};runNL()">${h.slice(0,30)}</button>`).join('')}
@@ -173,11 +170,11 @@ toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
 async function showMarket(src){status('Market — live inventory across all searches');$('results').innerHTML='<div class="empty">loading market…</div>';
 try{const r=await(await fetch('/market?limit=60'+(src?'&source='+src:''))).json();
 $('results').innerHTML=(r.items||[]).map(x=>`<div class="card" style="padding:0"><a href="${x.url}" target="_blank" style="text-decoration:none;color:inherit">${x.image?`<img class="thumb" loading="lazy" src="${x.image}" onerror="this.remove()">`:''}<div class="body"><h4>${x.title||'(no title)'}</h4><div><span class="price">${x.price??'?'} ${x.currency||''}</span> <span class="lane">${x.source}</span></div></div></a></div>`).join('')||'<div class="empty">Market is empty — run a search first.</div>';
-$('results').innerHTML=`<div class="grid">${$('results').innerHTML}</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+$('results').innerHTML=`<div class="rgrid">${$('results').innerHTML}</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function showStore(){status('Plugin marketplace — one-click install, versioned, PR-contributed');$('results').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await(await fetch('/marketplace')).json();
 const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button onclick="installX('${kind}','${x.id}')">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
-$('results').innerHTML='<h3>Drivers</h3><div class="grid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="grid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+$('results').innerHTML='<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
 async function cmp(){if(!SID)return toast('run a search first');status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
@@ -205,6 +202,6 @@ document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('ope
 async function init(){try{const d=await(await fetch('/drivers')).json();
 $('sources').innerHTML=d.map(x=>{const ok=x.configured!==false;return `<label style="${ok?'':'opacity:.45'}" title="${ok?'':('needs '+(x.requires||[]).join(','))}"><input type="checkbox" ${ok?'checked':''} value="${x.id}"/> ${x.display_name}${ok?'':' 🔒'}</label>`}).join(' ')}catch(e){}
 drawHist();loadFavs();setView(VIEW);
-try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){toast('⚡ '+e.data.slice(0,120))}};es.onerror=()=>{$('livedot').className='dot off';$('livetxt').textContent='reconnecting…'}}catch(e){$('livedot').className='dot off'}}
+try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){toast('⚡ '+e.data.slice(0,120))}};es.onerror=()=>{toast('live feed reconnecting…')}}catch(e){}}
 init();
 </script></body></html>
