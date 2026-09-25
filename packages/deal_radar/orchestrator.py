@@ -270,10 +270,10 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                                      status=FactStatus.EXTERNAL,
                                                      sources=[Evidence(type="external",
                                                                        detail=f"videocardbenchmark.net G3D {real['g3d']} ({real['name']})")]))
-                        why.append(f"GPU {real['name']}: G3D {real['g3d']}")
+                        bn_why.append(f"GPU {real['name']}: G3D {real['g3d']}")
                         metrics.inc("benchmark_gpu_real")
                     else:
-                        why.append(f"GPU '{gfacts[0].value}' not found on videocardbenchmark")
+                        bn_why.append(f"GPU '{gfacts[0].value}' not found on videocardbenchmark")
                         metrics.inc("benchmark_gpu_miss")
             except Exception:
                 pass
