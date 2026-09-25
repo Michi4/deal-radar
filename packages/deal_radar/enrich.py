@@ -8,10 +8,12 @@ register(MyEnricher())
 Builtins: cpu_benchmark (PassMark, external w/ static fallback), market_cohort (internal stats).
 """
 from __future__ import annotations
-from typing import Any
-from .contracts import CanonicalListing, EnrichmentFact, FactStatus, Evidence
 
-REGISTRY: dict[str, "Enricher"] = {}
+from typing import Any
+
+from .contracts import CanonicalListing, EnrichmentFact, Evidence, FactStatus
+
+REGISTRY: dict[str, Enricher] = {}
 
 
 class Enricher:

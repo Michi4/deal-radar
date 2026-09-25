@@ -1,9 +1,11 @@
 """SQLite store: immutable observations (price/desc/image history) + favorites. Postgres-ready schema."""
 from __future__ import annotations
+
 import json
 import sqlite3
 import time
 from pathlib import Path
+
 from .contracts import CanonicalListing
 
 SCHEMA = """
@@ -19,7 +21,9 @@ CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
 class Store:
     def __init__(self, path: str = "data/dealradar.db"):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path, check_same_thread=False)
+        self.db = sqlite3.connect(path, check_same_thread=False, timeout=30.0, isolation_level=None)
+        self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA busy_timeout=30000")
         self.db.executescript(SCHEMA)
 
     def upsert(self, l: CanonicalListing) -> list[dict]:

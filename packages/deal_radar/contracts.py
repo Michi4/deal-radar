@@ -1,13 +1,15 @@
 """Canonical data contracts. Evidence-first: every inferred fact keeps provenance."""
 from __future__ import annotations
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class FactStatus(str, Enum):

@@ -3,6 +3,7 @@ Run: PYTHONPATH=packages:drivers uvicorn api.main:app --reload (from apps/api)
 Generic engine: intent DSL works for products, jobs, housing, anything with listings.
 """
 from __future__ import annotations
+
 import asyncio
 import json
 import os
@@ -14,17 +15,44 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "packages"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "drivers"))
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from deal_radar import metrics
 from deal_radar.driver_sdk import DriverRegistry
+from deal_radar.notifications import notifier_from_env
 from deal_radar.orchestrator import run_search
 from deal_radar.store import Store
-from deal_radar.notifications import notifier_from_env
-from deal_radar import metrics
 
 app = FastAPI(title="deal-radar", version="0.1.0")
+
+# in-app auth + rate limit (defense in depth behind Authelia/basic-auth at the edge)
+import time as _t
+
+API_KEY = os.getenv("API_KEY", "")
+_hits: dict[str, list[float]] = {}
+RATE_PER_MIN = int(os.getenv("RATE_PER_MIN", "120"))
+
+
+@app.middleware("http")
+async def _gate(request: Request, call_next):
+    if API_KEY and request.url.path not in ("/health",) and request.headers.get("x-api-key") != API_KEY:
+        return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    ip = (request.client.host if request.client else "?") if request.url.path.startswith(("/searches", "/stream")) else None
+    if ip:
+        now = _t.time()
+        lst = [t for t in _hits.get(ip, []) if now - t < 60]
+        if len(lst) >= RATE_PER_MIN:
+            return JSONResponse({"detail": "rate limited"}, status_code=429)
+        lst.append(now)
+        _hits[ip] = lst
+    return await call_next(request)
 registry = DriverRegistry()
 store = Store(os.getenv("DB_PATH", "data/dealradar.db"))
 notifier = notifier_from_env(os.environ)
@@ -98,7 +126,7 @@ async def _watcher() -> None:
                     EVENT_LOG.append(ev)
                     if ev.get("kind") == "price_drop" or (ev.get("kind") == "price" and "notify_on" in intent and "price_drop" in notify_on):
                         pass  # price-change notifies already handled in orchestrator via store diff
-        except Exception as e:  # noqa: BLE001 - watcher never dies
+        except Exception as e:
             print(f"[watcher] {e}", flush=True)
         await asyncio.sleep(15)
 
@@ -109,11 +137,13 @@ async def _start_watcher():
 
 
 def load_drivers() -> None:
-    from ebay.driver import EbayDriver
-    from willhaben.driver import WillhabenDriver
-    from kleinanzeigen.driver import KleinanzeigenDriver
-    from deal_radar.driver_sdk import transport_from_config
     import json as _json
+
+    from ebay.driver import EbayDriver
+    from kleinanzeigen.driver import KleinanzeigenDriver
+    from willhaben.driver import WillhabenDriver
+
+    from deal_radar.driver_sdk import transport_from_config
     cfg = {}
     try:
         cfg = _json.loads(os.getenv("TRANSPORTS_JSON", "{}"))

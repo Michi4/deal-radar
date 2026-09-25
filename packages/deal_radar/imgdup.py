@@ -4,7 +4,9 @@ Same physical item often appears on multiple platforms (resellers, cross-posting
 aHash (8x8) + hamming distance <= threshold => same item. Cached, best-effort, never raises.
 """
 from __future__ import annotations
+
 import io
+
 from .vision import download_image
 
 _hash_cache: dict[str, int | None] = {}
@@ -13,7 +15,7 @@ _hash_cache: dict[str, int | None] = {}
 def ahash(img_bytes: bytes) -> int | None:
     try:
         from PIL import Image
-        im = Image.open(io.BytesIO(img_bytes)).convert("L").resize((8, 8), Image.BILINEAR)
+        im = Image.open(io.BytesIO(img_bytes)).convert("L").resize((8, 8), Image.Resampling.BILINEAR)
         getdata = getattr(im, "get_flattened_data", None) or im.getdata
         px = list(getdata())
         avg = sum(px) / len(px)
@@ -36,7 +38,7 @@ def image_hash(url: str) -> int | None:
 
 
 def hamming(a: int, b: int) -> int:
-    return bin(a ^ b).count("1")
+    return (a ^ b).bit_count()
 
 
 def find_dupes(hashes: dict[str, int | None], threshold: int = 6) -> list[tuple[str, str, int]]:

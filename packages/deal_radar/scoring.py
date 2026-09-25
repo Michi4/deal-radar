@@ -1,7 +1,9 @@
 """Value scoring + enrichment fabric. Generic: works for any entity, not just deals."""
 from __future__ import annotations
+
 import re
-from .contracts import CanonicalListing, EnrichmentFact, FactStatus, Evidence
+
+from .contracts import CanonicalListing, EnrichmentFact, Evidence, FactStatus
 
 # tiny built-in CPU benchmark DB (enrichment plugin example; replace with real source)
 CPU_DB = {

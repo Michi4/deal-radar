@@ -5,11 +5,12 @@ sequential requests, parse article[data-adid] (2026 layout) with legacy .aditem 
 Never template category page-2 URLs — follow #srchrslt-pagination hrefs.
 """
 from __future__ import annotations
+
 import re
 import unicodedata
-from urllib.parse import quote
-from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
+
 from deal_radar.contracts import CanonicalListing, Seller
+from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
 
 
 def slugify(keywords: str) -> str:
@@ -34,7 +35,7 @@ def parse_price(raw: str) -> tuple[float | None, str]:
 
 
 def _ld_block(block: str) -> dict:
-    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', block, re.S)
+    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', block, re.DOTALL)
     if not m:
         return {}
     try:
@@ -47,7 +48,7 @@ def _ld_block(block: str) -> dict:
 def parse_cards(html: str, limit: int = 25) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
-    for m in re.finditer(r'<article[^>]*data-adid="(\d+)"[^>]*data-href="([^"]+)"[^>]*>(.*?)</article>', html, re.S):
+    for m in re.finditer(r'<article[^>]*data-adid="(\d+)"[^>]*data-href="([^"]+)"[^>]*>(.*?)</article>', html, re.DOTALL):
         adid, href, block = m.group(1), m.group(2), m.group(3)
         if adid in seen:
             continue
@@ -59,7 +60,7 @@ def parse_cards(html: str, limit: int = 25) -> list[dict]:
         desc = (d.group(1).strip() if d else ld.get("description", ""))[:600]
         p = re.search(r"<p[^>]*>\s*(\d[\d\.\s]*)\s*€", block)
         price, praw = parse_price(p.group(1) if p else "")
-        loc = re.search(r'data-title="locationOutline".*?<span[^>]*>([^<]{1,120})</span>', block, re.S)
+        loc = re.search(r'data-title="locationOutline".*?<span[^>]*>([^<]{1,120})</span>', block, re.DOTALL)
         location = loc.group(1).strip() if loc else ""
         img = re.search(r'<img[^>]+src="([^"]+)"', block)
         image = img.group(1) if img else ld.get("contentUrl", "")
@@ -77,7 +78,7 @@ def parse_cards(html: str, limit: int = 25) -> list[dict]:
     if out:
         return out
     # legacy layout fallback: article.aditem / .ad-listitem
-    for m in re.finditer(r'<article[^>]*class="[^"]*aditem[^"]*"[^>]*>(.*?)</article>', html, re.S):
+    for m in re.finditer(r'<article[^>]*class="[^"]*aditem[^"]*"[^>]*>(.*?)</article>', html, re.DOTALL):
         block = m.group(1)
         a = re.search(r'<a[^>]*class="[^"]*ellipsis[^"]*"[^>]*href="([^"]+)"[^>]*>\s*([^<]+?)\s*</a>', block)
         if not a:
@@ -88,7 +89,7 @@ def parse_cards(html: str, limit: int = 25) -> list[dict]:
         seen.add(href)
         p_el = re.search(r"<p[^>]*>([^<]*€[^<]*|VB|Zu verschenken)</p>", block)
         d_el = re.search(r'aditem-main--middle--description[^>]*>([^<]{0,500})', block)
-        loc_el = re.search(r'aditem-main--top--left[^>]*>.*?([A-ZÄÖÜ][^<]{1,80})<', block, re.S)
+        loc_el = re.search(r'aditem-main--top--left[^>]*>.*?([A-ZÄÖÜ][^<]{1,80})<', block, re.DOTALL)
         img = re.search(r'<img[^>]+(?:src|data-src)="([^"]+)"', block)
         p, praw = parse_price(p_el.group(1) if p_el else "")
         url = href if href.startswith("http") else f"https://www.kleinanzeigen.de{href}"
@@ -102,7 +103,7 @@ def parse_cards(html: str, limit: int = 25) -> list[dict]:
 
 
 def next_page_url(html: str) -> str | None:
-    m = re.search(r'<div[^>]*id="srchrslt-pagination"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>\s*(?:»|Weiter|next)', html, re.S | re.I)
+    m = re.search(r'<div[^>]*id="srchrslt-pagination"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>\s*(?:»|Weiter|next)', html, re.DOTALL | re.IGNORECASE)
     if not m:
         return None
     href = m.group(1)
@@ -112,11 +113,11 @@ def next_page_url(html: str) -> str | None:
 def parse_detail(html: str) -> dict:
     """Ad detail page: full description, attributes, price, seller type, images."""
     out: dict = {"attributes": {}, "images": []}
-    m = re.search(r'<p id="viewad-description-text"[^>]*itemprop="description"[^>]*>(.*?)</p>', html, re.S)
+    m = re.search(r'<p id="viewad-description-text"[^>]*itemprop="description"[^>]*>(.*?)</p>', html, re.DOTALL)
     if m:
         out["description"] = re.sub(r"<[^>]+>", " ", m.group(1))
         out["description"] = re.sub(r"\s+", " ", out["description"]).strip()[:4000]
-    for lm in re.finditer(r'class="addetailslist--detail[^"]*"[^>]*>(.*?)</li>', html, re.S):
+    for lm in re.finditer(r'class="addetailslist--detail[^"]*"[^>]*>(.*?)</li>', html, re.DOTALL):
         txt = re.sub(r"<[^>]+>", "|", lm.group(1))
         parts = [p.strip() for p in txt.split("|") if p.strip()]
         if len(parts) >= 2:
@@ -152,7 +153,6 @@ class KleinanzeigenDriver(MarketplaceDriver):
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=30)
 
     async def _fetch_page(self, url: str) -> tuple[list[dict], str | None]:
-        import asyncio as _aio
         r = await self.transport.get(url, headers=HEADERS)
         if r.status_code == 403:
             raise RuntimeError("kleinanzeigen blocked request (403) — retry later or via DE proxy")

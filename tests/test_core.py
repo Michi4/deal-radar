@@ -1,21 +1,22 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "drivers"))
 
 from deal_radar.contracts import CanonicalListing, Seller
-from deal_radar.filter_engine import apply_filters, eval_rule
-from deal_radar.risk_engine import assess_risk, apply_risk_policy
-from deal_radar.scoring import enrich_cpu, value_score, rank
 from deal_radar.decision import heuristic_decide
+from deal_radar.driver_sdk import CircuitBreaker, DriverRegistry, SearchQuery
+from deal_radar.filter_engine import apply_filters
 from deal_radar.orchestrator import dedupe_key, run_search
-from deal_radar.driver_sdk import DriverRegistry, SearchQuery, CircuitBreaker
+from deal_radar.risk_engine import apply_risk_policy, assess_risk
+from deal_radar.scoring import enrich_cpu, rank, value_score
 from deal_radar.store import Store
 
 
 def L(**kw):
-    d = dict(title="ThinkPad T14 Ryzen 7 PRO 6850U 16GB", description="Great laptop, pickup possible, works perfectly",
-             price=579, currency="EUR", images=["a", "b", "c", "d"], url="https://x/1")
+    d = {"title": "ThinkPad T14 Ryzen 7 PRO 6850U 16GB", "description": "Great laptop, pickup possible, works perfectly",
+             "price": 579, "currency": "EUR", "images": ["a", "b", "c", "d"], "url": "https://x/1"}
     d.update(kw)
     return CanonicalListing(id="t:1", source="t", native_id="1", seller=Seller(name="s", rating=4.8), **d)
 
@@ -70,7 +71,7 @@ def test_circuit_breaker():
 
 
 def _fake_driver(items, err=None, driver_id="fake"):
-    from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest
+    from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver
     class F(MarketplaceDriver):
         manifest = DriverManifest(id=driver_id, display_name=driver_id, capabilities=["search"])
         async def search(self, query: SearchQuery):
@@ -98,8 +99,8 @@ def test_orchestrator_offline():
 
 
 def test_driver_fixture_parsing():
-    from willhaben.driver import parse_next_data, parse_dom_fallback
-    from kleinanzeigen.driver import parse_cards, parse_price, next_page_url, slugify
+    from kleinanzeigen.driver import next_page_url, parse_cards, parse_price, slugify
+    from willhaben.driver import parse_dom_fallback, parse_next_data
     assert parse_next_data("") == []
     assert parse_dom_fallback("") == []
     assert parse_cards("") == []
@@ -162,7 +163,8 @@ def test_location_delivery_filters():
 
 def test_notifier_fanout():
     import asyncio
-    from deal_radar.notifications import notifier_from_env, LogNotifier, MultiNotifier
+
+    from deal_radar.notifications import LogNotifier, MultiNotifier, notifier_from_env
     n = notifier_from_env({})
     assert isinstance(n, LogNotifier)
     m = notifier_from_env({"NOTIFIERS_JSON": '[{"type":"log"},{"type":"webhook","url":"http://127.0.0.1:9/nope"}]'})
@@ -174,6 +176,7 @@ def test_notifier_fanout():
 
 def test_signal_notifier_graceful_without_account():
     import asyncio
+
     from deal_radar.notifications import SignalNotifier
     n = SignalNotifier("http://127.0.0.1:9", "+430000000000")
     assert asyncio.run(n.send("t", "b")) is False
@@ -181,6 +184,7 @@ def test_signal_notifier_graceful_without_account():
 
 def test_nl_fallback():
     import asyncio
+
     from deal_radar.decision import nl_fallback, nl_to_intent
     p = nl_fallback("iphone which uses a usb c plug to charge")
     assert "iphone" in p["keywords"] and p["attributes"].get("connector") == "usb-c"
@@ -194,13 +198,14 @@ def test_nl_fallback():
 
 def test_passmark_parser_real_fixture():
     from deal_radar.benchmarks import parse_passmark_detail
-    html = open(Path(__file__).parent / "fixtures" / "passmark-5800h.html", encoding="utf-8", errors="ignore").read()
+    html = Path(__file__).parent.joinpath("fixtures/passmark-5800h.html").read_text(encoding="utf-8", errors="ignore")
     multi, single = parse_passmark_detail(html)
     assert multi == 20461 and single == 2987
 
 
 def test_ocr_worker_guarded():
     import shutil
+
     from deal_radar.vision import ocr_bytes
     assert ocr_bytes(b"") == ""
     assert ocr_bytes(None) == ""
@@ -211,8 +216,14 @@ def test_ocr_worker_guarded():
 
 def test_model_gate_and_accessory_penalty():
     import asyncio
+
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
     from deal_radar.orchestrator import run_search
-    from deal_radar.driver_sdk import DriverRegistry, SearchQuery, MarketplaceDriver, DriverManifest
     good = L(title="iPhone 15 Pro 128GB", price=700)
     case = L(title="Hülle Case für iPhone 15 Pro", price=15)
     old = L(title="iPhone 12 64GB", price=300)
@@ -236,8 +247,10 @@ def test_model_gate_and_accessory_penalty():
 
 
 def test_favorites_history():
+    import os
+    import tempfile
+
     from deal_radar.store import Store
-    import tempfile, os
     p = os.path.join(tempfile.mkdtemp(), "f.db")
     s = Store(p)
     l1 = L(price=500)
@@ -272,8 +285,9 @@ def test_enrich_fabric_and_imgdup():
     assert any(f.field == "discount_vs_median" and f.value > 0 for f in facts)
     assert MarketCohortEnricher().supports(L(price=None)) is False
     # ahash: identical bytes -> distance 0; gradient vs inverted gradient -> far
-    from PIL import Image
     import io
+
+    from PIL import Image
     def grad(inv=False):
         im = Image.new("L", (16, 16))
         im.putdata([255 - x * 16 if inv else x * 16 for x in range(16) for _ in range(16)])
@@ -302,25 +316,23 @@ def test_parts_ad_penalty():
 
 
 def test_transports_config():
-    from deal_radar.driver_sdk import transport_from_config, DirectTransport, ProxyTransport, RotatingProxyTransport
+    from deal_radar.driver_sdk import (
+        DirectTransport,
+        ProxyTransport,
+        RotatingProxyTransport,
+        transport_from_config,
+    )
     assert isinstance(transport_from_config(None), DirectTransport)
     assert isinstance(transport_from_config({"type": "proxy", "url": "http://u:p@h:1"}), ProxyTransport)
     assert isinstance(transport_from_config({"type": "rotating", "urls": ["http://h:1", "http://h:2"]}), RotatingProxyTransport)
 
 
-def test_willhaben_detail_live():
-    import asyncio
-    from willhaben.driver import WillhabenDriver
-    async def go():
-        d = await WillhabenDriver().fetch_detail("866637457")
-        assert d and d.price == 8.0 and d.seller.account_age_days is not None
-        assert "Selbstabholung" in d.description
-    asyncio.run(go())
-
 
 def test_search_persistence():
+    import os
+    import tempfile
+
     from deal_radar.store import Store
-    import tempfile, os
     p = os.path.join(tempfile.mkdtemp(), "s.db")
     s = Store(p)
     s.save_search("s_1", {"keywords": "thinkpad", "watch": True})
@@ -331,7 +343,7 @@ def test_search_persistence():
 
 def test_kleinanzeigen_detail():
     from kleinanzeigen.driver import parse_detail
-    html = open(Path(__file__).parent / "fixtures" / "kleinanzeigen-detail.html", encoding="utf-8", errors="ignore").read()
+    html = Path(__file__).parent.joinpath("fixtures/kleinanzeigen-detail.html").read_text(encoding="utf-8", errors="ignore")
     d = parse_detail(html)
     assert len(d.get("description", "")) > 200
     assert d.get("price") == 179.0
@@ -345,3 +357,35 @@ def test_intent_key_and_default_sources():
     k = _intent_key({"keywords": "x", "models": ["a", "b"], "hard": {"rules": []}})
     assert isinstance(k, str) and len(k) == 32
     assert "ebay" not in default_sources()
+
+
+def test_app_gate_and_ratelimit():
+    import sys
+    sys.path.insert(0, "apps")
+    import os
+    os.environ["API_KEY"] = "secret123"
+    os.environ["RATE_PER_MIN"] = "2"
+    import importlib
+
+    import api.main as m
+    importlib.reload(m)
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    assert c.get("/searches/xxx").status_code == 401
+    assert c.get("/health").status_code == 200
+    h = {"x-api-key": "secret123"}
+    assert c.get("/searches/xxx", headers=h).status_code == 200
+    assert c.get("/searches/xxx", headers=h).status_code == 200
+    assert c.get("/searches/xxx", headers=h).status_code == 429
+    del os.environ["API_KEY"], os.environ["RATE_PER_MIN"]
+    importlib.reload(m)
+
+
+def test_willhaben_real_search_fixture():
+    from willhaben.driver import parse_next_data
+    html = Path(__file__).parent.joinpath("fixtures/willhaben-search.html").read_text(
+        encoding="utf-8", errors="ignore")
+    items = parse_next_data(html, 30)
+    assert len(items) >= 10
+    assert all(i["title"] and i["url"].startswith("https://www.willhaben.at/iad/") for i in items)
+    assert any(i["price"] for i in items) and any(i["images"] for i in items)

@@ -6,19 +6,27 @@ Stage B (Jev/Kev/vision) only for borderline listings to stay fast + cheap.
 Generic over verticals: intent DSL drives products, jobs, real estate, anything.
 """
 from __future__ import annotations
+
 import asyncio
 import os
 import statistics
 import time
 from typing import Any
 
-from .contracts import ScoredListing, Evidence
+from . import metrics
+from .contracts import Evidence, ScoredListing
+from .decision import (
+    STAGE_B_QUESTIONS,
+    heuristic_decide,
+    jev_decide,
+    kev_decide,
+    stage_b_to_scores,
+    stage_b_via_cloud,
+)
 from .driver_sdk import DriverRegistry, SearchQuery
 from .filter_engine import apply_filters
-from .risk_engine import assess_risk, apply_risk_policy
-from .scoring import enrich_cpu, value_score, rank
-from .decision import heuristic_decide, jev_decide, kev_decide, STAGE_B_QUESTIONS, stage_b_to_scores, stage_b_via_cloud
-from . import metrics
+from .risk_engine import apply_risk_policy, assess_risk
+from .scoring import enrich_cpu, rank, value_score
 
 
 def dedupe_key(title: str, images: list[str]) -> str:
@@ -139,7 +147,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             cpu_fact = next((e for e in enrich if e.field == "cpu"), None)
             if cpu_fact:
                 try:
-                    from .benchmarks import fetch_passmark_cpu, STATIC_DB
+                    from .benchmarks import fetch_passmark_cpu
                     real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
                     if real:
                         for e in enrich:
@@ -192,7 +200,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         _sb_sem = asyncio.Semaphore(2)  # Frankfurt Kev is 2 shared vCPUs — gentle
 
         async def _sb(item):
-            s, h, keywords = item
+            s, _h, keywords = item
             sb: dict = {}
             try:
                 async with _sb_sem:
@@ -306,7 +314,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         ctx = {"prices": [s.listing.price for s in scored if s.listing.price],
                "median": median, "sources": sources}
         for s in scored:
-            for eid, enr in REGISTRY.items():
+            for enr in REGISTRY.values():
                 try:
                     if enr.supports(s.listing):
                         s.enrichments.extend(enr.enrich(s.listing, ctx))
@@ -317,7 +325,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     # cross-listing same-item detection (same photo hash on multiple sources; capped for speed)
     try:
         if len({s.listing.source for s in scored}) > 1:
-            from .imgdup import image_hash, find_dupes
+            from .imgdup import find_dupes, image_hash
             cand = [s for s in scored if s.listing.images][:12]
             hashes = {s.listing.id: image_hash(s.listing.images[0]) for s in cand}
         for a, b, dist in find_dupes(hashes):

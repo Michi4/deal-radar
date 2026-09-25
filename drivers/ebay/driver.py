@@ -1,10 +1,11 @@
 """eBay driver — official Browse API (permitted access mode). Clean reference driver."""
 from __future__ import annotations
+
 import os
-import re
 from urllib.parse import quote_plus
-from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
+
 from deal_radar.contracts import CanonicalListing, Seller
+from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
 
 
 class EbayDriver(MarketplaceDriver):

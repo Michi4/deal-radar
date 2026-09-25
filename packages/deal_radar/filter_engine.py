@@ -1,8 +1,10 @@
 """Per-field hard filter engine. Missing fields never error — rule is skipped as N/A."""
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 from typing import Any
+
 from .contracts import CanonicalListing
 
 
@@ -108,6 +110,7 @@ def eval_rule(listing: CanonicalListing, rule: dict[str, Any]) -> tuple[bool, st
             if any(str(v).lower() in tl for v in vals):
                 return True, f"{f} in {vals}", False
         elif op == "not_in":
+            vals = rule.get("values", [])
             if any(str(v).lower() in tl for v in vals):
                 return False, f"{f} in blacklist {vals}", False
         elif op == "exists":
@@ -127,12 +130,10 @@ def apply_filters(listing: CanonicalListing, hard: dict[str, Any] | None,
     missing: list[str] = []
     hard = hard or {}
     # price bounds shorthand
-    if hard.get("max_price") is not None and listing.price is not None:
-        if listing.price > float(hard["max_price"]):
-            return FilterResult(False, [f"price {listing.price} > max {hard['max_price']}"], missing)
-    if hard.get("min_price") is not None and listing.price is not None:
-        if listing.price < float(hard["min_price"]):
-            return FilterResult(False, [f"price {listing.price} < min {hard['min_price']}"], missing)
+    if hard.get("max_price") is not None and listing.price is not None and listing.price > float(hard["max_price"]):
+        return FilterResult(False, [f"price {listing.price} > max {hard['max_price']}"], missing)
+    if hard.get("min_price") is not None and listing.price is not None and listing.price < float(hard["min_price"]):
+        return FilterResult(False, [f"price {listing.price} < min {hard['min_price']}"], missing)
     for rule in (blacklist or []):
         ok, reason, was_missing = eval_rule(listing, rule)
         if was_missing:
