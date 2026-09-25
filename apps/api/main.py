@@ -226,7 +226,10 @@ def metrics_ep():
 @app.get("/metrics.json")
 def metrics_json():
     return {"metrics": metrics.snapshot(), "drivers": {d: registry.get(d).health.model_dump() for d in registry.ids()},
-            "searches": len(SEARCHES), "events": len(EVENT_LOG)}
+            "searches": len(SEARCHES), "events": len(EVENT_LOG),
+            "watchlist": [{"id": sid, "keywords": i.get("keywords", ""), "watch": bool(i.get("watch", False)),
+                           "sources": i.get("sources", [])} for sid, i in SEARCHES.items()],
+            "events_tail": EVENT_LOG[-30:]}
 
 
 @app.get("/admin", response_class=HTMLResponse)
