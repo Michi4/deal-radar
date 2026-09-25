@@ -59,21 +59,22 @@ CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")  #
 
 
 async def _post_chat(base: str, key: str, model: str, system: str, user: str,
-                   max_tokens: int, timeout: float = 60.0) -> dict | None:
+                   max_tokens: int, timeout: float = 60.0, raw: bool = False) -> dict | None:
     import json as _json
     try:
         headers = {"Content-Type": "application/json"}
         if key:
             headers["Authorization"] = f"Bearer {key}"
+        body: dict = {"model": model,
+                      "messages": [{"role": "system", "content": system},
+                                   {"role": "user", "content": user}],
+                      "temperature": 0.2, "max_tokens": max_tokens,
+                      "think": False,  # ollama: skip chain-of-thought, answer directly
+                      "options": {"num_predict": max_tokens}}
+        if not raw:
+            body["response_format"] = {"type": "json_object"}
         async with httpx.AsyncClient(timeout=timeout) as c:
-            r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers,
-                             json={"model": model,
-                                   "messages": [{"role": "system", "content": system},
-                                                {"role": "user", "content": user}],
-                                   "response_format": {"type": "json_object"},
-                                   "temperature": 0.2, "max_tokens": max_tokens,
-                                   "think": False,  # ollama: skip chain-of-thought, answer directly
-                                   "options": {"num_predict": max_tokens}})
+            r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers, json=body)
             if r.status_code == 429:
                 return {"__rate_limited": True}
             r.raise_for_status()
@@ -128,6 +129,47 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
         if round_no == 0:
             await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
     print(f"[cloud] all models failed ({last_err})", flush=True)
+    return None
+
+
+async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | None:
+    """Raw code text: local Ollama first, then OpenRouter failover models. None when all fail."""
+    import asyncio as _aio
+
+    async def _raw(base: str, key: str, model: str) -> str | None:
+        try:
+            headers = {"Content-Type": "application/json"}
+            if key:
+                headers["Authorization"] = f"Bearer {key}"
+            async with httpx.AsyncClient(timeout=180.0) as c:
+                r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers,
+                                 json={"model": model,
+                                       "messages": [{"role": "system", "content": system},
+                                                    {"role": "user", "content": user}],
+                                       "temperature": 0.2, "max_tokens": max_tokens, "think": False,
+                                       "options": {"num_predict": max_tokens}})
+                if r.status_code == 429:
+                    return None
+                r.raise_for_status()
+                return r.json()["choices"][0]["message"]["content"] or None
+        except Exception:
+            return None
+
+    local_base = os.getenv("LOCAL_API_URL", "")
+    if local_base:
+        code = await _raw(local_base, "", os.getenv("LOCAL_MODEL", "qwen2.5:3b"))
+        if code:
+            return code
+    if CLOUD_API_URL and CLOUD_API_KEY:
+        for m in list(CLOUD_MODELS):
+            code = await _raw(CLOUD_API_URL, CLOUD_API_KEY, m)
+            if code:
+                return code
+        await _aio.sleep(5)
+        for m in list(CLOUD_MODELS):
+            code = await _raw(CLOUD_API_URL, CLOUD_API_KEY, m)
+            if code:
+                return code
     return None
 
 

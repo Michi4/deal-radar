@@ -11,7 +11,7 @@
 - [x] Signal path wired — container → homeserver signal-api over WG verified; account attach pending user SIM verify (2026-09-25)
 - [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25) + watcher autonomy PROVEN live (search_runs 8→9 on 45s watch) (2026-09-25)
 - [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
-- [x] `./scripts/verify.sh` — exists, GREEN (pytest 23, compileall, API import, docker via CI/server) (2026-09-25)
+- [x] Quality gates — ruff + mypy + coverage≥70 all green locally, in verify.sh and CI (2026-09-25)
 - [ ] ebay driver live test (needs `EBAY_OAUTH_TOKEN`) — BLOCKED on user key
 - [x] Kev self-hosted live (`KEV_URL`) — Kev-0.8B on laptop CPU (LAN `192.168.1.172:8001`), round-trip verified, Stage B ran 9x in a live 20-listing search (2026-09-25)
 - [x] Real OCR on listing images — tesseract in image, live search OCR'd 3 photos ("Thinkpad T490" from pixels) (2026-09-25)
