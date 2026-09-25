@@ -6,6 +6,7 @@ so Jev (hosted), Kev (self-hosted, Apache-2.0) and heuristics are interchangeabl
 """
 from __future__ import annotations
 import os
+import re
 from typing import Any
 import httpx
 
@@ -69,11 +70,27 @@ async def _post_chat(base: str, key: str, model: str, system: str, user: str,
                                                 {"role": "user", "content": user}],
                                    "response_format": {"type": "json_object"},
                                    "temperature": 0.2, "max_tokens": max_tokens,
+                                   "think": False,  # ollama: skip chain-of-thought, answer directly
                                    "options": {"num_predict": max_tokens}})
             if r.status_code == 429:
                 return {"__rate_limited": True}
             r.raise_for_status()
-            return _json.loads(r.json()["choices"][0]["message"]["content"])
+            msg = r.json()["choices"][0]["message"]
+            content = (msg.get("content") or "").strip()
+            if content:
+                try:
+                    return _json.loads(content)
+                except Exception:
+                    pass
+            # small local models sometimes put JSON in `reasoning` with empty content
+            blob = f"{msg.get('reasoning', '')}\n{content}"
+            m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", blob, re.S) or re.search(r"(\{.*\})", blob, re.S)
+            if m:
+                try:
+                    return _json.loads(m.group(1))
+                except Exception:
+                    pass
+            return {"__error": f"no JSON in response: {blob[:120]}"}
     except Exception as e:  # noqa: BLE001
         return {"__error": str(e)[:150]}
 
@@ -194,7 +211,11 @@ async def nl_to_intent(text: str) -> dict:
                                "op": "not_contains", "value": str(ex)})
         # final guard (after follow-up): never exclude words that are part of the product itself
         modelblob = _re2.sub(r"[^a-z0-9]+", "", " ".join(models).lower())
-        bl = [b for b in bl if not _selfterm(str(b.get("value", "")))]
+        makers = {"apple", "samsung", "lenovo", "xiaomi", "sony", "google", "huawei", "oneplus",
+                  "dell", "hp", "asus", "acer", "msi", "nokia", "motorola", "nothing", "fairphone"}
+        def _maker(v: str) -> bool:
+            return _re2.sub(r"[^a-z0-9]+", "", v.lower()) in makers
+        bl = [b for b in bl if not (_selfterm(str(b.get("value", ""))) or _maker(str(b.get("value", ""))))]
         intent = {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
                   "hard": cloud.get("hard", {}), "blacklist": bl,
                   "whitelist": [], "attributes": cloud.get("attributes", {}),
