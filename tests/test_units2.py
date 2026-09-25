@@ -200,19 +200,24 @@ def test_ailab_generate_mocked():
 
 
 def test_ailab_paths():
-    import tempfile, os
+    import tempfile
+    from pathlib import Path
     from deal_radar import ailab
     tmp = tempfile.mkdtemp()
-    ailab.LAB_DIR = ailab.LAB_DRIVERS = __import__("pathlib").Path(tmp)
-    assert ailab._slug("!!!") .startswith("custom-")
-    p = ailab.save_driver("x = 1", "d1")
-    assert p.name == "driver.py" and ailab.load_custom_enrichers() == []
-    code = ("from deal_radar.enrich import Enricher, register\n"
-            "from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence\n"
-            "class TLab3Enricher(Enricher):\n    id = \"tlab3\"\n    version = \"0.0.1\"\n"
-            "    def enrich(self, listing, ctx):\n        return []\n"
-            "register(TLab3Enricher())\n")
-    pe = ailab.save_enricher(code, "tlab3")
-    assert ailab.load_custom_enrichers() == ["tlab3"]
+    old_dir, old_drv = ailab.LAB_DIR, ailab.LAB_DRIVERS
+    ailab.LAB_DIR = ailab.LAB_DRIVERS = Path(tmp)
+    try:
+        assert ailab._slug("!!!").startswith("custom-")
+        p = ailab.save_driver("x = 1", "d1")
+        assert p.name == "driver.py" and ailab.load_custom_enrichers() == []
+        code = ("from deal_radar.enrich import Enricher, register\n"
+                "from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence\n"
+                "class TLab3Enricher(Enricher):\n    id = \"tlab3\"\n    version = \"0.0.1\"\n"
+                "    def enrich(self, listing, ctx):\n        return []\n"
+                "register(TLab3Enricher())\n")
+        pe = ailab.save_enricher(code, "tlab3")
+        assert pe.exists() and ailab.load_custom_enrichers() == ["tlab3"]
+    finally:
+        ailab.LAB_DIR, ailab.LAB_DRIVERS = old_dir, old_drv
     from deal_radar.enrich import REGISTRY
     REGISTRY.pop("tlab3", None)
