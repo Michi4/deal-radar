@@ -20,6 +20,11 @@ await page.goto(BASE + '/admin', { waitUntil: 'networkidle' });
 await page.waitForFunction(() => document.querySelectorAll('#drivers td').length > 0, null, { timeout: 30000 });
 check('admin shows drivers', true);
 
+await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+await page.click('text=🏪 Market');
+await page.waitForFunction(() => document.querySelector('#results').textContent.length > 20, null, { timeout: 30000 });
+check('market tab renders', true);
+
 const m = await (await fetch(BASE + '/metrics.json')).json();
 check('metrics.json has drivers', Object.keys(m.drivers || {}).length >= 2);
 
