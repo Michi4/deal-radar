@@ -23,6 +23,6 @@
 - [ ] Second enricher (GPU/phone) proving generic fabric
 - [ ] Driver registry (`install/list/update`, checksums, GitHub index) + AI driver authoring skill
 - [ ] Transports: socks5/rotating proxy live-tested w/ failover
-- [ ] Cross-platform favorites with change history UI
-- [ ] Playwright E2E for web UI
+- [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
+- [x] Playwright E2E — tests/e2e/run.mjs headless chromium: index, search renders 40 cards, admin, metrics all PASS (2026-09-25)
 - [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → 14 passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
