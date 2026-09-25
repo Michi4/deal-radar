@@ -87,8 +87,12 @@ async def _run():
     reg = DriverRegistry()
     reg.register(_fake_driver([L(price=500), L(title="Other", price=900)], driver_id="good"))
     reg.register(_fake_driver([], err="boom", driver_id="bad"))
-    out = await run_search({"keywords": "thinkpad", "sources": ["good", "bad"], "hard": {"max_price": 700},
-                            "risk": {}, "limit": 10, "enrich": True}, reg, Store("/tmp/opencode/test-dealradar.db"))
+    st = Store("/tmp/opencode/test-dealradar.db")
+    try:
+        out = await run_search({"keywords": "thinkpad", "sources": ["good", "bad"], "hard": {"max_price": 700},
+                                "risk": {}, "limit": 10, "enrich": True}, reg, st)
+    finally:
+        st.close()
     assert out["results"] and out["results"][0]["final_score"] >= 0
     assert out["driver_errors"].get("bad")  # failing driver reported cleanly, good one still served
 
@@ -263,6 +267,7 @@ def test_favorites_history():
     h = s.favorites_with_history()
     assert len(h) == 1 and h[0]["price"] == 450
     assert any(o["kind"] == "price" and o["new"] == "450.0" for o in h[0]["history"])
+    s.close()
 
 
 def test_registry_check_builtin_drivers():
@@ -339,6 +344,7 @@ def test_search_persistence():
     assert s.load_searches()["s_1"]["watch"] is True
     s.delete_search("s_1")
     assert "s_1" not in s.load_searches()
+    s.close()
 
 
 def test_kleinanzeigen_detail():
