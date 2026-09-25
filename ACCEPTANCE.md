@@ -35,3 +35,7 @@
 - [x] Full PassMark spec facts (class/socket/clocks/cores/TDP/cache/ranks/suite) + title-verified lookup + vague-CPU refusal (2026-09-25)
 - [x] CPU resolution pipeline (override > mention > model-family + partial + ambiguity guard) + contradiction flags + drawer correction UI (2026-09-25)
 - [x] GPU benchmark enrichment live (videocardbenchmark G3D table via TLS impersonation, normalized lookup, gpu/€ sorts) (2026-09-25)
+- [x] Background jobs (POST returns instantly, poll progress, close site, notified on done) + multi-query `;` (2026-09-25)
+- [x] Relevance floor 0.12 + kind classifier (want/parts/accessory incl. cases/boxes/cables) + required-words AND + min price (2026-09-25)
+- [x] Public marketplace (versioned index, 1-click install, store UI, PR contributions) live (2026-09-25)
+- [x] Driver configured flags (ebay locked in UI until token) (2026-09-25)
