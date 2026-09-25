@@ -84,10 +84,16 @@ def install(entry: dict, index_source: str = "") -> dict:
         elif src.startswith("github:"):
             import subprocess
             _, rest = src.split(":", 1)
-            repo, _, sub = rest.partition(":")
+            sub = ""
+            if ":" in rest:
+                rest, _, sub = rest.partition(":")
+            repo, _, ref = rest.partition("@")
             tmp = COMMUNITY / f".tmp-{entry['id']}"
-            subprocess.run(["git", "clone", "--depth", "1", f"https://github.com/{repo}", str(tmp)],
-                           check=True, timeout=120)
+            cmd = ["git", "clone", "--depth", "1"]
+            if ref:
+                cmd += ["--branch", ref]
+            cmd += [f"https://github.com/{repo}", str(tmp)]
+            subprocess.run(cmd, check=True, timeout=180)
             shutil.move(str(tmp / sub) if sub else str(tmp), dest)
         else:
             return {"ok": False, "error": f"unsupported source: {src}"}
