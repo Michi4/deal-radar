@@ -276,3 +276,16 @@ def test_cpu_override_contradiction_unresolved():
              "details": False}, reg2, None, None))
     assert any("CPU unknown" in w for w in out2["results"][0]["why"])
     st.close()
+
+
+def test_market_endpoint():
+    import sys
+    sys.path.insert(0, "apps")
+    import os
+    os.environ.pop("API_KEY", None)
+    from fastapi.testclient import TestClient
+    import api.main as m
+    c = TestClient(m.app)
+    r = c.get("/market?limit=5")
+    assert r.status_code == 200
+    assert "items" in r.json()
