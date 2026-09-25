@@ -84,7 +84,7 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
     import asyncio as _aio
     # 1) local backend (ollama OpenAI-compatible, no key needed)
     local_base = os.getenv("LOCAL_API_URL", "")
-    local_model = os.getenv("LOCAL_MODEL", "qwen3:0.6b")
+    local_model = os.getenv("LOCAL_MODEL", "qwen2.5:3b")
     if local_base:
         out = await _post_chat(local_base, "", local_model, system, user, max_tokens, timeout=90.0)
         if out and not out.get("__error") and not out.get("__rate_limited"):
@@ -170,6 +170,14 @@ async def nl_to_intent(text: str) -> dict:
         for ex in (cloud.get("exclude", []) or []):
             bl.append({"fields": ["title", "description", "tags"], "op": "not_contains", "value": str(ex)})
         models = cloud.get("models", []) or []
+        # guard: never exclude words that are part of the product itself (e.g. 'Apple' for iPhones)
+        import re as _re2
+        keep = _re2.sub(r"[^a-z0-9]+", "", cloud["keywords"].lower())
+        modelblob = _re2.sub(r"[^a-z0-9]+", "", " ".join(models).lower())
+        def _selfterm(v: str) -> bool:
+            n = _re2.sub(r"[^a-z0-9]+", "", v.lower())
+            return bool(n) and (n in keep or n in modelblob)
+        bl = [b for b in bl if not _selfterm(str(b.get("value", "")))]
         # follow-up: model skipped model resolution but query implies specific models
         if not models and any(w in text.lower() for w in
                               ("which", "with", "mit", "welche", "ohne", "that", "uses", "having", "haben")):
@@ -184,6 +192,9 @@ async def nl_to_intent(text: str) -> dict:
                 for ex in (fix.get("exclude", []) or []):
                     bl.append({"fields": ["title", "description", "tags"],
                                "op": "not_contains", "value": str(ex)})
+        # final guard (after follow-up): never exclude words that are part of the product itself
+        modelblob = _re2.sub(r"[^a-z0-9]+", "", " ".join(models).lower())
+        bl = [b for b in bl if not _selfterm(str(b.get("value", "")))]
         intent = {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
                   "hard": cloud.get("hard", {}), "blacklist": bl,
                   "whitelist": [], "attributes": cloud.get("attributes", {}),
