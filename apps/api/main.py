@@ -47,13 +47,6 @@ def default_sources() -> list[str]:
 
 
 def _intent_key(intent: dict) -> str:
-    import os as _os
-    out = []
-    for d in registry.manifests():
-        if d.id == "ebay" and not _os.getenv("EBAY_OAUTH_TOKEN"):
-            continue  # needs credentials; user said ignore for now
-        out.append(d.id)
-    return out or registry.ids()
     import hashlib
     return hashlib.sha256(json.dumps(intent, sort_keys=True, default=str).encode()).hexdigest()[:32]
 
