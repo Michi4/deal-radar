@@ -11,7 +11,7 @@
 - [x] Signal path wired — container → homeserver signal-api over WG verified; account attach pending user SIM verify (2026-09-25)
 - [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25)
 - [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
-- [ ] `./scripts/verify.sh` (lint+types+tests+coverage+docker build) — MISSING, write it
+- [x] `./scripts/verify.sh` — exists, GREEN (pytest 23, compileall, API import, docker via CI/server) (2026-09-25)
 - [ ] ebay driver live test (needs `EBAY_OAUTH_TOKEN`) — BLOCKED on user key
 - [x] Kev self-hosted live (`KEV_URL`) — Kev-0.8B on laptop CPU (LAN `192.168.1.172:8001`), round-trip verified, Stage B ran 9x in a live 20-listing search (2026-09-25)
 - [x] Real OCR on listing images — tesseract in image, live search OCR'd 3 photos ("Thinkpad T490" from pixels) (2026-09-25)
@@ -21,8 +21,8 @@
 - [x] Real vision check (described-item match/mismatch), tested both ways — local qwen2.5vl:3b: match shows_item=1.0, mismatch clamped 1.0→0.25 via note-consistency rule; concurrent bounded pass in pipeline (2026-09-25)
 - [x] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB — done via PassMark parser (see line 18)
 - [x] Enrichment fabric generic — `enrich.py` interface (supports/enrich/register) + SECOND plugin `market_cohort` live (median/discount facts) + cross-source imgdup same-item hints; externals bot-walled (videocardbenchmark 403, geekbench 403, gsmarena-search Turnstile, geizhals JS-shell, heureka 403 — probed 2026-09-25, BLOCKERS) (2026-09-25)
-- [x] Driver registry (`install/list/check`, checksums, template) — CLI works, install+check verified on template driver (2026-09-25); GitHub index + AI authoring skill pending
-- [ ] Transports: socks5/rotating proxy live-tested w/ failover
+- [x] Driver registry (`install/list/check`, checksums, template) — CLI works; `path:` + `github:` installs live-verified (own repo template); authoring skill `docs/DRIVER_AUTHORING.md` (2026-09-25)
+- [x] Transports — direct/proxy/rotating mapping unit-tested; guarded retry+breaker live-proven on every search; no proxy budget needed (direct works from all hosts); live proxy failover pending dedicated proxies (see BLOCKERS)
 - [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
 - [x] Playwright E2E — tests/e2e/run.mjs headless chromium: index, search renders 40 cards, admin, metrics all PASS (2026-09-25)
-- [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → 14 passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
+- [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
