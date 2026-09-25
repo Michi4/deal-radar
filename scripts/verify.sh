@@ -10,6 +10,13 @@ echo "== mypy =="
 .venv/bin/python -m mypy packages/deal_radar
 echo "== pytest + coverage =="
 .venv/bin/python -m pytest -q --cov --cov-report=term-missing
+echo "== web JS syntax =="
+if command -v node >/dev/null 2>&1; then
+  .venv/bin/python -c "import re; h=open('web/index.html').read(); m=re.findall(r'<script>(.*?)</script>', h, re.S); open('/tmp/dr-ui.js','w').write(m[0])"
+  node --check /tmp/dr-ui.js && echo "JS OK"
+else
+  echo "SKIP: node missing (E2E covers this in CI)"
+fi
 echo "== compile all =="
 .venv/bin/python -m compileall -q packages drivers apps/api
 echo "== API import =="

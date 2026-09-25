@@ -25,3 +25,4 @@ check('metrics.json has drivers', Object.keys(m.drivers || {}).length >= 2);
 
 await browser.close();
 process.exit(fail ? 1 : 0);
+
