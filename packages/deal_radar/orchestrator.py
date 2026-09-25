@@ -162,7 +162,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 enrich = [e for e in enrich if e.field not in ("cpu", "cpu_benchmark")] + [cpu_fact]
                 bn_why.append(f"CPU manually set to {override} (AI-checking against PassMark)")
             # model-family resolution: "hp 835 g8" -> candidate CPUs -> disambiguate from text/photos
-            if not cpu_fact and want_models:
+            # also upgrades vague direct mentions ("ryzen 5 pro" -> exact 5650U/5850U)
+            if want_models and (not cpu_fact or cpu_fact.confidence < 0.7):
                 try:
                     from .scoring import resolve_cpu_candidates
                     blob = f"{l.title}\n{l.description}\n{' '.join(l.ocr_texts)}".lower()
@@ -412,6 +413,51 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                         s.enrichments.extend(enr.enrich(s.listing, ctx))
                 except Exception:
                     continue
+    except Exception:
+        pass
+    # cross-listing CPU transfer: same normalized model, one listing names the exact CPU
+    # ("Ryzen 5 PRO 5650U" seen once -> siblings saying only "Ryzen 5 PRO" inherit it at 0.5)
+    try:
+        import re as _re4
+
+        def _model_key(title: str) -> str:
+            norm = _re4.sub(r"[^a-z0-9]+", "", (title or "").lower())
+            for m in (intent.get("models", []) or []):
+                if _re4.sub(r"[^a-z0-9]+", "", m.lower()) in norm:
+                    return "model:" + m.lower()
+            return "title:" + norm[:40]
+
+        groups: dict[str, list] = {}
+        for s in scored:
+            groups.setdefault(_model_key(s.listing.title), []).append(s)
+        for members in groups.values():
+            if len(members) < 2:
+                continue
+            donors = [s for s in members
+                      if any(e.field == "cpu" and e.confidence >= 0.7 for e in s.enrichments)]
+            if not donors:
+                continue
+            donor = max(donors, key=lambda s: max(e.confidence for e in s.enrichments if e.field == "cpu"))
+            dcpu = next(e.value for e in donor.enrichments if e.field == "cpu")
+            dbench = next((e.value for e in donor.enrichments if e.field == "cpu_benchmark"), None)
+            for s in members:
+                if s is donor or any(e.field == "cpu" and e.confidence >= 0.7 for e in s.enrichments):
+                    continue
+                s.enrichments = [e for e in s.enrichments if e.field not in ("cpu", "cpu_benchmark")]
+                s.enrichments.append(EnrichmentFact(field="cpu", value=dcpu, confidence=0.5,
+                                                    status=FactStatus.AI_INFERRED,
+                                                    sources=[Evidence(type="description",
+                                                                      detail=f"transferred from same-model listing {donor.listing.id}")]))
+                if dbench:
+                    s.enrichments.append(EnrichmentFact(field="cpu_benchmark", value=dbench, confidence=0.5,
+                                                        status=FactStatus.AI_INFERRED,
+                                                        sources=[Evidence(type="external", detail="transferred with CPU")]))
+                s.why.append(f"CPU {dcpu} transferred from same-model listing")
+                metrics.inc("cpu_transferred")
+                s.value_score, _vw = value_score(s.listing.price, dbench, median)
+                s.final_score = rank(s.match_score, s.value_score, s.risk.score,
+                                     s.deal_dna.get("completeness", 0.5), intent.get("ranking", None))
+        scored.sort(key=lambda s: s.final_score, reverse=True)
     except Exception:
         pass
     # cross-listing same-item detection (same photo hash on multiple sources; capped for speed)

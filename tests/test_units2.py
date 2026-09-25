@@ -289,3 +289,31 @@ def test_market_endpoint():
     r = c.get("/market?limit=5")
     assert r.status_code == 200
     assert "items" in r.json()
+
+
+def test_cpu_transfer_same_model():
+    import asyncio
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import DriverRegistry, MarketplaceDriver, DriverManifest, SearchQuery
+    from deal_radar.orchestrator import run_search
+
+    def mk(tid, title):
+        return CanonicalListing(id=tid, source="t", native_id=tid, url="u", title=title,
+                                description="good", price=300, images=[], seller=Seller(name="s"))
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+        async def search(self, query: SearchQuery):
+            return [mk("t:1", "HP EliteBook 845 G8 Ryzen 5 PRO 5650U 16GB"),
+                    mk("t:2", "HP EliteBook 845 G8 Ryzen 5 PRO 16GB")]
+    reg = DriverRegistry()
+    reg.register(F())
+    out = asyncio.run(run_search(
+        {"keywords": "hp", "sources": ["t"], "limit": 5, "models": ["HP EliteBook 845 G8"],
+         "risk": {}, "enrich": True, "ocr": False, "benchmarks": False, "vision": False,
+         "details": False}, reg, None, None))
+    by_id = {r["listing"]["id"]: r for r in out["results"]}
+    assert len(by_id) == 2
+    cpu2 = next(e["value"] for e in by_id["t:2"]["enrichments"] if e["field"] == "cpu")
+    assert cpu2 == "Ryzen 5 PRO 5650U"
+    assert any("transferred" in w for w in by_id["t:2"]["why"])
