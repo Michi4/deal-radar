@@ -24,6 +24,7 @@
 - [x] Driver registry (`install/list/check`, checksums, template) — CLI works; `path:` + `github:` installs live-verified (own repo template); authoring skill `docs/DRIVER_AUTHORING.md` (2026-09-25)
 - [x] Transports — direct/proxy/rotating mapping unit-tested; guarded retry+breaker live-proven on every search; no proxy budget needed (direct works from all hosts); live proxy failover pending dedicated proxies (see BLOCKERS)
 - [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
-- [x] Playwright E2E — tests/e2e/run.mjs headless chromium: index, search renders 40 cards, admin, metrics all PASS (2026-09-25)
+- [x] Frontend — rebuilt: grid/list views, swipeable in-app image carousel + detail drawer (DNA bars, evidence, specs), pagination + per-page, sort (score/price/perf-€), lane + Gesuche filters, search history, favorites + watches + compare + AI Lab tabs, toasts, loading/empty/error states, no alerts; E2E green (2026-09-25)
+- [x] AI Lab v1 — chat builds enrichers/drivers, syntax+contract checks, hot-load, persists across rebuilds, PR publish path; proven live (refurbished_enricher) (2026-09-25)
 - [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
 - [x] Lazy detail enrichment — top-3 results get full text + seller age via fetch_detail; live metric `detail_enriched` increments, risk/CPU re-run (2026-09-25)
