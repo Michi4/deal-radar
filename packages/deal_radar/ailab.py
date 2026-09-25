@@ -140,7 +140,7 @@ def hotload_enricher(path: Path) -> dict:
             if path.stem.replace("-", "_") in eid or eid in path.stem.replace("-", "_"):
                 try:
                     r1 = enr.enrich(mk("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"), {})
-                    r2 = enr.enrich(mk("plain thing", "nothing special here"), {})
+                    enr.enrich(mk("plain thing", "nothing special here"), {})
                     fired = bool(r1)
                 except Exception as e:
                     return {"ok": False, "error": f"enrich() raised on sample: {e}"}
