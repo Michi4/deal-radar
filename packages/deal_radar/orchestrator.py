@@ -166,6 +166,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 try:
                     from .scoring import resolve_cpu_candidates
                     blob = f"{l.title}\n{l.description}\n{' '.join(l.ocr_texts)}".lower()
+                    import re as _re3
+                    blob_words = set(_re3.findall(r"[a-z0-9]+", blob))
                     for model in want_models[:3]:
                         cands = await resolve_cpu_candidates(model)
                         hit = next((c for c in cands if c.lower() in blob), None)
@@ -175,6 +177,31 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                                       sources=[Evidence(type="description", detail=f"resolved for {model}")])
                             enrich = [e for e in enrich if e.field not in ("cpu",)] + [cpu_fact]
                             bn_why.append(f"CPU {hit} inferred for {model}")
+                            break
+                        # partial mention: blob has all candidate words except the number
+                        # ("ryzen 5 pro" in text, candidate "ryzen 5 pro 5650u")
+                        # multiple partial hits = ambiguous -> stay honest, ask user
+                        partials: list[str] = []
+                        for c in cands:
+                            words = [w for w in _re3.findall(r"[a-z0-9]+", c.lower()) if not w.isdigit()]
+                            if len(words) >= 2 and all(w in blob_words for w in words):
+                                nobrands = [w for w in words if w not in ("amd", "intel", "apple", "ryzen", "core", "pro")]
+                                if nobrands or len(words) >= 3:
+                                    partials.append(c)
+                        if len(partials) == 1:
+                            c = partials[0]
+                            cpu_fact = EnrichmentFact(field="cpu", value=c, confidence=0.55,
+                                                      status=FactStatus.AI_INFERRED,
+                                                      sources=[Evidence(type="description",
+                                                                        detail=f"likely {c} for {model} (partial mention)")])
+                            enrich = [e for e in enrich if e.field not in ("cpu",)] + [cpu_fact]
+                            bn_why.append(f"CPU likely {c} for {model} (partial mention, verify photo)")
+                            break
+                        if len(partials) > 1:
+                            bn_why.append(f"CPU ambiguous ({', '.join(partials)}) — set it in the drawer")
+                            metrics.inc("cpu_unresolved")
+                            break
+                        if cpu_fact:
                             break
                     if not cpu_fact:
                         bn_why.append("CPU unknown for this model — open the drawer to set it manually")
