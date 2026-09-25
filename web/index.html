@@ -16,7 +16,7 @@
 <label><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
 </div>
 <div class="row" id="sources"></div>
-<div class="row"><button onclick="showFavs()">★ Favorites</button> <a href="/admin" style="color:#7aa2ff">admin</a>
+<div class="row"><button onclick="showFavs()">★ Favorites</button> <button onclick="cmp()">⇄ Compare</button> <a href="/admin" style="color:#7aa2ff">admin</a>
 <select id="sort"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option></select>
 <span id="lanes"></span></div>
 <div id="results"></div>
@@ -26,7 +26,8 @@ let SRC=[];
 async function init(){const d=await(await fetch('/drivers')).json();SRC=d.map(x=>x.id);
 document.getElementById('sources').innerHTML=d.map(x=>`<label><input type="checkbox" checked value="${x.id}"/> ${x.display_name}</label>`).join(' ');
 const es=new EventSource('/stream');es.onmessage=e=>{const d=document.createElement('div');d.className='card';d.textContent='⚡ '+e.data;document.getElementById('events').prepend(d)};es.onerror=()=>document.getElementById('live').textContent='reconnecting…'}
-let LAST=[];
+let LAST=[];let SID=null;
+function perfEur(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark');return (b&&s.listing.price)?b.value/s.listing.price:0}
 function perfEur(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark');return (b&&s.listing.price)?b.value/s.listing.price:0}
 function render(){let arr=[...LAST];const hide=[...document.querySelectorAll('.lanef:checked')].map(i=>i.value);
 arr=arr.filter(s=>!hide.includes(s.lane));
@@ -40,14 +41,16 @@ document.getElementById('lanes').innerHTML=lanes.map(l=>`<label><input type="che
 results.innerHTML=arr.map(card).join('')||'<p>No results (lane filter?).</p>'}
 sort.onchange=render;
 async function runNL(){const r=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:nl.value,limit:20})})).json();
-alert('parsed: '+JSON.stringify(r.parsed));LAST=r.results||[];render()}
+alert('parsed: '+JSON.stringify(r.parsed));LAST=r.results||[];SID=r.id;render()}
+async function cmp(){if(!SID)return alert('run a search first');const r=await(await fetch('/searches/'+SID+'/compare')).json();
+results.innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="card"><b>${m}</b> (${rows.length})<br/>${rows.map(x=>`${x.price??'?'} ${x.currency||''} · ${x.source} · risk ${(x.risk*100).toFixed(0)}% · score ${x.score} ${x.cpu?('· '+x.cpu+' ('+x.benchmark+')'):''} · <a href="${x.url}" target="_blank">open</a>`).join('<br/>')}</div>`).join('')||'No groups.'}
 function card(s){const l=s.listing;const en=(s.enrichments||[]).map(e=>`${e.field}: ${e.value}`).join(' · ');
 const dna=Object.entries(s.deal_dna||{}).map(([k,v])=>`${k} ${(v*100).toFixed(0)}%`).join(' · ');
 return `<div class="card"><b>${l.title||'(no title)'}</b> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span> <span class="lane">${s.lane} · score ${s.final_score}</span><br/>${l.price??'?'} ${l.currency} · ${l.source} · ${l.location||''} · <a href="${l.url}" target="_blank">open</a> <button onclick="fav('${l.id}')">★</button>${en?`<br/><small>⚙ ${en}</small>`:''}<br/><small>${(s.why||[]).slice(0,4).join(' · ')}</small><br/><small style="opacity:.6">DNA: ${dna}</small></div>`}
 async function run(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
 const body={keywords:q.value,max_price:+max.value||undefined,sources:sel,blacklist:black.value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{hard_filter_enabled:hideRisk.checked},limit:20};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
-LAST=r.results||[];render()}
+LAST=r.results||[];SID=r.id;render()}
 async function fav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});alert('saved ★')}
 async function showFavs(){const f=await(await fetch('/favorites')).json();
 results.innerHTML=f.map(x=>`<div class="card"><b>${x.title||x.listing_id}</b><br/>${x.price??'?'} · <a href="${x.url||'#'}" target="_blank">open</a> <button onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<br/><small>history: ${(x.history||[]).map(h=>`${h.kind}: ${h.old} → ${h.new}`).join(' · ')||'no changes yet'}</small></div>`).join('')||'<p>No favorites yet.</p>'}
