@@ -273,8 +273,8 @@ def test_favorites_history():
 def test_registry_check_builtin_drivers():
     from deal_radar.registry import check, installed, load_index
     ids = installed()
-    assert "willhaben" in ids and "kleinanzeigen" in ids and "ebay" in ids
-    for did in ("willhaben", "kleinanzeigen", "ebay"):
+    assert {"willhaben", "kleinanzeigen", "ebay", "vinted"} <= set(ids)
+    for did in ("willhaben", "kleinanzeigen", "ebay", "vinted"):
         r = check(did)
         assert r["ok"], r
     assert load_index() == {"drivers": []} or isinstance(load_index().get("drivers"), list)
@@ -444,3 +444,19 @@ def test_benchmark_title_verification():
         B._mem.clear()
         wrong = B.fetch_passmark_cpu("ryzen 5 pro")  # fuzzy page is 5800H -> must refuse
         assert wrong is None
+
+
+def test_vinted_fixture_and_eu_price():
+    from pathlib import Path as _P
+
+    from vinted.driver import VintedDriver, parse_cards
+
+    from deal_radar.driver_sdk import eu_price
+    assert eu_price("1.299 €") == 1299.0 and eu_price("140.00 €") == 140.0
+    html = _P(__file__).parent.joinpath("fixtures/vinted-search.html").read_text(encoding="utf-8", errors="ignore")
+    items = parse_cards(html, 40)
+    assert len(items) >= 20
+    assert all(i["title"] and i["url"].startswith("https://www.vinted.de/items/") for i in items)
+    assert all(i["price"] is None or 0 < i["price"] < 100000 for i in items)
+    assert any(i["images"] for i in items)
+    assert VintedDriver.manifest.id == "vinted"

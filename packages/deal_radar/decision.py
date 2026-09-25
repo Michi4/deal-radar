@@ -247,8 +247,10 @@ async def nl_to_intent(text: str) -> dict:
             return bool(n) and (n in keep or n in modelblob)
         bl = [b for b in bl if not _selfterm(str(b.get("value", "")))]
         # follow-up: model skipped model resolution but query implies specific models
-        if not models and any(w in text.lower() for w in
-                              ("which", "with", "mit", "welche", "ohne", "that", "uses", "having", "haben")):
+        import re as _re3
+        if not models and (any(w in text.lower() for w in
+                               ("which", "with", "mit", "welche", "ohne", "that", "uses", "having", "haben"))
+                           or _re3.search(r"\d", text)):  # model numbers ("845 g8", "iphone 15") = specific product
             fix = await cloud_json(
                 "You know every product lineup. Return ONLY JSON {models: [exact model names], "
                 "exclude: [accessory/wrong-variant words]}.",

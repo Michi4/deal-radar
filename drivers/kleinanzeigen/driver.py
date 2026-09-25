@@ -20,18 +20,9 @@ def slugify(keywords: str) -> str:
 
 
 def parse_price(raw: str) -> tuple[float | None, str]:
+    from deal_radar.driver_sdk import eu_price
     t = (raw or "").strip()
-    if not t:
-        return None, t
-    if "verschenken" in t.lower() or "gratis" in t.lower():
-        return 0.0, t
-    m = re.search(r"(\d[\d\.\s]*)\s*€?", t)
-    if not m:
-        return None, t
-    try:
-        return float(m.group(1).replace(".", "").replace(" ", "").replace(",", ".")), t
-    except ValueError:
-        return None, t
+    return eu_price(t), t
 
 
 def _ld_block(block: str) -> dict:

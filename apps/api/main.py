@@ -143,6 +143,7 @@ def load_drivers() -> None:
 
     from ebay.driver import EbayDriver
     from kleinanzeigen.driver import KleinanzeigenDriver
+    from vinted.driver import VintedDriver
     from willhaben.driver import WillhabenDriver
 
     from deal_radar.driver_sdk import transport_from_config
@@ -154,6 +155,7 @@ def load_drivers() -> None:
     registry.register(EbayDriver(transport_from_config(cfg.get("ebay"))))
     registry.register(WillhabenDriver(transport_from_config(cfg.get("willhaben"))))
     registry.register(KleinanzeigenDriver(transport_from_config(cfg.get("kleinanzeigen"))))
+    registry.register(VintedDriver(transport_from_config(cfg.get("vinted"))))
 
 
 load_drivers()
