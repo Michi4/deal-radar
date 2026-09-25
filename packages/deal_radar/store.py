@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS listings(id TEXT PRIMARY KEY, source TEXT, url TEXT, 
 CREATE TABLE IF NOT EXISTS observations(id INTEGER PRIMARY KEY AUTOINCREMENT, listing_id TEXT,
   ts REAL, kind TEXT, old_value TEXT, new_value TEXT);
 CREATE TABLE IF NOT EXISTS favorites(listing_id TEXT PRIMARY KEY, ts REAL, note TEXT);
+CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
 """
 
 
@@ -69,6 +70,25 @@ class Store:
 
     def is_favorite(self, listing_id: str) -> bool:
         return self.db.execute("SELECT 1 FROM favorites WHERE listing_id=?", (listing_id,)).fetchone() is not None
+
+    def save_search(self, sid: str, intent: dict) -> None:
+        import time as _t
+        self.db.execute("INSERT OR REPLACE INTO searches VALUES(?,?,?)",
+                        (sid, _t.time(), json.dumps(intent)))
+        self.db.commit()
+
+    def load_searches(self) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        try:
+            for sid, _, intent in self.db.execute("SELECT id, ts, intent FROM searches").fetchall():
+                out[sid] = json.loads(intent)
+        except Exception:
+            pass
+        return out
+
+    def delete_search(self, sid: str) -> None:
+        self.db.execute("DELETE FROM searches WHERE id=?", (sid,))
+        self.db.commit()
 
     def favorites_with_history(self) -> list[dict]:
         favs = self.db.execute("SELECT listing_id, ts, note FROM favorites ORDER BY ts DESC").fetchall()

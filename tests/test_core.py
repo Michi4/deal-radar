@@ -316,3 +316,14 @@ def test_willhaben_detail_live():
         assert d and d.price == 8.0 and d.seller.account_age_days is not None
         assert "Selbstabholung" in d.description
     asyncio.run(go())
+
+
+def test_search_persistence():
+    from deal_radar.store import Store
+    import tempfile, os
+    p = os.path.join(tempfile.mkdtemp(), "s.db")
+    s = Store(p)
+    s.save_search("s_1", {"keywords": "thinkpad", "watch": True})
+    assert s.load_searches()["s_1"]["watch"] is True
+    s.delete_search("s_1")
+    assert "s_1" not in s.load_searches()
