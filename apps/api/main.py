@@ -260,3 +260,8 @@ def fav(listing_id: str, note: str = ""):
 def unfav(listing_id: str):
     store.unfavorite(listing_id)
     return {"ok": True}
+
+
+@app.get("/favorites")
+def favs():
+    return store.favorites_with_history()

@@ -233,3 +233,20 @@ def test_model_gate_and_accessory_penalty():
     assert any("iPhone 15 Pro 128GB" in t for t in titles)
     assert not any("Hülle" in t for t in titles)
     assert not any("iPhone 12" in t for t in titles)
+
+
+def test_favorites_history():
+    from deal_radar.store import Store
+    import tempfile, os
+    p = os.path.join(tempfile.mkdtemp(), "f.db")
+    s = Store(p)
+    l1 = L(price=500)
+    assert s.upsert(l1) == []
+    s.favorite(l1.id, "nice")
+    l2 = L(price=450)
+    l2.id, l2.native_id = l1.id, l1.native_id
+    evs = s.upsert(l2)
+    assert any(e["kind"] == "price" for e in evs)
+    h = s.favorites_with_history()
+    assert len(h) == 1 and h[0]["price"] == 450
+    assert any(o["kind"] == "price" and o["new"] == "450.0" for o in h[0]["history"])
