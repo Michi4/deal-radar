@@ -255,7 +255,31 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                             bn_why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
                 except Exception:
                     pass
+        # GPU path: extract -> videocardbenchmark G3D (same title-verified honesty as CPU)
+        if intent.get("benchmarks", True):
+            try:
+                from .benchmarks import lookup_gpu
+                from .scoring import enrich_gpu
+                gfacts = enrich_gpu(l)
+                if gfacts:
+                    real = await asyncio.to_thread(lookup_gpu, str(gfacts[0].value))
+                    if real:
+                        gfacts[0].confidence = 0.9
+                        enrich.extend(gfacts)
+                        enrich.append(EnrichmentFact(field="gpu_benchmark", value=real["g3d"], confidence=0.95,
+                                                     status=FactStatus.EXTERNAL,
+                                                     sources=[Evidence(type="external",
+                                                                       detail=f"videocardbenchmark.net G3D {real['g3d']} ({real['name']})")]))
+                        why.append(f"GPU {real['name']}: G3D {real['g3d']}")
+                        metrics.inc("benchmark_gpu_real")
+                    else:
+                        why.append(f"GPU '{gfacts[0].value}' not found on videocardbenchmark")
+                        metrics.inc("benchmark_gpu_miss")
+            except Exception:
+                pass
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
+        if bench is None:
+            bench = next((e.value for e in enrich if e.field == "gpu_benchmark"), None)
         val, val_why = value_score(l.price, bench, median)
         completeness = min(1.0, (bool(l.title) + bool(l.description and len(l.description) > 50)
                                   + bool(l.images) + bool(l.price)) / 4.0)

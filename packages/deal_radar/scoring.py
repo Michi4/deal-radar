@@ -62,6 +62,37 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
     return None, 0.0, ""
 
 
+GPU_PATS = [
+    r"rtx\s*\d{3,4}(?:\s*ti)?(?:\s*super)?(?:\s*laptop)?",
+    r"rx\s*\d{3,4}(?:\s*m|\s*xt)?",
+    r"gtx\s*\d{3,4}(?:\s*ti)?(?:\s*super)?",
+    r"rtx\s*a\d{3,4}",
+    r"quadro\s*\w+\d+",
+    r"arc\s*a\d{3}",
+]
+
+
+def extract_gpu(text: str) -> tuple[str | None, float, str]:
+    t = text.lower()
+    for pat in GPU_PATS:
+        m = re.search(pat, t)
+        if m:
+            g = re.sub(r"\s+", " ", m.group(0)).strip()
+            full = len(re.findall(r"\d", g)) >= 3
+            return g, (0.8 if full else 0.45), f"mentioned '{g}'"
+    return None, 0.0, ""
+
+
+def enrich_gpu(listing: CanonicalListing) -> list[EnrichmentFact]:
+    blob = f"{listing.title}\n{listing.description}\n{' '.join(listing.ocr_texts)}"
+    gpu, conf, ev = extract_gpu(blob)
+    if not gpu or conf < 0.7:
+        return []
+    return [EnrichmentFact(field="gpu", value=gpu, confidence=conf,
+                           status=FactStatus.AI_INFERRED if conf < 0.85 else FactStatus.SUPPORTED,
+                           sources=[Evidence(type="description", detail=ev, confidence=conf)])]
+
+
 def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
     blob = f"{listing.title}\n{listing.description}\n{' '.join(listing.ocr_texts)}"
     cpu, conf, ev = extract_cpu(blob)

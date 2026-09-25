@@ -40,6 +40,64 @@ def parse_passmark_detail(html: str) -> tuple[int | None, int | None]:
     return (int(mt.group(1)) if mt else None, int(st.group(1)) if st else None)
 
 
+GPU_LIST_URL = "https://www.videocardbenchmark.net/gpu_list.php"
+_gpu_mem: dict[str, dict] = {}
+_gpu_ts: float = 0.0
+
+
+def parse_gpu_list(html: str) -> dict[str, dict]:
+    """Row: <TR id=gpuN><TD><A ...>Name</A></TD><TD>G3D</TD><TD>rank?</TD>..."""
+    out: dict[str, dict] = {}
+    for m in re.finditer(
+            r'<TR id="gpu\d+"><TD><A HREF="video_lookup\.php\?gpu=([^"&]+)&amp;id=(\d+)">([^<]{2,120})</A></TD><TD>(\d+)</TD>',
+            html):
+        _slug, gid, name, g3d = m.group(1), m.group(2), m.group(3), m.group(4)
+        key = name.strip().lower()
+        try:
+            out[key] = {"name": name.strip(), "g3d": int(g3d), "id": gid}
+        except ValueError:
+            continue
+    return out
+
+
+def fetch_gpu_table(cache_days: int = 7) -> dict[str, dict]:
+    global _gpu_ts
+    now = time.time()
+    if _gpu_mem and now - _gpu_ts < cache_days * 86400:
+        return _gpu_mem
+    try:
+        from curl_cffi import requests as _cr
+        r = _cr.get(GPU_LIST_URL, impersonate="chrome124",
+                    headers={"Accept-Language": "en-US,en;q=0.9"}, timeout=30)
+        if r.status_code != 200:
+            return _gpu_mem
+        table = parse_gpu_list(r.text)
+        if table:
+            _gpu_mem.clear()
+            _gpu_mem.update(table)
+            _gpu_ts = now
+    except Exception:
+        pass
+    return _gpu_mem
+
+
+def lookup_gpu(name: str) -> dict | None:
+    """Best-match GPU by normalized name (exact > startswith > contains)."""
+    table = fetch_gpu_table()
+    if not table:
+        return None
+    want = _norm(name)
+    if want in table:
+        return table[want]
+    for k, v in table.items():
+        if k.startswith(want) or want.startswith(k):
+            return v
+    for k, v in table.items():
+        if want in k:
+            return v
+    return None
+
+
 def _txt(pat: str, html: str) -> str:
     m = re.search(pat, html, re.DOTALL)
     if not m:
