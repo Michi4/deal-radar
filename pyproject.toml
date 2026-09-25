@@ -20,8 +20,32 @@ ocr = ["rapidfuzz>=3.9"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = ["live: hits real external sites (excluded from CI)"]
+addopts = "-m 'not live'"
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["packages"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+# BLE001/S110/S112: resilience boundaries are the architecture (every external
+# call is guarded, counted in metrics, and falls back). See AGENTS.md.
+ignore = ["BLE001", "S110", "S112"]
+[tool.ruff.lint.isort]
+known-first-party = ["deal_radar"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+exclude = ["\\.venv", "tests/"]
+
+[tool.coverage.run]
+source = ["packages/deal_radar"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+fail_under = 70

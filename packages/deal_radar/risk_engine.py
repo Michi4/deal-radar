@@ -1,5 +1,6 @@
 """Risk engine: percentage + evidence, never boolean. Rescue lane so good deals survive."""
 from __future__ import annotations
+
 from .contracts import CanonicalListing, RiskAssessment
 
 SUSPICIOUS_PHRASES = ["vorkasse", "western union", "crypto", "bitcoin", "whatsapp only",

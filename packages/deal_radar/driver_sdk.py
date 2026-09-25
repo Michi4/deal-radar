@@ -1,10 +1,12 @@
 """Driver SDK: hot-swappable marketplace drivers + transport/proxy + circuit breaker."""
 from __future__ import annotations
+
 import asyncio
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
+
 import httpx
 from pydantic import BaseModel, Field
 
@@ -152,7 +154,7 @@ class MarketplaceDriver(ABC):
                 self.health.last_ok_ts = time.time()
                 self.health.consecutive_failures = 0
                 return res, None
-            except Exception as e:  # noqa: BLE001 - resilience boundary
+            except Exception as e:
                 last_err = f"{type(e).__name__}: {e}"
                 self.breaker.record_failure()
                 self.health.consecutive_failures += 1

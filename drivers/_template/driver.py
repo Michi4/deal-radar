@@ -7,8 +7,9 @@
 AI assistants can generate this file from: site search URL pattern + card selectors.
 """
 from __future__ import annotations
-from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
+
 from deal_radar.contracts import CanonicalListing
+from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
 
 
 class MySiteDriver(MarketplaceDriver):

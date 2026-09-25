@@ -6,9 +6,10 @@ Back-compat: SIGNAL_API_URL/SIGNAL_NUMBER, NTFY_TOPIC_URL, WEBHOOK_URL single en
 Live push to browsers goes via SSE /stream; these channels are for push alerts.
 """
 from __future__ import annotations
+
 import json
-import os
 from typing import Any
+
 import httpx
 
 
@@ -67,7 +68,7 @@ class SignalNotifier(Notifier):
                                        "message": msg})
                 r.raise_for_status()
             return True
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"[notify:signal] failed: {e}", flush=True)
             return False
 
@@ -109,7 +110,7 @@ class EmailNotifier(Notifier):
                 s.login(user, pw)
                 s.send_message(msg)
             return True
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"[notify:email] failed: {e}", flush=True)
             return False
 
@@ -161,12 +162,12 @@ def notifier_from_env(env: dict[str, str]) -> Notifier:
     except Exception:
         pass
     # back-compat single-channel envs, all fan out together
-    ns: list[Notifier] = []
+    multi: list[Notifier] = []
     if env.get("SIGNAL_NUMBER"):
-        ns.append(SignalNotifier(env.get("SIGNAL_API_URL", "http://localhost:8082"), env["SIGNAL_NUMBER"]))
+        multi.append(SignalNotifier(env.get("SIGNAL_API_URL", "http://localhost:8082"), env["SIGNAL_NUMBER"]))
     if env.get("NTFY_TOPIC_URL"):
-        ns.append(NtfyNotifier(env["NTFY_TOPIC_URL"]))
+        multi.append(NtfyNotifier(env["NTFY_TOPIC_URL"]))
     if env.get("WEBHOOK_URL"):
-        ns.append(WebhookNotifier(env["WEBHOOK_URL"]))
-    ns.append(LogNotifier())
-    return MultiNotifier(ns) if len(ns) > 1 else ns[0]
+        multi.append(WebhookNotifier(env["WEBHOOK_URL"]))
+    multi.append(LogNotifier())
+    return MultiNotifier(multi) if len(multi) > 1 else multi[0]

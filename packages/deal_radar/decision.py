@@ -5,9 +5,11 @@ SystemOne interface matches TypeSafe Jev API shape:
 so Jev (hosted), Kev (self-hosted, Apache-2.0) and heuristics are interchangeable.
 """
 from __future__ import annotations
+
 import os
 import re
 from typing import Any
+
 import httpx
 
 JEV_API_URL = os.getenv("JEV_API_URL", "https://api.typesafe.ai/v1/systemone/decide")
@@ -84,14 +86,14 @@ async def _post_chat(base: str, key: str, model: str, system: str, user: str,
                     pass
             # small local models sometimes put JSON in `reasoning` with empty content
             blob = f"{msg.get('reasoning', '')}\n{content}"
-            m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", blob, re.S) or re.search(r"(\{.*\})", blob, re.S)
+            m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", blob, re.DOTALL) or re.search(r"(\{.*\})", blob, re.DOTALL)
             if m:
                 try:
                     return _json.loads(m.group(1))
                 except Exception:
                     pass
             return {"__error": f"no JSON in response: {blob[:120]}"}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"__error": str(e)[:150]}
 
 
@@ -112,15 +114,15 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
     models = [model] if model else list(CLOUD_MODELS)
     last_err: str = ""
     for round_no in range(2):
-        for model in models:
-            out = await _post_chat(CLOUD_API_URL, CLOUD_API_KEY, model, system, user, max_tokens)
+        for m in models:
+            out = await _post_chat(CLOUD_API_URL, CLOUD_API_KEY, m, system, user, max_tokens)
             if out is None:
                 continue
             if out.get("__rate_limited"):
-                last_err = f"{model}: 429"
+                last_err = f"{m}: 429"
                 continue
             if out.get("__error"):
-                last_err = f"{model}: {out['__error']}"
+                last_err = f"{m}: {out['__error']}"
                 continue
             return out
         if round_no == 0:
@@ -153,7 +155,8 @@ def _nl_key(text: str) -> str:
 
 
 def _nl_cached(text: str) -> dict | None:
-    import json as _json, time as _t
+    import json as _json
+    import time as _t
     from pathlib import Path as _P
     try:
         p = _P(_NL_CACHE)
@@ -168,7 +171,8 @@ def _nl_cached(text: str) -> dict | None:
 
 
 def _nl_store(text: str, intent: dict) -> None:
-    import json as _json, time as _t
+    import json as _json
+    import time as _t
     from pathlib import Path as _P
     try:
         p = _P(_NL_CACHE)
@@ -283,8 +287,10 @@ async def stage_b_via_cloud(title: str, description: str, price: float | None,
     if not out:
         return {}
     try:
-        return {"exact": float(out.get("exact", 0.5)), "risk_ai": float(out.get("risk", 0.5)),
-                "condition_ai": float(out.get("condition", 0.5)), "note": str(out.get("note", ""))[:200]}
+        res: dict[str, object] = {"exact": float(out.get("exact", 0.5)), "risk_ai": float(out.get("risk", 0.5)),
+                                  "condition_ai": float(out.get("condition", 0.5)),
+                                  "note": str(out.get("note", ""))[:200]}
+        return res  # type: ignore[return-value]
     except (ValueError, TypeError):
         return {}
 

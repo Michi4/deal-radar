@@ -7,6 +7,7 @@ Index JSON (local file or URL):
 CLI: PYTHONPATH=packages python -m deal_radar.registry list|install <id>|update|check <id>
 """
 from __future__ import annotations
+
 import hashlib
 import importlib.util
 import json
@@ -44,6 +45,7 @@ def load_driver_module(driver_id: str):
         f = base / driver_id / "driver.py"
         if f.exists():
             spec = importlib.util.spec_from_file_location(f"dyn_{driver_id}", f)
+            assert spec is not None and spec.loader is not None
             mod = importlib.util.module_from_spec(spec)
             sys.modules[f"dyn_{driver_id}"] = mod
             spec.loader.exec_module(mod)
@@ -53,24 +55,24 @@ def load_driver_module(driver_id: str):
 
 def check(driver_id: str) -> dict:
     """Contract suite every driver must pass: manifest + search returns CanonicalListings."""
-    import asyncio
-    from deal_radar.driver_sdk import SearchQuery
+
     mod = load_driver_module(driver_id)
     drivers = [v for v in vars(mod).values() if isinstance(v, type)
                and getattr(v, "manifest", None) is not None and v.__name__.endswith("Driver")]
     if not drivers:
         return {"ok": False, "error": "no *Driver subclass with manifest found"}
     cls = drivers[0]
+    mani = cls.manifest
     errors: list[str] = []
     try:
-        m = cls.manifest
+        m = mani
         assert m.id and m.display_name and m.capabilities, "manifest incomplete"
     except Exception as e:
         errors.append(f"manifest: {e}")
     if errors:
         return {"ok": False, "errors": errors}
-    return {"ok": True, "driver": cls.manifest.id, "version": cls.manifest.version,
-            "capabilities": list(cls.manifest.capabilities)}
+    return {"ok": True, "driver": mani.id, "version": mani.version,
+            "capabilities": list(mani.capabilities)}
 
 
 def install(entry: dict, index_source: str = "") -> dict:
@@ -110,7 +112,7 @@ def install(entry: dict, index_source: str = "") -> dict:
             shutil.rmtree(dest)
             return {"ok": False, "error": f"contract check failed: {chk}"}
         return {"ok": True, "installed": entry["id"], "version": entry.get("version", "")}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         shutil.rmtree(dest, ignore_errors=True)
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 

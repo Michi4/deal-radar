@@ -3,12 +3,14 @@
 Gentle: 1 req/s max, 30-day disk cache, static DB fallback. Never raises.
 """
 from __future__ import annotations
+
 import json
 import re
 import threading
 import time
 from pathlib import Path
 from urllib.parse import quote_plus
+
 import httpx
 
 STATIC_DB = {

@@ -6,11 +6,14 @@ parse Next.js __NEXT_DATA__ -> props.pageProps.searchResult.advertSummaryList.ad
 Bot detection: silent 403/empty on datacenter IPs -> back off, report cleanly, retry via proxy.
 """
 from __future__ import annotations
+
 import json
 import re
+from datetime import UTC
 from urllib.parse import quote_plus
-from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
+
 from deal_radar.contracts import CanonicalListing, Seller
+from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
 
 
 def _flatten_attrs(ad: dict) -> dict:
@@ -24,7 +27,7 @@ def _flatten_attrs(ad: dict) -> dict:
 
 
 def parse_next_data(html: str, limit: int = 30) -> list[dict]:
-    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
     if not m:
         return []
     try:
@@ -70,7 +73,7 @@ def parse_next_data(html: str, limit: int = 30) -> list[dict]:
 
 def parse_dom_fallback(html: str, limit: int = 30) -> list[dict]:
     out: list[dict] = []
-    for m in re.finditer(r'<a[^>]+data-testid="search-result-entry-header-[^"]*"[^>]+href="([^"]+)"[^>]*>.*?<h3[^>]*>([^<]{3,200})</h3>', html, re.S):
+    for m in re.finditer(r'<a[^>]+data-testid="search-result-entry-header-[^"]*"[^>]+href="([^"]+)"[^>]*>.*?<h3[^>]*>([^<]{3,200})</h3>', html, re.DOTALL):
         href, title = m.group(1), m.group(2).strip()
         url = href if href.startswith("http") else f"https://www.willhaben.at{href}"
         out.append({"id": url, "title": title, "url": url, "price": None, "description": "",
@@ -82,7 +85,7 @@ def parse_dom_fallback(html: str, limit: int = 30) -> list[dict]:
 
 def parse_detail(html: str) -> dict:
     """advertDetails from /iad/object?adId= — full description + seller profile."""
-    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
     if not m:
         return {}
     try:
@@ -94,9 +97,9 @@ def parse_detail(html: str) -> dict:
     age = None
     if sp.get("registerDate"):
         try:
-            from datetime import datetime, timezone
-            reg = datetime.fromisoformat(str(sp["registerDate"]).replace("Z", "+00:00"))
-            age = max(0, (datetime.now(timezone.utc) - reg).days)
+            from datetime import datetime
+            reg = datetime.fromisoformat(str(sp["registerDate"]))
+            age = max(0, (datetime.now(UTC) - reg).days)
         except Exception:
             pass
     price = None

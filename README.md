@@ -39,6 +39,13 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 - App host (primary): `deploy/app host/` (Traefik websecure + Authelia), `app.example.net`.
 - AI brains: Kev-0.8B + Ollama qwen2.5:3b on AI host (systemd, WG `10.9.9.1`); vision model on laptop.
 - Full env reference: `deploy/app host/.env.sample` (secrets stay in server `.env`, never git).
+- Back up sqlite: `sqlite3 /data/dealradar.db ".backup '/backups/dealradar-$(date +%F).db'"` on cron.
+
+## Fair-use / ToS note
+Willhaben, Kleinanzeigen and eBay prohibit unauthorized automated access in their terms.
+This tool is built for personal, low-volume hobbyist use (≤1 req/s, cached, polite).
+Running it at scale, republishing scraped data, or inviting heavy third-party use may violate
+those terms and get IPs/accounts blocked. You assume that risk; keep it gentle.
 
 ## Repo hygiene
 Conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`). Contract + fixture tests per driver. Autonomous rules: `AGENTS.md`, checklist `ACCEPTANCE.md`, blocks `BLOCKERS.md`, decisions `DECISIONS.md`, verify via `./scripts/verify.sh`.

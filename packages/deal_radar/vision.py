@@ -5,12 +5,12 @@ OCR text flows into ocr_texts so filters, CPU extraction and risk signals see ph
 described item) needs a vision model — hook: VISION_URL (OpenAI-compatible) when configured.
 """
 from __future__ import annotations
+
 import hashlib
 import shutil
 import subprocess
-import tempfile
-import time
 from pathlib import Path
+
 import httpx
 
 _ocr_cache: dict[str, str] = {}
@@ -46,7 +46,7 @@ def ocr_bytes(img: bytes, lang: str = "eng+deu") -> str:
         p = _cache_dir / f"{key}.img"
         p.write_bytes(img)
         out = subprocess.run(["tesseract", str(p), "stdout", "-l", lang],
-                             capture_output=True, text=True, timeout=25)
+                             capture_output=True, text=True, timeout=25, check=False)
         text = (out.stdout or "").strip()[:2000]
         _ocr_cache[key] = text
         return text
@@ -127,13 +127,13 @@ def _parse_vision(data: dict) -> dict:
         import re as _re
         msg = data["choices"][0]["message"]
         content = (msg.get("content") or "").strip() or msg.get("reasoning", "")
-        m = _re.search(r"(\{.*\})", content, _re.S)
+        m = _re.search(r"(\{.*\})", content, _re.DOTALL)
         out = _json.loads(m.group(1)) if m else {}
         shows = float(out.get("shows_item", 0.5))
         note = str(out.get("note", ""))
         # small VLMs sometimes score high while describing a mismatch — trust the words
         if _re.search(r"not match|doesn.?t (show|match)|different (product|item)|wrong item|unrelated",
-                      note, _re.I):
+                      note, _re.IGNORECASE):
             shows = min(shows, 0.25)
         return {"shows_item": shows,
                 "is_stock": float(out.get("is_stock", 0.5)),
