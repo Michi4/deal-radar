@@ -136,11 +136,12 @@ $('labout').innerHTML=r.ok?`<div>✅ <b>${r.id}</b> built, checked, hot-loaded.<
 $('labbtn').disabled=false}
 async function showWatches(){status('Watches — re-polled automatically, survive restarts');$('results').innerHTML='<div class="empty">loading watches…</div>';
 $('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" placeholder="watch query" style="flex:2"/><input id="wmax" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><button onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
-try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}
+try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
 const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no};
+const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
 async function cmp(){if(!SID)return toast('run a search first');status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
