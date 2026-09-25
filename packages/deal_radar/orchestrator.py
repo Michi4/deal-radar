@@ -209,6 +209,44 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                         f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
+    # lazy detail enrichment: full description + seller age for top results (feeds risk + CPU extraction)
+    if intent.get("details", True):
+        for s in scored[:3]:
+            d = registry.get(s.listing.source)
+            if d is None or "fetch_detail" not in (d.manifest.capabilities or []):
+                continue
+            try:
+                det = await d.fetch_detail(s.listing.native_id or s.listing.url)
+            except Exception:
+                det = None
+            if not det:
+                continue
+            metrics.inc("detail_enriched")
+            if det.description and len(det.description) > len(s.listing.description or ""):
+                s.listing.description = det.description
+            if det.price and not s.listing.price:
+                s.listing.price = det.price
+            if det.seller and det.seller.name and not s.listing.seller.name:
+                s.listing.seller.name = det.seller.name
+            if det.seller and det.seller.account_age_days is not None:
+                s.listing.seller.account_age_days = det.seller.account_age_days
+            if det.location and not s.listing.location:
+                s.listing.location = det.location
+            if det.attributes:
+                s.listing.attributes.update(det.attributes)
+            # re-extract CPU + re-assess risk with the full text
+            try:
+                cpu2 = enrich_cpu(s.listing)
+                if cpu2:
+                    s.enrichments = [e for e in s.enrichments if e.field not in ("cpu", "cpu_benchmark")] + cpu2
+                r2 = assess_risk(s.listing, median)
+                s.risk = r2
+                s.final_score = rank(s.match_score, s.value_score, r2.score,
+                                     s.deal_dna.get("completeness", 0.5), intent.get("ranking", None))
+                s.why.append("detail page enriched (full text + seller)")
+            except Exception:
+                pass
+        scored.sort(key=lambda s: s.final_score, reverse=True)
     # concurrent vision pass over Stage-B candidates (each is slow on CPU — parallelize)
     if _vision_queue:
         from .vision import vision_check
