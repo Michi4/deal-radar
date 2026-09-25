@@ -73,6 +73,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     filtered_out = 0
     events: list[dict] = []
     _vision_queue: list = []
+    _stageb_queue: list = []
 
     jev_key = os.getenv("JEV_API_KEY", "")
     use_stage_b = bool(os.getenv("JEV_API_KEY") or os.getenv("KEV_URL") or os.getenv("CLOUD_API_KEY"))
@@ -166,35 +167,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         if want_ad_note:
             why.append(want_ad_note)
 
-        # Stage B escalation: borderline/high-value only.
-        # Order: Jev (hosted) -> Kev (self-hosted) -> cloud vision model -> heuristics stand.
-        sb: dict = {}
-        if use_stage_b and (h["needs_stage_b"] or (val >= 0.8 and r.score >= 0.3)):
-            metrics.inc("stage_b_total")
-            state = {"title": l.title, "description": (l.description or "")[:2000],
-                     "price": l.price, "images": len(l.images), "ocr": l.ocr_texts[:3]}
-            ans = await jev_decide(state, STAGE_B_QUESTIONS, api_key=jev_key) if jev_key \
-                else await kev_decide(state, STAGE_B_QUESTIONS)
-            sb = stage_b_to_scores(ans)
-            if not sb and os.getenv("CLOUD_API_KEY"):
-                metrics.inc("stage_b_cloud")
-                sb = await stage_b_via_cloud(l.title, l.description, l.price, q.keywords)
-                if sb.get("note"):
-                    why.append(f"cloud: {sb['note']}")
-            if sb:
-                if "exact" in sb:
-                    dna["match"] = round(0.5 * dna["match"] + 0.5 * sb["exact"], 3)
-                if "risk_ai" in sb:
-                    r.score = round(0.6 * r.score + 0.4 * sb["risk_ai"], 3)
-                    dna["risk"] = r.score
-                if "condition_ai" in sb:
-                    dna["condition"] = round(sb["condition_ai"], 3)
-                why.append("stage-B (Jev/Kev) verification applied")
-                final = rank(dna["match"], val, r.score, completeness, weights)
-                lane = apply_risk_policy(r, val, risk_policy)
-
         s = ScoredListing(listing=l, match_score=h["match"], deal_dna=dna, risk=r,
                           enrichments=enrich, value_score=val, final_score=final, lane=lane, why=why)
+        # Stage B + vision run concurrently after the loop (Kev/VLM are the slow step — never sequential)
+        if use_stage_b and (h["needs_stage_b"] or (val >= 0.8 and r.score >= 0.3)):
+            _stageb_queue.append((s, h, q.keywords))
         # vision check (VLM): only Stage-B listings with photos — collected, run concurrently after loop
         if intent.get("vision", True) and l.images and h.get("needs_stage_b"):
             _vision_queue.append(s)
@@ -209,18 +186,59 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                         f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
+    # Stage B concurrent pass (cap: most uncertain first; sem bounds slow-model load)
+    if _stageb_queue:
+        _stageb_queue.sort(key=lambda t: abs(t[1].get("match", 0.5) - 0.55))
+        _sb_sem = asyncio.Semaphore(4)
+
+        async def _sb(item):
+            s, h, keywords = item
+            sb: dict = {}
+            try:
+                async with _sb_sem:
+                    metrics.inc("stage_b_total")
+                    l = s.listing
+                    state = {"title": l.title, "description": (l.description or "")[:2000],
+                             "price": l.price, "images": len(l.images), "ocr": l.ocr_texts[:3]}
+                    ans = await jev_decide(state, STAGE_B_QUESTIONS, api_key=jev_key) if jev_key \
+                        else await kev_decide(state, STAGE_B_QUESTIONS)
+                    sb = stage_b_to_scores(ans)
+                    if not sb and os.getenv("CLOUD_API_KEY"):
+                        metrics.inc("stage_b_cloud")
+                        sb = await stage_b_via_cloud(l.title, l.description, l.price, keywords)
+            except Exception:
+                sb = {}
+            if not sb:
+                return
+            if sb.get("note"):
+                s.why.append(f"cloud: {sb['note']}")
+            if "exact" in sb:
+                s.deal_dna["match"] = round(0.5 * s.deal_dna.get("match", s.match_score) + 0.5 * sb["exact"], 3)
+            if "risk_ai" in sb:
+                s.risk.score = round(0.6 * s.risk.score + 0.4 * sb["risk_ai"], 3)
+                s.deal_dna["risk"] = s.risk.score
+            if "condition_ai" in sb:
+                s.deal_dna["condition"] = round(sb["condition_ai"], 3)
+            s.why.append("stage-B (Jev/Kev) verification applied")
+
+        await asyncio.gather(*(_sb(it) for it in _stageb_queue[:12]))  # bound cost
+        for s in scored:
+            s.final_score = rank(s.deal_dna.get("match", s.match_score), s.value_score, s.risk.score,
+                                 s.deal_dna.get("completeness", 0.5), intent.get("ranking", None))
+            s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
+        scored.sort(key=lambda s: s.final_score, reverse=True)
     # lazy detail enrichment: full description + seller age for top results (feeds risk + CPU extraction)
     if intent.get("details", True):
-        for s in scored[:3]:
+        async def _det(s):
             d = registry.get(s.listing.source)
             if d is None or "fetch_detail" not in (d.manifest.capabilities or []):
-                continue
+                return
             try:
                 det = await d.fetch_detail(s.listing.native_id or s.listing.url)
             except Exception:
                 det = None
             if not det:
-                continue
+                return
             metrics.inc("detail_enriched")
             if det.description and len(det.description) > len(s.listing.description or ""):
                 s.listing.description = det.description
@@ -246,6 +264,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 s.why.append("detail page enriched (full text + seller)")
             except Exception:
                 pass
+
+        await asyncio.gather(*(_det(s) for s in scored[:3]))
         scored.sort(key=lambda s: s.final_score, reverse=True)
     # concurrent vision pass over Stage-B candidates (each is slow on CPU — parallelize)
     if _vision_queue:
