@@ -65,9 +65,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             metrics.inc(f"driver_{source}_errors")
         return source, res, err
 
-    results = await asyncio.gather(*(one(s) for s in sources))
+    results = await asyncio.gather(*(one(src) for src in sources))
     all_listings = [l for _, ls, _ in results for l in ls]
-    driver_errors = {s: e for s, _, e in results if e}
+    driver_errors = {src: e for src, _, e in results if e}
     metrics.inc("listings_fetched", len(all_listings))
 
     # market median for risk/value context
@@ -142,9 +142,12 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     enrich = enrich_cpu(l)  # re-extract (CPU may only be visible in photos)
             except Exception:
                 pass
-        # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
-        if intent.get("benchmarks", True):
-            cpu_fact = next((e for e in enrich if e.field == "cpu"), None)
+        # CPU identification: override > direct mention > model-family resolution.
+        # Runs whenever enrichment is on (independent of benchmark lookup).
+        bn_why: list[str] = []
+        cpu_fact = next((e for e in enrich if e.field == "cpu"), None)
+        override = None
+        if intent.get("enrich", True):
             # manual override wins (user-corrected in the drawer; AI-checked below)
             override = (store.get_facts(l.id).get("cpu") if store else None) if intent.get("overrides", True) else None
             if override:
@@ -152,7 +155,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                           status=FactStatus.VERIFIED,
                                           sources=[Evidence(type="description", detail="user-corrected")])
                 enrich = [e for e in enrich if e.field not in ("cpu", "cpu_benchmark")] + [cpu_fact]
-                why.append(f"CPU manually set to {override} (AI-checking against PassMark)")
+                bn_why.append(f"CPU manually set to {override} (AI-checking against PassMark)")
             # model-family resolution: "hp 835 g8" -> candidate CPUs -> disambiguate from text/photos
             if not cpu_fact and want_models:
                 try:
@@ -166,10 +169,10 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                                       status=FactStatus.AI_INFERRED,
                                                       sources=[Evidence(type="description", detail=f"resolved for {model}")])
                             enrich = [e for e in enrich if e.field not in ("cpu",)] + [cpu_fact]
-                            why.append(f"CPU {hit} inferred for {model}")
+                            bn_why.append(f"CPU {hit} inferred for {model}")
                             break
                     if not cpu_fact:
-                        why.append("CPU unknown for this model — open the drawer to set it manually")
+                        bn_why.append("CPU unknown for this model — open the drawer to set it manually")
                         metrics.inc("cpu_unresolved")
                 except Exception:
                     pass
@@ -179,11 +182,13 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     from .scoring import extract_cpu as _xc
                     other, conf, _ = _xc(f"{l.title}".lower())
                     if other and other.lower() != str(cpu_fact.value).lower() and conf >= 0.8:
-                        why.append(f"CONTRADICTION: title says {other} but resolved {cpu_fact.value}")
+                        bn_why.append(f"CONTRADICTION: title says {other} but resolved {cpu_fact.value}")
                         metrics.inc("cpu_contradicted")
                         r.score = min(1.0, r.score + 0.2)
                 except Exception:
                     pass
+        # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
+        if intent.get("benchmarks", True):
             if cpu_fact:
                 try:
                     from .benchmarks import fetch_passmark_cpu
@@ -203,11 +208,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                         metrics.inc("benchmark_real")
                         if override:
                             cpu_fact.status = FactStatus.VERIFIED
-                            why.append(f"AI-check: {override} exists on PassMark ✓")
+                            bn_why.append(f"AI-check: {override} exists on PassMark \u2713")
                     else:
                         metrics.inc("benchmark_static_fallback")
                         if override:
-                            why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
+                            bn_why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
                 except Exception:
                     pass
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
@@ -221,6 +226,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                "completeness": round(completeness, 3), "condition": 0.5, "confidence": r.confidence}
         why = [*fr.reasons, *val_why, *attr_hits, *(f"risk: {x}" for x in r.reasons),
                *(f"ok: {x}" for x in r.counter_evidence)]
+        why.extend(bn_why)
         if want_ad_note:
             why.append(want_ad_note)
 
@@ -249,12 +255,12 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         _sb_sem = asyncio.Semaphore(2)  # Frankfurt Kev is 2 shared vCPUs — gentle
 
         async def _sb(item):
-            s, _h, keywords = item
+            sc, _h, keywords = item
             sb: dict = {}
             try:
                 async with _sb_sem:
                     metrics.inc("stage_b_total")
-                    l = s.listing
+                    l = sc.listing
                     state = {"title": l.title, "description": (l.description or "")[:2000],
                              "price": l.price, "images": len(l.images), "ocr": l.ocr_texts[:3]}
                     ans = await jev_decide(state, STAGE_B_QUESTIONS, api_key=jev_key) if jev_key \
@@ -268,15 +274,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             if not sb:
                 return
             if sb.get("note"):
-                s.why.append(f"cloud: {sb['note']}")
+                sc.why.append(f"cloud: {sb['note']}")
             if "exact" in sb:
-                s.deal_dna["match"] = round(0.5 * s.deal_dna.get("match", s.match_score) + 0.5 * sb["exact"], 3)
+                sc.deal_dna["match"] = round(0.5 * sc.deal_dna.get("match", sc.match_score) + 0.5 * sb["exact"], 3)
             if "risk_ai" in sb:
-                s.risk.score = round(0.6 * s.risk.score + 0.4 * sb["risk_ai"], 3)
-                s.deal_dna["risk"] = s.risk.score
+                sc.risk.score = round(0.6 * sc.risk.score + 0.4 * sb["risk_ai"], 3)
+                sc.deal_dna["risk"] = sc.risk.score
             if "condition_ai" in sb:
-                s.deal_dna["condition"] = round(sb["condition_ai"], 3)
-            s.why.append("stage-B (Jev/Kev) verification applied")
+                sc.deal_dna["condition"] = round(sb["condition_ai"], 3)
+            sc.why.append("stage-B (Jev/Kev) verification applied")
 
         await asyncio.gather(*(_sb(it) for it in _stageb_queue[:12]))  # bound cost
         for s in scored:
@@ -379,11 +385,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             hashes = {s.listing.id: image_hash(s.listing.images[0]) for s in cand}
         for a, b, dist in find_dupes(hashes):
             metrics.inc("duplicates_cross_source")
-            for s in scored:
-                if s.listing.id in (a, b):
-                    other = next(x for x in scored if x.listing.id == (b if s.listing.id == a else a))
-                    s.why.append(f"same item also on {other.listing.source} "
-                                 f"for {other.listing.price} {other.listing.currency} (img-dist {dist})")
+            for s_item in scored:
+                if s_item.listing.id in (a, b):
+                    dup_other = next(x for x in scored if x.listing.id == (b if s_item.listing.id == a else a))
+                    s_item.why.append(f"same item also on {dup_other.listing.source} "
+                                      f"for {dup_other.listing.price} {dup_other.listing.currency} (img-dist {dist})")
     except Exception:
         pass
     metrics.inc("listings_scored", len(scored))

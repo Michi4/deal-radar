@@ -222,3 +222,58 @@ def test_ailab_paths():
         ailab.LAB_DIR, ailab.LAB_DRIVERS = old_dir, old_drv
     from deal_radar.enrich import REGISTRY
     REGISTRY.pop("tlab3", None)
+
+
+def test_cpu_override_contradiction_unresolved():
+    import asyncio
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+    from deal_radar.store import Store
+
+    def mk(title, price=500):
+        return CanonicalListing(id="t:x", source="t", native_id="x", url="u", title=title,
+                                description="good laptop", price=price, images=[],
+                                seller=Seller(name="s"))
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+        async def search(self, query: SearchQuery):
+            return [mk("Lenovo Legion 5 Ryzen 7 5800H RTX")]
+    reg = DriverRegistry()
+    reg.register(F())
+    p = os.path.join(tempfile.mkdtemp(), "cpu.db")
+    st = Store(p)
+    st.set_fact("t:x", "cpu", "Ryzen 5 5600H")  # conflicts with title 5800H
+    fake_bench = {"multi": 100, "single": 10, "source": "t", "ts": 0}
+    with patch("deal_radar.benchmarks.fetch_passmark_cpu", return_value=None):
+        out = asyncio.run(run_search(
+            {"keywords": "legion", "sources": ["t"], "limit": 5, "models": ["Legion 5"],
+             "risk": {}, "enrich": True, "ocr": False, "benchmarks": True, "vision": False,
+             "details": False, "overrides": True}, reg, st, None))
+    r = out["results"][0]
+    assert any("CONTRADICTION" in w for w in r["why"])
+    assert any("AI-check" in w and "NOT found" in w for w in r["why"])
+    # unresolved path: unknown model, no mention
+    class F2(MarketplaceDriver):
+        manifest = DriverManifest(id="t2", display_name="t2", capabilities=["search"])
+        async def search(self, query: SearchQuery):
+            return [mk("Mystery XZY Laptop Pro", 300)]
+    reg2 = DriverRegistry()
+    reg2.register(F2())
+    with patch("deal_radar.scoring.resolve_cpu_candidates", return_value=[]):
+        out2 = asyncio.run(run_search(
+            {"keywords": "laptop", "sources": ["t2"], "limit": 5, "models": ["Mystery XZY"],
+             "risk": {}, "enrich": True, "ocr": False, "benchmarks": False, "vision": False,
+             "details": False}, reg2, None, None))
+    assert any("CPU unknown" in w for w in out2["results"][0]["why"])
+    st.close()
