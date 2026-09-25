@@ -11,3 +11,6 @@
 - External price/spec sources bot-walled → internal market-cohort plugin + PassMark CPU only.
 - AI host signal-api impostor removed, home-server compose restored byte-identical.
 - AI host deal-radar stopped; app host is the single primary (no split brain).
+- AI host runs Kev ONLY (Ollama stopped/disabled — co-hosting thrashed 2 vCPUs: load 6, Kev >120s).
+  NL text goes to laptop Ollama (15GB RAM); OpenRouter-free is last resort. Lesson: one AI per tiny host.
+- POST /searches uses result cache (watcher forces fresh); keyword search 48s cold / 0.1s warm.
