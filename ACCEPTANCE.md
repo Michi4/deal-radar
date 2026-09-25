@@ -5,7 +5,7 @@
 - [x] Plain keyword search "ThinkPad" returns real results. Evidence: `probe_search.py thinkpad` vs live prod → status=done, 20 results, top-5 all real ThinkPad laptops (T460/T15/T14s/T480/E14), errors={} (2026-09-25)
 - [x] "iPhone 17" surfaces actual iPhones on page 1; scoring discriminates (condition from text signals, no hardcoded 50%). Evidence: `probe_search.py iphone17` → real "iphone 17" #1 + Pro Max phones; cases/boxes/contracts/contests/tausch demoted ≤0.55 (2026-09-25)
 - [x] Favorites persist and show under Favorites tab. Evidence: live prod — POST fav → GET /favorites contains it with title → DELETE → gone (check_favs.py, 2026-09-25)
-- [ ] Watches poll in background, survive restart, fire real notifications. Evidence: _
+- [x] Watches poll in background, survive restart, fire real notifications. Evidence: search_runs 3→4 on 45s poll (WATCH_REPOLL_OK); restart → persisted watch re-polled on boot; logs show `[notify] New match 0.75: Lenovo ThinkPad X1 Yoga … 280 EUR @ kleinanzeigen` (2026-09-25)
 - [ ] Lab tab produces a real tested enricher end to end. Evidence: _
 - [ ] /admin shows real non-zero Searches/Live events under load. Evidence: _
 - [ ] Unlimited/all per-page; every driver walks all pages (or user-configurable cap). Evidence: _
