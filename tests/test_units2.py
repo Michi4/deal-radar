@@ -369,3 +369,15 @@ def test_vision_breaker():
     del os.environ["LOCAL_VISION_API_URL"]
     del os.environ["LOCAL_MODEL_VISION"]
     V._vision_disabled_until = 0.0
+
+
+def test_accessory_plurals_contracts_contests():
+    from deal_radar.decision import heuristic_decide
+    for t in ("6 iPhone 17 Pro Max Hüllen", "iPhone 17 leer box OVP",
+              "iPhone 17 pro + Allnet 20GB ab 49,99", "iPhone 17 pro max a gagner",
+              "iPhone Vertrag mit Tarif"):
+        h = heuristic_decide(t, "x", 10, "iphone 17")
+        assert h["kind"] == "accessory", (t, h)
+        assert h["match"] <= 0.45
+    real = heuristic_decide("Apple iPhone 17 256GB", "Verkaufe mein iPhone 17", 700, "iphone 17")
+    assert real["kind"] == "offer"
