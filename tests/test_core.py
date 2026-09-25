@@ -250,3 +250,13 @@ def test_favorites_history():
     h = s.favorites_with_history()
     assert len(h) == 1 and h[0]["price"] == 450
     assert any(o["kind"] == "price" and o["new"] == "450.0" for o in h[0]["history"])
+
+
+def test_registry_check_builtin_drivers():
+    from deal_radar.registry import check, installed, load_index
+    ids = installed()
+    assert "willhaben" in ids and "kleinanzeigen" in ids and "ebay" in ids
+    for did in ("willhaben", "kleinanzeigen", "ebay"):
+        r = check(did)
+        assert r["ok"], r
+    assert load_index() == {"drivers": []} or isinstance(load_index().get("drivers"), list)
