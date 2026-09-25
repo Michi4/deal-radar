@@ -98,17 +98,28 @@ async def _post_chat(base: str, key: str, model: str, system: str, user: str,
         return {"__error": str(e)[:150]}
 
 
+_cloud_failures = 0
+_cloud_disabled_until = 0.0
+
+
 async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str = "") -> dict | None:
     """Local-first (Ollama on laptop, free, private) then OpenRouter free-model failover.
     None when everything fails (offline-first deterministic fallback)."""
+    global _cloud_failures, _cloud_disabled_until
     import asyncio as _aio
+    import time as _t
     # 1) local backend (ollama OpenAI-compatible, no key needed)
     local_base = os.getenv("LOCAL_API_URL", "")
     local_model = os.getenv("LOCAL_MODEL", "qwen2.5:3b")
-    if local_base:
-        out = await _post_chat(local_base, "", local_model, system, user, max_tokens, timeout=90.0)
+    if local_base and _t.time() >= _cloud_disabled_until:
+        out = await _post_chat(local_base, "", local_model, system, user, max_tokens, timeout=30.0)
         if out and not out.get("__error") and not out.get("__rate_limited"):
+            _cloud_failures = 0
             return out
+        _cloud_failures += 1
+        if _cloud_failures >= 3:
+            _cloud_disabled_until = _t.time() + 600
+            _cloud_failures = 0
     # 2) OpenRouter free failover with one retry round
     if not (CLOUD_API_URL and CLOUD_API_KEY):
         return None
@@ -359,11 +370,18 @@ def heuristic_decide(title: str, description: str, price: float | None,
     # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
     want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch)\b|[\s(](gesucht|ankauf|tausche)\b", hay))
     parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
-    accessory_ad = bool(_re.search(r"\b(h[üu]lle|case|cover|schutzh[üu]lle|folie|panzerglas|leere?\s*ovp|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock)\b", hay))
+    accessory_ad = bool(_re.search(r"\b(h[üu]lle|case|cover|schutzh[üu]lle|folie|panzerglas|leere?\s*ovp|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche)\b", hay))
     if want_ad:
         match = round(match * 0.3, 3)
     elif parts_ad or accessory_ad:
         match = round(match * 0.5, 3)
+    # kind caps: non-offers can never outrank real offers, no matter the keyword hits
+    if want_ad:
+        match = min(match, 0.30)
+    elif parts_ad:
+        match = min(match, 0.55)
+    elif accessory_ad:
+        match = min(match, 0.45)
     low_info = len(description or "") < 40
     kind = "want" if want_ad else ("parts" if parts_ad else ("accessory" if accessory_ad else "offer"))
     return {"match": match, "fuzzy": round(fuzzy, 3), "low_info": low_info,

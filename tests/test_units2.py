@@ -341,3 +341,30 @@ def test_marketplace_index():
     r2 = c.post("/marketplace/install", json={"id": "willhaben"})
     assert r2.json()["ok"] and "built in" in r2.json()["note"]
     assert c.post("/marketplace/install", json={"id": "nope"}).json()["ok"] is False
+
+
+def test_kind_caps_and_accessories():
+    from deal_radar.decision import heuristic_decide
+    bag = heuristic_decide("Lenovo ThinkPad Rucksack schwarz", "gut", 10, "thinkpad")
+    assert bag["kind"] == "accessory" and bag["match"] <= 0.45
+    lap = heuristic_decide("Lenovo ThinkPad T460 i5", "gut", 100, "thinkpad")
+    assert lap["kind"] == "offer" and lap["match"] > bag["match"]
+    box = heuristic_decide("iPhone 17 leere OVP", "nur Verpackung", 5, "iphone 17")
+    assert box["kind"] == "accessory"
+
+
+def test_vision_breaker():
+    import asyncio
+    from deal_radar import vision as V
+    V._vision_failures = 0
+    V._vision_disabled_until = 0.0
+    import os
+    os.environ["LOCAL_VISION_API_URL"] = "http://127.0.0.1:9"
+    os.environ["LOCAL_MODEL_VISION"] = "x"
+    for _ in range(3):
+        assert asyncio.run(V.vision_check("http://x/y.jpg", "t", "d")) == {}
+    import time
+    assert V._vision_disabled_until > time.time()
+    del os.environ["LOCAL_VISION_API_URL"]
+    del os.environ["LOCAL_MODEL_VISION"]
+    V._vision_disabled_until = 0.0
