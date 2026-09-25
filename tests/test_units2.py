@@ -202,6 +202,7 @@ def test_ailab_generate_mocked():
 def test_ailab_paths():
     import tempfile
     from pathlib import Path
+
     from deal_radar import ailab
     tmp = tempfile.mkdtemp()
     old_dir, old_drv = ailab.LAB_DIR, ailab.LAB_DRIVERS
