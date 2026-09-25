@@ -157,6 +157,13 @@ def load_drivers() -> None:
 
 
 load_drivers()
+try:
+    from deal_radar import ailab as _ailab
+    _loaded = _ailab.load_custom_enrichers()
+    if _loaded:
+        print(f"[lab] loaded persisted enrichers: {_loaded}", flush=True)
+except Exception as _e:
+    print(f"[lab] {type(_e).__name__}", flush=True)
 for _sid, _intent in store.load_searches().items():
     SEARCHES[_sid] = _intent
     if _intent.get("watch"):

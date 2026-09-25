@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import sys
 import urllib.request
@@ -21,6 +22,7 @@ from deal_radar.driver_sdk import DriverManifest
 ROOT = Path(__file__).resolve().parents[2]
 DRIVERS_DIR = ROOT / "drivers"
 COMMUNITY = DRIVERS_DIR / "community"
+LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(COMMUNITY)))
 INDEX_SOURCES = ["drivers/registry.json"]
 
 
@@ -35,7 +37,7 @@ def load_index(source: str = "") -> dict:
 
 def installed() -> list[str]:
     out = []
-    for base in (DRIVERS_DIR, COMMUNITY):
+    for base in {DRIVERS_DIR, COMMUNITY, LAB_DRIVERS}:
         if base.exists():
             out += [d.name for d in base.iterdir()
                     if d.is_dir() and (d / "driver.py").exists() and d.name != "_template"]
@@ -43,7 +45,7 @@ def installed() -> list[str]:
 
 
 def load_driver_module(driver_id: str):
-    for base in (DRIVERS_DIR, COMMUNITY):
+    for base in {DRIVERS_DIR, COMMUNITY, LAB_DRIVERS}:
         f = base / driver_id / "driver.py"
         if f.exists():
             spec = importlib.util.spec_from_file_location(f"dyn_{driver_id}", f)

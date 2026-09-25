@@ -9,11 +9,15 @@ Gated by LAB_ENABLED=1 (off by default — this writes runnable code).
 from __future__ import annotations
 
 import ast
+import os
 import re
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# Lab outputs live on the persisted volume (/data) so they survive rebuilds.
+LAB_DIR = Path(os.getenv("LAB_DIR", str(ROOT / "enrichers" / "custom")))
+LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(ROOT / "drivers" / "community")))
 
 ENRICHER_PROMPT = """You write a deal-radar enricher plugin (Python, no new dependencies beyond httpx/pydantic).
 Contract (exact):
@@ -90,19 +94,31 @@ def validate_python(code: str) -> str | None:
 
 
 def save_enricher(code: str, eid: str) -> Path:
-    d = ROOT / "enrichers" / "custom"
-    d.mkdir(parents=True, exist_ok=True)
-    p = d / f"{eid}.py"
+    LAB_DIR.mkdir(parents=True, exist_ok=True)
+    p = LAB_DIR / f"{eid}.py"
     p.write_text(code)
     return p
 
 
 def save_driver(code: str, did: str) -> Path:
-    d = ROOT / "drivers" / "community" / did
+    d = LAB_DRIVERS / did
     d.mkdir(parents=True, exist_ok=True)
     p = d / "driver.py"
     p.write_text(code)
     return p
+
+
+def load_custom_enrichers() -> list[str]:
+    """Hot-load all persisted lab enrichers (called at startup)."""
+    loaded: list[str] = []
+    for p in sorted(LAB_DIR.glob("*.py")) if LAB_DIR.exists() else []:
+        try:
+            r = hotload_enricher(p)
+            if r.get("ok"):
+                loaded.append(p.stem)
+        except Exception:
+            continue
+    return loaded
 
 
 def hotload_enricher(path: Path) -> dict:
