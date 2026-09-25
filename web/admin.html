@@ -15,6 +15,11 @@ const m2=m.metrics;
 document.getElementById('metrics').innerHTML='<table>'+
 Object.entries(m2.counters).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+
 Object.entries(m2.latency_avg_ms).map(([k,v])=>`<tr><td>latency ${k}</td><td>${v} ms</td></tr>`).join('')+'</table>';
+document.getElementById('searches').innerHTML='<table><tr><th>id</th><th>keywords</th><th>watch</th><th>sources</th></tr>'+
+(m.watchlist||[]).map(s=>`<tr><td>${s.id}</td><td>${s.keywords}</td><td>${s.watch}</td><td>${(s.sources||[]).join(',')}</td></tr>`).join('')+'</table>';
+document.getElementById('nsearch').textContent=(m.watchlist||[]).length;
+document.getElementById('events').innerHTML=(m.events_tail||[]).slice().reverse().map(e=>`<div>${e.kind||'?'}: ${(e.title||e.listing_id||'').slice(0,100)}</div>`).join('')||'none yet';
+document.getElementById('nev').textContent=m.events||0;
 }catch(e){}}
 setInterval(tick,15000);tick();
 </script></body></html>

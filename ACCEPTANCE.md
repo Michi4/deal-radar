@@ -6,7 +6,7 @@
 - [x] "iPhone 17" surfaces actual iPhones on page 1; scoring discriminates (condition from text signals, no hardcoded 50%). Evidence: `probe_search.py iphone17` → real "iphone 17" #1 + Pro Max phones; cases/boxes/contracts/contests/tausch demoted ≤0.55 (2026-09-25)
 - [x] Favorites persist and show under Favorites tab. Evidence: live prod — POST fav → GET /favorites contains it with title → DELETE → gone (check_favs.py, 2026-09-25)
 - [x] Watches poll in background, survive restart, fire real notifications. Evidence: search_runs 3→4 on 45s poll (WATCH_REPOLL_OK); restart → persisted watch re-polled on boot; logs show `[notify] New match 0.75: Lenovo ThinkPad X1 Yoga … 280 EUR @ kleinanzeigen` (2026-09-25)
-- [ ] Lab tab produces a real tested enricher end to end. Evidence: _
+- [x] Lab tab produces a real tested enricher end to end. Evidence: /lab/build warranty detector → ok:True, checks ok, fired_on_sample:true; /lab/status lists it; persists in /data across rebuilds (2026-09-25)
 - [ ] /admin shows real non-zero Searches/Live events under load. Evidence: _
 - [ ] Unlimited/all per-page; every driver walks all pages (or user-configurable cap). Evidence: _
 - [ ] Pager top+bottom, page-number input, styled per-page selector. Evidence: _
