@@ -94,6 +94,20 @@ class Store:
         self.db.execute("DELETE FROM searches WHERE id=?", (sid,))
         self.db.commit()
 
+    def set_fact(self, listing_id: str, field: str, value: str, by: str = "user") -> None:
+        import time as _t
+        self.db.execute("CREATE TABLE IF NOT EXISTS fact_overrides(listing_id TEXT, field TEXT, value TEXT, ts REAL, by TEXT, PRIMARY KEY (listing_id, field))")
+        self.db.execute("INSERT OR REPLACE INTO fact_overrides VALUES(?,?,?,?,?)",
+                        (listing_id, field, value, _t.time(), by))
+        self.db.commit()
+
+    def get_facts(self, listing_id: str) -> dict[str, str]:
+        try:
+            return {r[0]: r[1] for r in
+                    self.db.execute("SELECT field, value FROM fact_overrides WHERE listing_id=?", (listing_id,))}
+        except Exception:
+            return {}
+
     def close(self) -> None:
         try:
             self.db.commit()

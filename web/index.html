@@ -156,10 +156,13 @@ $('sheet').innerHTML=`<div class="row"><button class="ghost" onclick="closeD()">
 <div class="lane">${l.location||''} · ${l.source} · seller: ${l.seller?.name||'—'} · pickup ${l.pickup_available?'✓':'—'} · shipping ${l.shipping_available?'✓':'—'}</div>
 <p style="white-space:pre-wrap;font-size:14px">${(l.description||'no description').slice(0,3000)}</p>
 <h4>Deal DNA</h4>${dna}${en?'<h4>Specs</h4>'+en:''}
+<div class="row" style="margin:8px 0"><input id="cpuin" placeholder="correct CPU, e.g. Ryzen 5 PRO 5650U" style="flex:2"/><button class="ghost" onclick="setCpu()">set CPU</button></div>
 <h4>Why</h4><small>${(s.why||[]).join('<br/>')}</small>
 <h4>Risk evidence</h4><small>${(s.risk.reasons||[]).join('<br/>')||'none'}${(s.risk.counter_evidence||[]).length?'<br/>counter: '+s.risk.counter_evidence.join(', '):''}</small>`;
-$('drawer').classList.add('open');window._ci=0}
+$('drawer').classList.add('open');window._ci=0;window._lid=l.id}
 function cgo(d){if(!CAR.length)return;window._ci=(window._ci+d+CAR.length)%CAR.length;$('carimg').src=CAR[window._ci];$('carcnt').textContent=(window._ci+1)+'/'+CAR.length}
+async function setCpu(){const v=$('cpuin').value.trim();if(!v)return;const s=LAST.find(x=>x.listing.id===window._lid);if(!s)return toast('re-run search first');
+await fetch('/listings/'+encodeURIComponent(s.listing.id)+'/facts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({field:'cpu',value:v})});toast('CPU set — re-running search to AI-check it');run()}
 function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
