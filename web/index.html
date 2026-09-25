@@ -42,7 +42,7 @@ table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.
 </style>
 </head><body>
 <header><b>deal-radar</b><span class="dot" id="livedot"></span><small id="livetxt">live</small>
-<div class="tabs"><button class="ghost" onclick="tab('search')">Search</button><button class="ghost" onclick="showFavs()">★ <span id="favn">0</span></button><button class="ghost" onclick="tab('watches')">Watches</button><button class="ghost" onclick="cmp()">⇄ Compare</button><a href="/admin" style="color:#7aa2ff;font-size:13px">admin</a></div>
+<div class="tabs"><button class="ghost" onclick="tab('search')">Search</button><button class="ghost" onclick="showFavs()">★ <span id="favn">0</span></button><button class="ghost" onclick="tab('watches')">Watches</button><button class="ghost" onclick="cmp()">⇄ Compare</button><button class="ghost" onclick="tab('lab')">🧪 Lab</button><a href="/admin" style="color:#7aa2ff;font-size:13px">admin</a></div>
 <div class="tabs"><button class="ghost" id="vgrid" onclick="setView('grid')">▦</button><button class="ghost" id="vlist" onclick="setView('list')">☰</button></div>
 </header>
 <main>
@@ -127,13 +127,20 @@ $('askbtn').disabled=false}
 async function showFavs(){tab('search');status('★ favorites');try{const f=await(await fetch('/favorites')).json();
 $('results').innerHTML=f.map(x=>`<div class="card" style="padding:10px"><b>${x.title||x.listing_id}</b><br/><span class="price">${x.price??'?'}</span> · <a href="${x.url||'#'}" target="_blank">open</a> <button class="ghost" onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${h.kind}: ${h.old} → ${h.new}</div>`).join('')||'no changes tracked yet'}</div></div>`).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function unfavWrap(){}
-function tab(t){if(t==='watches')showWatches()}
+function tab(t){if(t==='watches')showWatches();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
+async function showLab(){let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
+$('results').innerHTML=`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" onclick="mkLab()">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
+async function mkLab(){$('labbtn').disabled=true;$('labout').innerHTML='<small>AI is writing + testing code… (1-3 min)</small>';
+try{const r=await(await fetch('/lab/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:$('labkind').value,instruction:$('labq').value})})).json();
+$('labout').innerHTML=r.ok?`<div>✅ <b>${r.id}</b> built, checked, hot-loaded.<br/><small>${JSON.stringify(r.checks).slice(0,300)}</small></div>`:`<div class="err">failed: ${r.error}<br/><small>${(r.code||'').slice(0,500)}</small></div>`}catch(e){$('labout').innerHTML=`<div class="err">${e}</div>`}
+$('labbtn').disabled=false}
 async function showWatches(){status('Watches — re-polled automatically, survive restarts');$('results').innerHTML='<div class="empty">loading watches…</div>';
-$('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" placeholder="watch query" style="flex:2"/><input id="wmax" placeholder="max €" type="number" style="width:90px"/><button onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div></div>`;refreshWatches()}
+$('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" placeholder="watch query" style="flex:2"/><input id="wmax" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><button onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
+try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
-const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300};
-const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
+const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no};
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
 async function cmp(){if(!SID)return toast('run a search first');status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();

@@ -362,6 +362,26 @@ def lab_status():
             "drivers": installed()}
 
 
+@app.get("/notifications/status")
+def notifications_status():
+    chans = []
+    if os.getenv("SIGNAL_NUMBER"):
+        chans.append({"type": "signal", "target": "***" + os.getenv("SIGNAL_NUMBER", "")[-4:]})
+    if os.getenv("NTFY_TOPIC_URL"):
+        chans.append({"type": "ntfy"})
+    if os.getenv("WEBHOOK_URL"):
+        chans.append({"type": "webhook"})
+    chans.append({"type": "log"})
+    extra = []
+    if os.getenv("NOTIFIERS_JSON"):
+        try:
+            import json as _j
+            extra = [s.get("type", "?") for s in _j.loads(os.getenv("NOTIFIERS_JSON", "[]"))]
+        except Exception:
+            pass
+    return {"channels": chans, "extra": extra}
+
+
 @app.post("/lab/build")
 async def lab_build(req: LabRequest):
     if not os.getenv("LAB_ENABLED"):
