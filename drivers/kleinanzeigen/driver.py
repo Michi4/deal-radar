@@ -147,19 +147,40 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 
 
 class KleinanzeigenDriver(MarketplaceDriver):
-    manifest = DriverManifest(id="kleinanzeigen", version="0.3.0", display_name="Kleinanzeigen",
-                              regions=["de"], capabilities=["search", "fetch_detail", "images", "location"],
+    manifest = DriverManifest(id="kleinanzeigen", version="0.4.0", display_name="Kleinanzeigen",
+                              regions=["de"], capabilities=["search", "fetch_detail", "images", "location", "paged"],
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=30)
 
-    async def search(self, query: SearchQuery) -> list[CanonicalListing]:
-        url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
+    async def _fetch_page(self, url: str) -> tuple[list[dict], str | None]:
+        import asyncio as _aio
         r = await self.transport.get(url, headers=HEADERS)
         if r.status_code == 403:
             raise RuntimeError("kleinanzeigen blocked request (403) — retry later or via DE proxy")
         r.raise_for_status()
-        items = parse_cards(r.text, query.limit)
-        if not items and len(r.text) > 5000:
-            raise RuntimeError("kleinanzeigen markup changed (schema-change) — no cards parsed")
+        return parse_cards(r.text, 100), next_page_url(r.text)
+
+    async def search(self, query: SearchQuery) -> list[CanonicalListing]:
+        import asyncio as _aio
+        url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
+        items: list[dict] = []
+        seen_urls: set[str] = set()
+        for _page in range(3):  # sequential + polite delay; never concurrent from one IP
+            try:
+                cards, nxt = await self._fetch_page(url)
+            except RuntimeError:
+                if not items:
+                    raise
+                break
+            for it in cards:
+                if it["url"] not in seen_urls:
+                    seen_urls.add(it["url"])
+                    items.append(it)
+            if len(items) >= query.limit or not nxt:
+                break
+            url = nxt
+            await _aio.sleep(2.5)
+        if not items:
+            raise RuntimeError("kleinanzeigen returned no cards (empty or schema-change)")
         out: list[CanonicalListing] = []
         for it in items:
             pcm = re.search(r"\b\d{5}\b", it["location"] or "")
