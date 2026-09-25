@@ -109,14 +109,46 @@ def next_page_url(html: str) -> str | None:
     return href if href.startswith("http") else f"https://www.kleinanzeigen.de{href}"
 
 
+def parse_detail(html: str) -> dict:
+    """Ad detail page: full description, attributes, price, seller type, images."""
+    out: dict = {"attributes": {}, "images": []}
+    m = re.search(r'<p id="viewad-description-text"[^>]*itemprop="description"[^>]*>(.*?)</p>', html, re.S)
+    if m:
+        out["description"] = re.sub(r"<[^>]+>", " ", m.group(1))
+        out["description"] = re.sub(r"\s+", " ", out["description"]).strip()[:4000]
+    for lm in re.finditer(r'class="addetailslist--detail[^"]*"[^>]*>(.*?)</li>', html, re.S):
+        txt = re.sub(r"<[^>]+>", "|", lm.group(1))
+        parts = [p.strip() for p in txt.split("|") if p.strip()]
+        if len(parts) >= 2:
+            out["attributes"][parts[0][:60]] = parts[-1][:200]
+    pm = re.search(r'itemprop="price"[^>]*content="([\d.]+)"', html)
+    if pm:
+        try:
+            out["price"] = float(pm.group(1))
+        except ValueError:
+            pass
+    blob = html.lower()
+    out["commercial"] = "gewerblich" in blob
+    loc = re.search(r'id="viewad-locality"[^>]*>([^<]{1,120})<', html)
+    if loc:
+        out["location"] = loc.group(1).strip()
+    for im in re.finditer(r'"contentUrl":"(https://img\.kleinanzeigen\.de/[^"]+)"', html):
+        u = im.group(1)
+        if u not in out["images"]:
+            out["images"].append(u)
+        if len(out["images"]) >= 8:
+            break
+    return out
+
+
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
            "Accept-Language": "de-DE,de;q=0.9", "Upgrade-Insecure-Requests": "1"}
 
 
 class KleinanzeigenDriver(MarketplaceDriver):
-    manifest = DriverManifest(id="kleinanzeigen", version="0.2.0", display_name="Kleinanzeigen",
-                              regions=["de"], capabilities=["search", "images", "location"],
+    manifest = DriverManifest(id="kleinanzeigen", version="0.3.0", display_name="Kleinanzeigen",
+                              regions=["de"], capabilities=["search", "fetch_detail", "images", "location"],
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=30)
 
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
@@ -141,3 +173,22 @@ class KleinanzeigenDriver(MarketplaceDriver):
         if query.max_price is not None:
             out = [l for l in out if l.price is None or l.price <= query.max_price]
         return out[:query.limit]
+
+    async def fetch_detail(self, native_id_or_url: str) -> CanonicalListing | None:
+        m = re.search(r"/s-anzeige/([^/]+/)?(\d+)", native_id_or_url)
+        url = native_id_or_url if native_id_or_url.startswith("http") else \
+            f"https://www.kleinanzeigen.de/s-anzeige/{m.group(2)}" if m else None
+        if not url:
+            return None
+        r = await self.transport.get(url, headers=HEADERS)
+        r.raise_for_status()
+        d = parse_detail(r.text)
+        if not d.get("description"):
+            return None
+        adid = m.group(2) if m else url
+        return CanonicalListing(id=f"kleinanzeigen:{adid}", source="kleinanzeigen", native_id=adid,
+                                url=url, description=d.get("description", ""),
+                                price=d.get("price"), location=d.get("location", ""),
+                                images=d.get("images", []),
+                                attributes=d.get("attributes", {}),
+                                seller=Seller(name="pro" if d.get("commercial") else ""))

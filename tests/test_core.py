@@ -327,3 +327,12 @@ def test_search_persistence():
     assert s.load_searches()["s_1"]["watch"] is True
     s.delete_search("s_1")
     assert "s_1" not in s.load_searches()
+
+
+def test_kleinanzeigen_detail():
+    from kleinanzeigen.driver import parse_detail
+    html = open(Path(__file__).parent / "fixtures" / "kleinanzeigen-detail.html", encoding="utf-8", errors="ignore").read()
+    d = parse_detail(html)
+    assert len(d.get("description", "")) > 200
+    assert d.get("price") == 179.0
+    assert len(d.get("images", [])) >= 1
