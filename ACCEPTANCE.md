@@ -9,7 +9,7 @@
 - [x] Per-field filters + delivery/location (`distance_km`, `pickup`, `shipping_available`, `shipping_cost`, total cost) (2026-09-24)
 - [x] Notifications fan-out (signal/telegram/email/ntfy/webhook/log), graceful failure tests (2026-09-25) + LIVE: ntfy=True, webhook=True from prod container; signal=False graceful (account unlinked, see BLOCKERS) (2026-09-25)
 - [x] Signal path wired — container → homeserver signal-api over WG verified; account attach pending user SIM verify (2026-09-25)
-- [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25)
+- [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25) + watcher autonomy PROVEN live (search_runs 8→9 on 45s watch) (2026-09-25)
 - [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
 - [x] `./scripts/verify.sh` — exists, GREEN (pytest 23, compileall, API import, docker via CI/server) (2026-09-25)
 - [ ] ebay driver live test (needs `EBAY_OAUTH_TOKEN`) — BLOCKED on user key
