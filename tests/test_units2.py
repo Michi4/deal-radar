@@ -323,3 +323,21 @@ def test_cpu_transfer_same_model():
     cpu2 = next(e["value"] for e in by_id["t:2"]["enrichments"] if e["field"] == "cpu")
     assert cpu2 == "Ryzen 5 PRO 5650U"
     assert any("transferred" in w for w in by_id["t:2"]["why"])
+
+
+def test_marketplace_index():
+    import sys
+    sys.path.insert(0, "apps")
+    import os
+    os.environ.pop("API_KEY", None)
+    from fastapi.testclient import TestClient
+    import api.main as m
+    c = TestClient(m.app)
+    r = c.get("/marketplace")
+    assert r.status_code == 200
+    d = r.json()
+    assert any(x["id"] == "vinted" and x["installed"] for x in d["drivers"])
+    assert any(x["id"] == "ebay" and not x["configured"] for x in d["drivers"])
+    r2 = c.post("/marketplace/install", json={"id": "willhaben"})
+    assert r2.json()["ok"] and "built in" in r2.json()["note"]
+    assert c.post("/marketplace/install", json={"id": "nope"}).json()["ok"] is False
