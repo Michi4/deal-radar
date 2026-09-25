@@ -1,41 +1,100 @@
-# ACCEPTANCE.md — evidence-backed checklist. Check only with a passing run in-session.
+# ACCEPTANCE.md — rebuilt 2026-09-25 per AGENTS.md. ALL items start UNCHECKED.
+# An item gets [x] ONLY with an evidence line from THIS session against the live app.
 
-- [x] `pytest` green — `PYTHONPATH=packages:drivers .venv/bin/python -m pytest -q` → 14 passed (2026-09-25)
-- [x] willhaben live parse — `__NEXT_DATA__` fixture + live search returned real listings w/ images/location (2026-09-24)
-- [x] kleinanzeigen live parse — real `ka.html` (8 cards: titles/prices/locations/DHL badges) (2026-09-24)
-- [x] Multi-source search, concurrent, failing source → `driver_errors`, rest served (fake-driver test + live willhaben+kleinanzeigen, 2026-09-24)
-- [x] Marketplace drivers — willhaben + kleinanzeigen + **vinted** live (10 real ThinkPads w/ prices 2026-09-25); ebay token-only (decoy refusal documented)
-- [x] Scam % + evidence + rescue lane — great deal w/ mild risk kept as `review`, test asserts (2026-09-24)
-- [x] NL search via real AI — OpenRouter `liquid/lfm-2.5-2.6b:free`, "iphone usb-c" → keywords+attrs+5 live results (2026-09-25)
-- [x] Per-field filters + delivery/location (`distance_km`, `pickup`, `shipping_available`, `shipping_cost`, total cost) (2026-09-24)
-- [x] Notifications fan-out (signal/telegram/email/ntfy/webhook/log), graceful failure tests (2026-09-25) + LIVE: ntfy=True, webhook=True from prod container; signal=False graceful (account unlinked, see BLOCKERS) (2026-09-25)
-- [x] Signal path wired — container → homeserver signal-api over WG verified; account attach pending user SIM verify (2026-09-25)
-- [x] Live watcher + SSE + result cache + `/admin` + `/metrics.json` (2026-09-25) + watcher autonomy PROVEN live (search_runs 8→9 on 45s watch) (2026-09-25)
-- [x] Homeserver deploy behind Authelia (crowdsec+authelia middlewares attached; LAN-bypass per user config) (2026-09-25)
-- [x] Quality gates — ruff + mypy + coverage≥70 all green locally, in verify.sh and CI (2026-09-25)
-- [ ] ebay driver live test (needs `EBAY_OAUTH_TOKEN`) — BLOCKED on user key
-- [x] Kev self-hosted live (`KEV_URL`) — Kev-0.8B on laptop CPU (LAN `192.168.1.172:8001`), round-trip verified, Stage B ran 9x in a live 20-listing search (2026-09-25)
-- [x] Real OCR on listing images — tesseract in image, live search OCR'd 3 photos ("Thinkpad T490" from pixels) (2026-09-25)
-- [x] CPU benchmark from real source — PassMark detail parser (fixture: 5800H=20461/2987), disk-cached, static fallback (2026-09-25)
-- [x] Jev key — DROPPED per user (Kev + local/cloud models cover all AI slots; free $5 credit noted)
-- [x] Real OCR on listing images (PaddleOCR worker), tested on real images — done via tesseract (see line 17)
-- [x] Real vision check (described-item match/mismatch), tested both ways — local qwen2.5vl:3b: match shows_item=1.0, mismatch clamped 1.0→0.25 via note-consistency rule; concurrent bounded pass in pipeline (2026-09-25)
-- [x] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB — done via PassMark parser (see line 18)
-- [x] Enrichment fabric generic — `enrich.py` interface (supports/enrich/register) + SECOND plugin `market_cohort` live (median/discount facts) + cross-source imgdup same-item hints; externals bot-walled (videocardbenchmark 403, geekbench 403, gsmarena-search Turnstile, geizhals JS-shell, heureka 403 — probed 2026-09-25, BLOCKERS) (2026-09-25)
-- [x] Driver registry (`install/list/check`, checksums, template) — CLI works; `path:` + `github:` installs live-verified (own repo template); authoring skill `docs/DRIVER_AUTHORING.md` (2026-09-25)
-- [x] Transports — direct/proxy/rotating mapping unit-tested; guarded retry+breaker live-proven on every search; no proxy budget needed (direct works from all hosts); live proxy failover pending dedicated proxies (see BLOCKERS)
-- [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
-- [x] Frontend — Pico.css design system (self-hosted, MIT), live pill removed, light/dark, verified via screenshots: grid/list views, swipeable in-app image carousel + detail drawer (DNA bars, evidence, specs), pagination + per-page, sort (score/price/perf-€), lane + Gesuche filters, search history, favorites + watches + compare + AI Lab tabs, toasts, loading/empty/error states, no alerts; E2E green (2026-09-25)
-- [x] AI Lab v1 — chat builds enrichers/drivers, syntax+contract checks, hot-load, persists across rebuilds, PR publish path; proven live (refurbished_enricher) (2026-09-25)
-- [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
-- [x] Lazy detail enrichment — top-3 results get full text + seller age via fetch_detail; live metric `detail_enriched` increments, risk/CPU re-run (2026-09-25)
-- [x] Vinted driver live (SSR cards, fee-inclusive prices, paging, fixture) + shared eu_price parser (2026-09-25)
-- [x] All-pages pagination (willhaben rows=90 + page loop to total; kleinanzeigen to last page) (2026-09-25)
-- [x] Market tab + /market endpoint (live inventory grid) + E2E (2026-09-25)
-- [x] Full PassMark spec facts (class/socket/clocks/cores/TDP/cache/ranks/suite) + title-verified lookup + vague-CPU refusal (2026-09-25)
-- [x] CPU resolution pipeline (override > mention > model-family + partial + ambiguity guard) + contradiction flags + drawer correction UI (2026-09-25)
-- [x] GPU benchmark enrichment live (videocardbenchmark G3D table via TLS impersonation, normalized lookup, gpu/€ sorts) (2026-09-25)
-- [x] Background jobs (POST returns instantly, poll progress, close site, notified on done) + multi-query `;` (2026-09-25)
-- [x] Relevance floor 0.12 + kind classifier (want/parts/accessory incl. cases/boxes/cables) + required-words AND + min price (2026-09-25)
-- [x] Public marketplace (versioned index, 1-click install, store UI, PR contributions) live (2026-09-25)
-- [x] Driver configured flags (ebay locked in UI until token) (2026-09-25)
+### B. Fix known-broken things first (regressions visible right now)
+- [ ] Plain keyword search "ThinkPad" returns real results. Evidence: _
+- [ ] "iPhone 17" surfaces actual iPhones on page 1; scoring discriminates (no hardcoded 50%/0%). Evidence: _
+- [ ] Favorites persist and show under Favorites tab. Evidence: _
+- [ ] Watches poll in background, survive restart, fire real notifications. Evidence: _
+- [ ] Lab tab produces a real tested enricher end to end. Evidence: _
+- [ ] /admin shows real non-zero Searches/Live events under load. Evidence: _
+- [ ] Unlimited/all per-page; every driver walks all pages (or user-configurable cap). Evidence: _
+- [ ] Pager top+bottom, page-number input, styled per-page selector. Evidence: _
+
+### C. Sources & drivers
+- [ ] eBay, Willhaben, Kleinanzeigen, Vinted live-tested (title/price/url/images/desc/location/seller). Evidence: _
+- [ ] eBay works WITHOUT token (public surface/RSS fallback) + full driver with token. Evidence: _
+- [ ] ≥2 more drivers beyond the 4, live-tested (choice in DECISIONS.md). Evidence: _
+- [ ] Driver SDK: template + manifest + hot load/unload + contract suite, proven by adding a 5th driver this session. Evidence: _
+- [ ] Multi-source: concurrent subsets, one failure never fails search, per-source status live in UI. Evidence: _
+- [ ] Transports incl. socks5/rotating proven against ≥1 real proxy live. Evidence: _
+
+### D. Search, filtering & querying
+- [ ] NL search by real model, ≥10 varied queries with results as evidence. Evidence: _
+- [ ] Multi-term search ("rtx 4080 OR rtx 4070 ti super") in one result set. Evidence: _
+- [ ] Per-field filters all ops, missing→N/A→pass. Property-based tests. Evidence: _
+- [ ] Blacklist AND required-words, both in UI. Evidence: _
+- [ ] Min/max price in main search bar. Evidence: _
+- [ ] Gesuche/parts hidden by default with visible toggle. Evidence: _
+- [ ] Junk/cases/boxes filtered by default behind toggle. Evidence: _
+- [ ] Client-side instant resort/refilter/page-size on fetched data. Evidence: _
+- [ ] Advanced panel exposes every backend knob (thresholds, weights). Evidence: _
+- [ ] Location/delivery filtering live in filtering AND sorting. Evidence: _
+
+### E. AI matching, scam scoring, OCR/vision
+- [ ] Stage A + Stage B cascade with real counts from a real search. Evidence: _
+- [ ] Real OCR on real images with extracted text as evidence. Evidence: _
+- [ ] Vision match + deliberate mismatch pair tested. Evidence: _
+- [ ] Scam % + evidence, flag-not-hide default, review-lane proof test. Evidence: _
+- [ ] Kev/Jev/Laya status confirmed live (which/where), README setup accurate, fallback works. Evidence: _
+- [ ] CPU/spec ladder (override > mention > candidates > partial+ambiguity > unknown), vague gets real attempt (serials/chassis/stickers/price-plausibility), contradictions flagged, drawer set-specs box re-runs AI check. Evidence: _
+
+### F. Enrichment plugins (generic, not CPU-only)
+- [ ] CPU full dataset (class/socket/clocks/cores/TDP/cache/marks/ranks/baselines), sortable by score/price/score-per-euro. Evidence: _
+- [ ] CPU-not-found falls back to list/search closest match. Evidence: _
+- [ ] GPU via videocardbenchmark built like CPU + Lab-built live. Evidence: _
+- [ ] ≥2 independent enrichers live sharing plugin shape. Evidence: _
+- [ ] Blocked sites logged in BLOCKERS.md with what was tried. Evidence: _
+
+### G. Plugin marketplace (drivers/enrichers, NOT listings)
+- [ ] Real remote versioned JSON index (not empty stub). Evidence: _
+- [ ] install/list/update vs real index with checksums, demoed live. Evidence: _
+- [ ] Publicly contributable via PR, flow proven with a real PR this session. Evidence: _
+- [ ] Store UI: installed vs available vs needs-config + real install/enable/disable buttons. Evidence: _
+
+### H. In-app AI authoring (flagship)
+- [ ] Lab chat UI takes plain-language driver/enrichment description. Evidence: _
+- [ ] AI scaffolds real code vs SDK/plugin interface. Evidence: _
+- [ ] AI writes+runs real tests vs real target (not mocked). Evidence: _
+- [ ] Success installs live, usable immediately, no restart. Evidence: _
+- [ ] Success optionally opens real PR to index repo (real PR this session). Evidence: _
+- [ ] Failures visible in UI, never silent hang. Evidence: _
+
+### I. Live, background, notifications, favorites/watches
+- [ ] Search returns immediately, runs in background, closeable tab, completion notified. Evidence: _
+- [ ] SSE push live (new/changed listings), latency measured, reconnect tested. Evidence: _
+- [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. Evidence: _
+- [ ] Per-watch rules in UI (e.g. drop >15% AND risk <20%). Evidence: _
+- [ ] Favorites cross-platform + full change history + persist proof. Evidence: _
+- [ ] Drawer version timeline (price/desc/image diffs). Evidence: _
+
+### J. Frontend/UX rebuild
+- [ ] Design system (Tailwind or justified swap), no raw browser chrome. Evidence: _
+- [ ] Cues from pricematters/bebetter/websters.at actually applied. Evidence: _
+- [ ] Light+dark correct on EVERY page. Evidence: _
+- [ ] Grid AND list toggle. Evidence: _
+- [ ] Card image carousel (all photos, inline, arrows+swipe). Evidence: _
+- [ ] Drawer: carousel, DNA, full benchmark sheet, evidence, set-spec box, polished. Evidence: _
+- [ ] Loading/empty/error states with reasons, per-source errors inline. Evidence: _
+- [ ] Zero alert() popups. Evidence: _
+- [ ] Search history reusable one-click. Evidence: _
+- [ ] No live pill/green-dot leftovers. Evidence: _
+- [ ] Mobile layout genuinely works. Evidence: _
+- [ ] Compare is real side-by-side (pick ≥2). Evidence: _
+- [ ] Full E2E (search→filter→sort→drawer→fav→compare→watch→live update→install→lab build→theme→grid/list), green with evidence. Evidence: _
+
+### K. Infra, security, ops, quality gates
+- [ ] .env gitignored, no leaks (rotate if leaked). Evidence: _
+- [ ] In-app auth/rate-limit behind Authelia. Evidence: _
+- [ ] ToS note + public-registry decision in DECISIONS.md. Evidence: _
+- [ ] SQLite WAL + timeout + backup job actually ran once. Evidence: _
+- [ ] verify.sh/CI run ruff+mypy+coverage ≥85%. Evidence: _
+- [ ] Live tests in tests/live behind mark, excluded from default/CI. Evidence: _
+- [ ] Willhaben fixture is a real captured page. Evidence: _
+- [ ] /metrics + admin consistent under real load. Evidence: _
+- [ ] Michi4 authorship incl. history, remote verified (deal-radar + seatgen-frontend). Evidence: _
+
+### L. Docs & shippability
+- [ ] README quickstart from clean clone, required vs optional envs, graceful degradation stated. Evidence: _
+- [ ] Separate Michi's-deployment doc (public README stays generic). Evidence: _
+- [ ] LICENSE correct re AGPL-derived code. Evidence: _
