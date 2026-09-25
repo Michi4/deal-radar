@@ -336,3 +336,12 @@ def test_kleinanzeigen_detail():
     assert len(d.get("description", "")) > 200
     assert d.get("price") == 179.0
     assert len(d.get("images", [])) >= 1
+
+
+def test_intent_key_and_default_sources():
+    import sys
+    sys.path.insert(0, "apps")
+    from api.main import _intent_key, default_sources
+    k = _intent_key({"keywords": "x", "models": ["a", "b"], "hard": {"rules": []}})
+    assert isinstance(k, str) and len(k) == 32
+    assert "ebay" not in default_sources()
