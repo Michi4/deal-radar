@@ -194,31 +194,36 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     pass
         # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
         if intent.get("benchmarks", True) and cpu_fact:
-            try:
-                from .benchmarks import fetch_passmark_cpu
-                real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
-                if real:
-                    enrich = [e for e in enrich if e.field not in ("cpu_benchmark",)]
-                    enrich.append(EnrichmentFact(field="cpu_benchmark", value=real["multi"], confidence=0.97,
-                                                 status=FactStatus.EXTERNAL,
-                                                 sources=[Evidence(type="external", detail="cpubenchmark.net")]))
-                    for sf in ("single", "class", "socket", "clockspeed", "turbo", "tdp", "cores",
-                               "threads", "cache_l1i", "cache_l1d", "cache_l2", "cache_l3",
-                               "rank_mt", "rank_st", "first_seen", "samples"):
-                        if real.get(sf) is not None:
-                            enrich.append(EnrichmentFact(field=f"cpu_{sf}", value=real[sf], confidence=0.95,
-                                                         status=FactStatus.EXTERNAL,
-                                                         sources=[Evidence(type="external", detail="cpubenchmark.net")]))
-                    metrics.inc("benchmark_real")
-                    if override:
-                        cpu_fact.status = FactStatus.VERIFIED
-                        bn_why.append(f"AI-check: {override} exists on PassMark \u2713")
-                else:
-                    metrics.inc("benchmark_static_fallback")
-                    if override:
-                        bn_why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
-            except Exception:
-                pass
+            import re as _re2
+            if not _re2.search(r"\d{3,}", str(cpu_fact.value)):
+                bn_why.append(f"CPU '{cpu_fact.value}' too vague for benchmark lookup (no model number)")
+                metrics.inc("benchmark_skipped_vague")
+            else:
+                try:
+                    from .benchmarks import fetch_passmark_cpu
+                    real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
+                    if real:
+                        enrich = [e for e in enrich if e.field not in ("cpu_benchmark",)]
+                        enrich.append(EnrichmentFact(field="cpu_benchmark", value=real["multi"], confidence=0.97,
+                                                     status=FactStatus.EXTERNAL,
+                                                     sources=[Evidence(type="external", detail="cpubenchmark.net")]))
+                        for sf in ("single", "class", "socket", "clockspeed", "turbo", "tdp", "cores",
+                                   "threads", "cache_l1i", "cache_l1d", "cache_l2", "cache_l3",
+                                   "rank_mt", "rank_st", "first_seen", "samples"):
+                            if real.get(sf) is not None:
+                                enrich.append(EnrichmentFact(field=f"cpu_{sf}", value=real[sf], confidence=0.95,
+                                                             status=FactStatus.EXTERNAL,
+                                                             sources=[Evidence(type="external", detail="cpubenchmark.net")]))
+                        metrics.inc("benchmark_real")
+                        if override:
+                            cpu_fact.status = FactStatus.VERIFIED
+                            bn_why.append(f"AI-check: {override} exists on PassMark ✓")
+                    else:
+                        metrics.inc("benchmark_static_fallback")
+                        if override:
+                            bn_why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
+                except Exception:
+                    pass
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
         val, val_why = value_score(l.price, bench, median)
         completeness = min(1.0, (bool(l.title) + bool(l.description and len(l.description) > 50)
