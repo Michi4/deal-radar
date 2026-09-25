@@ -359,14 +359,15 @@ def heuristic_decide(title: str, description: str, price: float | None,
     # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
     want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch)\b|[\s(](gesucht|ankauf|tausche)\b", hay))
     parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
+    accessory_ad = bool(_re.search(r"\b(h[üu]lle|case|cover|schutzh[üu]lle|folie|panzerglas|leere?\s*ovp|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock)\b", hay))
     if want_ad:
         match = round(match * 0.3, 3)
-    elif parts_ad:
+    elif parts_ad or accessory_ad:
         match = round(match * 0.5, 3)
     low_info = len(description or "") < 40
-    kind = "want" if want_ad else ("parts" if parts_ad else "offer")
+    kind = "want" if want_ad else ("parts" if parts_ad else ("accessory" if accessory_ad else "offer"))
     return {"match": match, "fuzzy": round(fuzzy, 3), "low_info": low_info,
-            "want_ad": want_ad, "parts_ad": parts_ad, "kind": kind,
+            "want_ad": want_ad or accessory_ad, "parts_ad": parts_ad, "kind": kind,
             "needs_stage_b": bool(0.35 <= match <= 0.75 or low_info)}
 
 

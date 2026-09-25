@@ -182,6 +182,7 @@ class SearchIntent(BaseModel):
     hard: dict = {}
     blacklist: list[dict] = []
     whitelist: list[dict] = []
+    required: list[dict] = []  # must-contain (AND): every rule must match
     risk: dict = {}
     ranking: dict | None = None
     enrich: bool = True
@@ -245,21 +246,36 @@ async def create_nl_search(q: NLQuery):
     parsed = await nl_to_intent(q.text)
     models = (parsed.get("models", []) or [])[:6]  # bound fan-out
     queries = models or [parsed.get("keywords", q.text)]
-    outs: list[dict] = []
+    intents = []
     for kw in queries:
-        data = {"keywords": kw, "category": parsed.get("category", ""),
-                "sources": q.sources or default_sources(),
-                "hard": {"min_match": 0.2, **(parsed.get("hard", {}) or {})},
-                "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
-                "ranking": None, "attributes": parsed.get("attributes", {}),
-                "models": parsed.get("models", []) or [],
-                "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
-                "vision": q.vision, "details": q.details,
-                "limit": max(6, q.limit // max(1, len(queries))),
-                "watch": False, "poll_interval_s": q.poll_interval_s,
-                "notify_on": ["new_top", "price_drop"]}
-        outs.append(await _run_cached(data, force=False))
-    # merge + dedupe across model queries
+        intents.append({"keywords": kw, "category": parsed.get("category", ""),
+                        "sources": q.sources or default_sources(),
+                        "hard": {"min_match": 0.2, **(parsed.get("hard", {}) or {})},
+                        "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
+                        "ranking": None, "attributes": parsed.get("attributes", {}),
+                        "models": parsed.get("models", []) or [],
+                        "required": parsed.get("required", []),
+                        "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
+                        "vision": q.vision, "details": q.details,
+                        "limit": max(6, q.limit // max(1, len(queries))),
+                        "watch": False, "poll_interval_s": q.poll_interval_s,
+                        "notify_on": ["new_top", "price_drop"]})
+    base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
+            "sources": q.sources or default_sources(), "hard": {"min_match": 0.2, **(parsed.get("hard", {}) or {})},
+            "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
+            "ranking": None, "attributes": parsed.get("attributes", {}),
+            "models": parsed.get("models", []) or [],
+            "required": parsed.get("required", []),
+            "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
+            "vision": q.vision, "details": q.details,
+            "limit": q.limit, "watch": q.watch,
+            "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
+    return await _start_job(intents, {"parsed": parsed, "base": base, "subqueries": queries,
+                                      "limit": q.limit, "watch": q.watch})
+
+
+def _merge_outs(outs: list[dict], limit: int) -> dict:
+    import statistics as _st
     seen: set[str] = set()
     merged: list[dict] = []
     events: list[dict] = []
@@ -275,33 +291,51 @@ async def create_nl_search(q: NLQuery):
                 seen.add(lid)
                 merged.append(r)
     merged.sort(key=lambda r: r.get("final_score", 0), reverse=True)
-    merged = merged[:q.limit]
-    import statistics as _st
+    merged = merged[:limit]
     _mp = sorted(r["listing"]["price"] for r in merged if r["listing"].get("price") is not None)
-    _med = _st.median(_mp) if len(_mp) >= 3 else None
+    return {"results": merged, "events": events, "driver_errors": errors,
+            "filtered_out": filt, "median": _st.median(_mp) if len(_mp) >= 3 else None}
+
+
+JOBS: dict[str, dict] = {}
+
+
+async def _start_job(intents: list[dict], meta: dict) -> dict:
     sid = f"s_{int(time.time() * 1000)}"
-    base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
-            "sources": q.sources or default_sources(), "hard": {"min_match": 0.2, **(parsed.get("hard", {}) or {})},
-            "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
-            "ranking": None, "attributes": parsed.get("attributes", {}),
-            "models": parsed.get("models", []) or [],
-            "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
-            "vision": q.vision, "details": q.details,
-            "limit": q.limit, "watch": q.watch,
-            "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
-    SEARCHES[sid] = base
-    store.save_search(sid, base)
-    LAST_RUN[sid] = time.time()
-    SEEN_IDS[sid] = {r["listing"]["id"] for r in merged}
-    EVENT_LOG.extend(events)
-    return {"id": sid, "parsed": parsed, "results": merged, "events": events,
-            "driver_errors": errors, "filtered_out": filt, "median": _med,
-            "sources": base["sources"], "subqueries": queries}
+    JOBS[sid] = {"status": "running", "done": 0, "total": len(intents),
+                 "intent": meta.get("base", intents[0] if intents else {}),
+                 "parsed": meta.get("parsed"), "subqueries": meta.get("subqueries", [])}
+    asyncio.create_task(_run_job(sid, intents, meta))
+    return {"id": sid, "status": "running", "total": len(intents)}
+
+
+async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
+    try:
+        outs = []
+        for i, data in enumerate(intents):
+            JOBS[sid]["done"] = i
+            outs.append(await _run_cached(data, force=True))
+        JOBS[sid]["done"] = len(intents)
+        merged = _merge_outs(outs, meta.get("limit", 20))
+        base = meta.get("base", intents[0] if intents else {})
+        SEARCHES[sid] = base
+        store.save_search(sid, base)
+        LAST_RUN[sid] = time.time()
+        SEEN_IDS[sid] = {r["listing"]["id"] for r in merged["results"]}
+        EVENT_LOG.extend(merged["events"])
+        EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
+                          "title": f"search finished: {len(merged['results'])} results"})
+        JOBS[sid].update({"status": "done", "result": merged})
+        if base.get("watch") or meta.get("notify_done"):
+            await notifier.send(f"Search done: {len(merged['results'])} results",
+                                f"{base.get('keywords', '')} :: {len(merged['results'])} hits, "
+                                f"{merged['filtered_out']} filtered", {"url": "/?sid=" + sid})
+    except Exception as e:  # noqa: BLE001
+        JOBS[sid].update({"status": "error", "error": f"{type(e).__name__}: {e}"})
 
 
 @app.post("/searches")
 async def create_search(intent: SearchIntent):
-    sid = f"s_{int(time.time() * 1000)}"
     data = intent.model_dump()
     if not data["sources"]:
         data["sources"] = default_sources()
@@ -314,23 +348,34 @@ async def create_search(intent: SearchIntent):
     if data.get("require_shipping"):
         rules.append({"field": "shipping_available", "op": "equals", "value": True})
     data["hard"] = {**(data.get("hard") or {}), "rules": rules}
-    SEARCHES[sid] = data
-    store.save_search(sid, data)
-    LAST_RUN[sid] = time.time()
-    out = await _run_cached(data, force=False)
-    SEEN_IDS[sid] = {r["listing"]["id"] for r in out.get("results", [])}
-    EVENT_LOG.extend(out.get("events", []))
-    return {"id": sid, **out}
+    # multi-query: "rtx 4080; rtx 4070 ti super" -> parallel sub-searches, merged
+    parts = [p.strip() for p in (data.get("keywords", "") or "").split(";") if p.strip()]
+    if len(parts) > 1:
+        intents = [{**data, "keywords": p, "watch": False} for p in parts[:6]]
+        return await _start_job(intents, {"base": {**data, "watch": data.get("watch", False)},
+                                          "subqueries": parts[:6], "limit": data.get("limit", 20),
+                                          "watch": data.get("watch", False), "notify_done": True})
+    return await _start_job([data], {"base": data, "limit": data.get("limit", 20),
+                                     "watch": data.get("watch", False), "notify_done": True})
 
 
 @app.get("/searches/{sid}")
 async def get_search(sid: str):
-    intent = SEARCHES.get(sid)
+    job = JOBS.get(sid)
+    if job is not None:
+        if job["status"] == "running":
+            return {"id": sid, "status": "running", "done": job["done"], "total": job["total"]}
+        if job["status"] == "error":
+            return {"id": sid, "status": "error", "error": job.get("error")}
+        out = job.get("result", {})
+        return {"id": sid, "status": "done", "parsed": job.get("parsed"),
+                "subqueries": job.get("subqueries", []), **out}
+    intent = SEARCHES.get(sid)  # persisted from earlier session: re-run cached
     if not intent:
         return {"error": "unknown search id"}
     out = await _run_cached(intent)
     EVENT_LOG.extend(out.get("events", []))
-    return {"id": sid, "cached": True, **out}
+    return {"id": sid, "status": "done", "cached": True, **out}
 
 
 @app.get("/stream")
