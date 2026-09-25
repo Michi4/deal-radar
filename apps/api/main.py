@@ -228,6 +228,9 @@ async def create_nl_search(q: NLQuery):
                 merged.append(r)
     merged.sort(key=lambda r: r.get("final_score", 0), reverse=True)
     merged = merged[:q.limit]
+    import statistics as _st
+    _mp = sorted(r["listing"]["price"] for r in merged if r["listing"].get("price") is not None)
+    _med = _st.median(_mp) if len(_mp) >= 3 else None
     sid = f"s_{int(time.time() * 1000)}"
     base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
             "sources": q.sources or default_sources(), "hard": parsed.get("hard", {}),
@@ -242,7 +245,7 @@ async def create_nl_search(q: NLQuery):
     SEEN_IDS[sid] = {r["listing"]["id"] for r in merged}
     EVENT_LOG.extend(events)
     return {"id": sid, "parsed": parsed, "results": merged, "events": events,
-            "driver_errors": errors, "filtered_out": filt, "median": None,
+            "driver_errors": errors, "filtered_out": filt, "median": _med,
             "sources": base["sources"], "subqueries": queries}
 
 
