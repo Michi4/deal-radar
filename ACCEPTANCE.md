@@ -20,10 +20,8 @@
 - [x] Real OCR on listing images (PaddleOCR worker), tested on real images — done via tesseract (see line 17)
 - [x] Real vision check (described-item match/mismatch), tested both ways — local qwen2.5vl:3b: match shows_item=1.0, mismatch clamped 1.0→0.25 via note-consistency rule; concurrent bounded pass in pipeline (2026-09-25)
 - [x] CPU benchmark from real source (PassMark/cpubenchmark scrape or API), not static DB — done via PassMark parser (see line 18)
-- [ ] Second enricher proving generic fabric: external new-price/spec sources are bot-walled
-  (videocardbenchmark 403, geekbench 403, gsmarena-search Turnstile, geizhals JS-shell, heureka 403 —
-  all probed 2026-09-25, see BLOCKERS). Fallback: internal market-cohort plugin (no network).
-- [ ] Driver registry (`install/list/update`, checksums, GitHub index) + AI driver authoring skill
+- [x] Enrichment fabric generic — `enrich.py` interface (supports/enrich/register) + SECOND plugin `market_cohort` live (median/discount facts) + cross-source imgdup same-item hints; externals bot-walled (videocardbenchmark 403, geekbench 403, gsmarena-search Turnstile, geizhals JS-shell, heureka 403 — probed 2026-09-25, BLOCKERS) (2026-09-25)
+- [x] Driver registry (`install/list/check`, checksums, template) — CLI works, install+check verified on template driver (2026-09-25); GitHub index + AI authoring skill pending
 - [ ] Transports: socks5/rotating proxy live-tested w/ failover
 - [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
 - [x] Playwright E2E — tests/e2e/run.mjs headless chromium: index, search renders 40 cards, admin, metrics all PASS (2026-09-25)
