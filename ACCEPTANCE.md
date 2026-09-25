@@ -26,3 +26,4 @@
 - [x] Cross-platform favorites with change history — `GET /favorites` returns price/desc/image observation history, test asserts (2026-09-25)
 - [x] Playwright E2E — tests/e2e/run.mjs headless chromium: index, search renders 40 cards, admin, metrics all PASS (2026-09-25)
 - [x] CI green + LICENSE + README quickstart from clean clone — LICENSE=MIT added; clean clone → venv → install → passed (2026-09-25). CI workflow exists (.github/workflows/ci.yml), green pending push.
+- [x] Lazy detail enrichment — top-3 results get full text + seller age via fetch_detail; live metric `detail_enriched` increments, risk/CPU re-run (2026-09-25)
