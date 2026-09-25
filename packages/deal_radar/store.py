@@ -69,3 +69,18 @@ class Store:
 
     def is_favorite(self, listing_id: str) -> bool:
         return self.db.execute("SELECT 1 FROM favorites WHERE listing_id=?", (listing_id,)).fetchone() is not None
+
+    def favorites_with_history(self) -> list[dict]:
+        favs = self.db.execute("SELECT listing_id, ts, note FROM favorites ORDER BY ts DESC").fetchall()
+        out: list[dict] = []
+        for lid, ts, note in favs:
+            row = self.db.execute("SELECT title, price, currency, url, last_seen, data FROM listings WHERE id=?",
+                                  (lid,)).fetchone()
+            obs = self.db.execute("SELECT ts, kind, old_value, new_value FROM observations WHERE listing_id=? ORDER BY ts",
+                                  (lid,)).fetchall()
+            out.append({"listing_id": lid, "saved_at": ts, "note": note,
+                        "title": row[0] if row else None, "price": row[1] if row else None,
+                        "currency": row[2] if row else None, "url": row[3] if row else None,
+                        "last_seen": row[4] if row else None,
+                        "history": [{"ts": o[0], "kind": o[1], "old": o[2], "new": o[3]} for o in obs]})
+        return out
