@@ -34,3 +34,4 @@
 - [x] Market tab + /market endpoint (live inventory grid) + E2E (2026-09-25)
 - [x] Full PassMark spec facts (class/socket/clocks/cores/TDP/cache/ranks/suite) + title-verified lookup + vague-CPU refusal (2026-09-25)
 - [x] CPU resolution pipeline (override > mention > model-family + partial + ambiguity guard) + contradiction flags + drawer correction UI (2026-09-25)
+- [x] GPU benchmark enrichment live (videocardbenchmark G3D table via TLS impersonation, normalized lookup, gpu/€ sorts) (2026-09-25)
