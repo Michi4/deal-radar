@@ -147,13 +147,18 @@ NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON Sear
 _NL_CACHE = "data/nl_cache.json"
 
 
+def _nl_key(text: str) -> str:
+    import hashlib as _h
+    return _h.sha256((NL_SYSTEM + "\n" + text.strip().lower()).encode()).hexdigest()[:32]
+
+
 def _nl_cached(text: str) -> dict | None:
-    import json as _json, hashlib as _h, time as _t
+    import json as _json, time as _t
     from pathlib import Path as _P
     try:
         p = _P(_NL_CACHE)
         if p.exists():
-            key = _h.sha256(text.strip().lower().encode()).hexdigest()[:32]
+            key = _nl_key(text)
             d = _json.loads(p.read_text())
             if key in d and _t.time() - d[key].get("ts", 0) < 7 * 86400:
                 return d[key]["intent"]
@@ -163,12 +168,12 @@ def _nl_cached(text: str) -> dict | None:
 
 
 def _nl_store(text: str, intent: dict) -> None:
-    import json as _json, hashlib as _h, time as _t
+    import json as _json, time as _t
     from pathlib import Path as _P
     try:
         p = _P(_NL_CACHE)
         d = _json.loads(p.read_text()) if p.exists() else {}
-        key = _h.sha256(text.strip().lower().encode()).hexdigest()[:32]
+        key = _nl_key(text)
         d[key] = {"ts": _t.time(), "intent": intent}
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(_json.dumps(d))
