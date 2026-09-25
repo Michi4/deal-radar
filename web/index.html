@@ -16,6 +16,7 @@
 <label><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
 </div>
 <div class="row" id="sources"></div>
+<div class="row"><button onclick="showFavs()">★ Favorites</button> <a href="/admin" style="color:#7aa2ff">admin</a></div>
 <div id="results"></div>
 </main><div id="events"></div>
 <script>
@@ -33,5 +34,8 @@ const body={keywords:q.value,max_price:+max.value||undefined,sources:sel,blackli
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 results.innerHTML=(r.results||[]).map(card).join('')||'<p>No results. Check driver errors below.</p>'+JSON.stringify(r.driver_errors)}
 async function fav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});alert('saved ★')}
+async function showFavs(){const f=await(await fetch('/favorites')).json();
+results.innerHTML=f.map(x=>`<div class="card"><b>${x.title||x.listing_id}</b><br/>${x.price??'?'} · <a href="${x.url||'#'}" target="_blank">open</a> <button onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<br/><small>history: ${(x.history||[]).map(h=>`${h.kind}: ${h.old} → ${h.new}`).join(' · ')||'no changes yet'}</small></div>`).join('')||'<p>No favorites yet.</p>'}
+async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});showFavs()}
 init();
 </script></body></html>
