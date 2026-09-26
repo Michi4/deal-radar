@@ -1,17 +1,19 @@
 # PROGRESS.md — 2026-09-26, continued session
 
 ## Verified state
-- ACCEPTANCE: nearly all checked with live evidence; 3 open = BLOCKED (ebay-tokenless, lab auto-PR GH_TOKEN, Signal-alive + telegram/email).
-- Mega-E2E 11/11 + quick E2E 10/10 green, zero JS errors. Drawer version history E2E-proven.
-- verify.sh GREEN (ruff+mypy+86%), CI green, clean-clone green.
-- Prod: 6 drivers, marketplace remote index, Lab builds+fires, watcher autonomy, SSE live, backup cron, jump deploys.
+- ACCEPTANCE: all checked except 3 BLOCKED (ebay-tokenless, lab auto-PR GH_TOKEN, Signal-alive + telegram/email).
+- verify.sh GREEN (ruff+mypy+86%), CI green, clean-clone green (58 passed).
+- Prod: 6 drivers live, marketplace remote index, Lab builds+fires, watcher autonomy, SSE live,
+  backup cron ran, jump-host deploys, total-cost DNA + sort, kind toggles, refine bar, searches dashboard.
+- Brains: Frankfurt Kev (<2s), laptop Ollama 3b + VL, OpenRouter last resort, breakers everywhere.
 
 ## Next (needs human)
-1. Signal receipt confirmation (2 test messages sent, both accepted with timestamps).
+1. Signal receipt confirmation (2 test messages accepted with timestamps).
 2. EBAY_OAUTH_TOKEN, GH_TOKEN, telegram/email creds, Mumbai creds.
 3. Eyes on Tailwind UI.
 
-## Next (autonomous, when continuing)
-1. eBay token path the day a token exists (driver ready).
-2. Free-vision via OpenRouter when uncongested (local VL covers laptop-awake).
-3. More drivers via DRIVER_AUTHORING.md (tutti/medimops need browser rendering — heavy).
+## Standing notes (reaffirmed)
+- No push without local verify.sh GREEN. Fixture HTML: scrub third-party keys before commit.
+- Test mocks: bare patch.object (correct) vs new=lambda (breaks async ctx managers).
+- NL cache is prompt-versioned; server volume persists it.
+- One AI per tiny host. Reset --soft stages everything (commit in chunks deliberately).
