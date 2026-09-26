@@ -99,7 +99,6 @@ class Store:
         self.db.commit()
 
     def save_results(self, sid: str, results: list[dict], limit: int = 12) -> None:
-        import time as _t
         try:
             self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
             for i, r in enumerate(results[:limit]):
