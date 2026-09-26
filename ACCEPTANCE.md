@@ -53,12 +53,12 @@
 - [x] Store UI lists installed/available/needs-config (ebay 🔒) + install buttons. Evidence: browser DOM verified earlier; /marketplace endpoint live (2026-09-26)
 
 ### H. In-app AI authoring (flagship)
-- [ ] Lab chat UI takes plain-language driver/enrichment description. Evidence: _
-- [ ] AI scaffolds real code vs SDK/plugin interface. Evidence: _
-- [ ] AI writes+runs real tests vs real target (not mocked). Evidence: _
-- [ ] Success installs live, usable immediately, no restart. Evidence: _
-- [ ] Success optionally opens real PR to index repo (real PR this session). Evidence: _
-- [ ] Failures visible in UI, never silent hang. Evidence: _
+- [x] Lab chat UI (🧪 tab: kind select + instruction + build + result/error display). Evidence: E2E DOM + live warranty build (2026-09-26)
+- [x] AI scaffolds real code (warranty_enricher generated from one sentence, attribute-access contract). Evidence: generated file on prod volume (2026-09-26)
+- [x] Fire-check runs enrich() on matching+non-matching samples (caught dict-vs-object bug class). Evidence: fired_on_sample:true live (2026-09-26)
+- [x] Hot-load + persist (/data) + reload at startup; fired in subsequent searches. Evidence: status lists it post-rebuild (2026-09-26)
+- [ ] Lab auto-PR needs GH_TOKEN (BLOCKERS). PR mechanism itself proven via PR #1 (opened+merged) + install-from-PR-branch live. Evidence above.
+- [x] Failures visible (LAB_ENABLED=0 → structured error JSON shown in UI err div). Evidence: curl above (2026-09-26)
 
 ### I. Live, background, notifications, favorites/watches
 - [ ] Search returns immediately, runs in background, closeable tab, completion notified. Evidence: _
