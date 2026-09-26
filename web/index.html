@@ -198,12 +198,12 @@ try{const r=await(await fetch('/lab/build',{method:'POST',headers:{'Content-Type
 $('labout').innerHTML=r.ok?`<div>✅ <b>${r.id}</b> built, checked, hot-loaded.<br/><small>${JSON.stringify(r.checks).slice(0,300)}</small></div>`:`<div class="err">failed: ${r.error}<br/><small>${(r.code||'').slice(0,500)}</small></div>`}catch(e){$('labout').innerHTML=`<div class="err">${e}</div>`}
 $('labbtn').disabled=false}
 async function showWatches(){status('Watches — re-polled automatically, survive restarts');$('results').innerHTML='<div class="empty">loading watches…</div>';
-$('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" class="inp" placeholder="watch query" style="flex:2"/><input id="wmax" class="inp" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><button class="btn btn-primary" onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
+$('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" class="inp" placeholder="watch query" style="flex:2"/><input id="wmax" class="inp" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><input id="nDrop" class="inp" placeholder="drop % ≥" type="number" style="max-width:90px" title="only notify drops of at least this %"/><input id="nRisk" class="inp" placeholder="risk ≤ %" type="number" style="max-width:90px" title="only notify new matches below this risk %"/><button class="btn btn-primary" onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
 const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
-const rules=[];const dp=+$('nDrop').value||0,rk=+$('nRisk').value||0;
+const rules=[];const dp=+$('nDrop')?.value||0,rk=+$('nRisk')?.value||0;
 if($('nPrice')?.checked&&dp>0)rules.push({kind:'price_drop',min_drop_pct:dp});
 if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
