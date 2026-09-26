@@ -7,13 +7,16 @@ mkdir -p "$D"
 if docker exec dealradar-api sqlite3 /data/dealradar.db ".backup '$D/dealradar.db'" 2>/dev/null; then
   echo "sqlite3 .backup OK"
 else
-  docker exec dealradar-api python -c "
+  cat > /tmp/dr_backup.py << 'PYEOF'
 import sqlite3
+import sys
 s = sqlite3.connect('/data/dealradar.db')
-d = sqlite3.connect(\"$D/dealradar.db\")
+d = sqlite3.connect(sys.argv[1])
 s.backup(d)
 print('python backup OK')
-"
+PYEOF
+  docker cp /tmp/dr_backup.py dealradar-api:/tmp/dr_backup.py
+  docker exec dealradar-api python /tmp/dr_backup.py "$D/dealradar.db"
 fi
 ls -la "$D"/
 find "$HOME/backups/dealradar" -maxdepth 1 -type d -mtime +14 -exec rm -rf {} + 2>/dev/null || true
