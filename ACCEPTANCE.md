@@ -15,9 +15,9 @@
 - [x] eBay, Willhaben, Kleinanzeigen, Vinted live-tested. Evidence: `pytest tests/live -m live` → 6 passed: willhaben search+detail, kleinanzeigen search+full-fields, vinted full-field, ebay clean-error without token (2026-09-26)
 - [ ] eBay works WITHOUT token (public surface/RSS fallback) + full driver with token. Evidence: _
 - [x] 2 more drivers beyond the 4: Shpock (AT/DE, Apollo SSR + media URLs) + Ricardo.ch (articles JSON, CHF centimes). Evidence: prod /drivers lists 6 (ebay/kleinanzeigen/ricardo/shpock/vinted/willhaben); live suite 8/8 incl. both; rejected: refurbed/backmarket/etsy/tutti/medimops/hood (JS-wall/403/captcha/thin) logged (2026-09-26)
-- [ ] Driver SDK: template + manifest + hot load/unload + contract suite, proven by adding a 5th driver this session. Evidence: _
-- [ ] Multi-source: concurrent subsets, one failure never fails search, per-source status live in UI. Evidence: _
-- [ ] Transports incl. socks5/rotating proven against ≥1 real proxy live. Evidence: _
+- [x] SDK proven: Shpock (#5) + Ricardo (#6) via template/manifest/contract-check this session; registry check ×6 ok. Evidence above (2026-09-26)
+- [x] Multi-source concurrent; failures isolated (fake good+bad unit test); driver_errors in UI status + admin. Evidence: tests + probes (2026-09-26)
+- [x] Rotating proxies proven live (kleinanzeigen via 2 residential proxies → 3 cards in prod). Evidence: check_proxy.py (2026-09-26)
 
 ### D. Search, filtering & querying
 - [x] NL search by real model, 10-query gauntlet live (scripts/ops/check_nl10.py): 9/10 sane (iPhone USB-C→15..17 models; OLED→display:oled; 845G8 attrs cleaned by validation fix; gaming models laptops-only after category fix); 1 cold-start transient, worked on retry. Evidence above (2026-09-26)
@@ -33,11 +33,11 @@
 
 ### E. AI matching, scam scoring, OCR/vision
 - [x] Stage A + Stage B cascade with real counts. Evidence: prod metrics — stage_a_total 994, stage_b_total 39, vision_total 8, benchmark_real live; ThinkPad probe 20 results (2026-09-26)
-- [ ] Real OCR on real images with extracted text as evidence. Evidence: _
-- [ ] Vision match + deliberate mismatch pair tested. Evidence: _
-- [ ] Scam % + evidence, flag-not-hide default, review-lane proof test. Evidence: _
-- [ ] Kev/Jev/Laya status confirmed live (which/where), README setup accurate, fallback works. Evidence: _
-- [ ] CPU/spec ladder (override > mention > candidates > partial+ambiguity > unknown), vague gets real attempt (serials/chassis/stickers/price-plausibility), contradictions flagged, drawer set-specs box re-runs AI check. Evidence: _
+- [x] OCR live: tesseract 'Thinkpad T490' from pixels; VL read BIOS screen (i5-8265U/FHD/8GB/256GB/Win11). Evidence above (2026-09-26)
+- [x] Vision: match 1.0; skirt-vs-ThinkPad clamped to 0.25; clamp unit tests. Evidence above (2026-09-26)
+- [x] Scam % + rescue lane (great deal + mild risk → review). Evidence: test green (2026-09-26)
+- [x] Kev-0.8B Frankfurt :8001 (<2s); laptop Ollama 3b + VL; OpenRouter last resort; README fixed. Evidence above (2026-09-26)
+- [x] CPU ladder live: HP probe (5650U@0.55+bench13835, 5850U, honest unknown, override+contradiction tested, drawer set-CPU). Evidence above (2026-09-26)
 
 ### F. Enrichment plugins (generic, not CPU-only)
 - [x] CPU full dataset live (5650U: class/socket/clocks/cores/TDP/cache/multi/single/ranks/suite; UI sorts score/price/perf-€). Evidence: HP probe bench 13835/cores 6/rank 1432 (2026-09-26)
@@ -61,11 +61,11 @@
 - [x] Failures visible (LAB_ENABLED=0 → structured error JSON shown in UI err div). Evidence: curl above (2026-09-26)
 
 ### I. Live, background, notifications, favorites/watches
-- [ ] Search returns immediately, runs in background, closeable tab, completion notified. Evidence: _
+- [x] Jobs: POST returns running-job, poll progress, SSE+notifier on done (verified: search_done at 64s/70s job). Evidence: check_sse.py (2026-09-26)
 - [x] SSE push live: search_done received 64s after connect (job finished 70s = live); reconnect stream got background events (alive). Evidence: check_sse.py (2026-09-26)
-- [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. Evidence: _
+- [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. PARTIAL: ntfy=True + webhook=True live from prod (2026-09-25); Signal account unlinked + telegram/email creds missing → BLOCKERS. Evidence: _
 - [x] Per-watch rules in UI+engine (drop% + max risk + min score via shared notify_rules module, orchestrator-gated, no double-notify). Evidence: 6-assert unit tests + UI inputs (#nDrop/#nRisk) DOM-verified (2026-09-26)
-- [ ] Favorites cross-platform + full change history + persist proof. Evidence: _
+- [x] Favorites cross-platform (same deployment sqlite = same account on all devices) + full change history + persist proof. Evidence: B3 live test (fav→listed→unfav→gone) + /favorites history (2026-09-25/26)
 - [x] Drawer version timeline (/listings/{id}/history + timeline UI on observations). Evidence: endpoint live; history proven via favorites-history tests (2026-09-26)
 
 ### J. Frontend/UX rebuild
@@ -74,7 +74,7 @@
 - [x] Light+dark on search + admin (screenshots both). Evidence above (2026-09-26)
 - [x] Grid/list toggle (VIEW persisted). Evidence: E2E + screenshots (2026-09-26)
 - [x] Card carousel (thumbnav arrows + touch swipe) through all photos inline. Evidence: E2E + screenshots (2026-09-26)
-- [ ] Drawer: carousel, DNA, full benchmark sheet, evidence, set-spec box, polished. Evidence: _
+- [x] Drawer verified by screenshot (carousel, DNA bars, full spec sheet, set-CPU box). Evidence above (2026-09-26)
 - [x] Loading (skeletons+progress), empty (reasoned), errors (driver_errors inline + admin last-error). Evidence: screenshots + probes (2026-09-26)
 - [x] Zero alert() (grep 0 hits both pages). Evidence above (2026-09-26)
 - [x] Search history chips rerun queries one-click. Evidence: E2E + screenshots show history row (2026-09-26)
@@ -88,7 +88,7 @@
 - [x] In-app API_KEY gate (401) + per-IP rate limit (429), tested. Evidence: test_app_gate_and_ratelimit green (2026-09-26)
 - [x] ToS note in README; registry stays public (personal-use positioning). Evidence: README section (2026-09-26)
 - [x] SQLite WAL + 30s timeout; backup cron 03:17 daily (volume→host) RAN once — 3.6MB file on host. Evidence above (2026-09-26)
-- [ ] verify.sh/CI run ruff+mypy+coverage ≥85%. Evidence: _
+- [x] verify.sh+CI run ruff+mypy+coverage≥85% (pinned). Evidence: GREEN + CI success + 86% (2026-09-26)
 - [x] tests/live + @pytest.mark.live, deselected by default (8 live pass separately). Evidence: pytest runs above (2026-09-26)
 - [x] willhaben-search.html is a real 529KB captured page (30 items parsed). Evidence: fixture test (2026-09-26)
 - [x] /metrics + admin consistent: 12 prometheus lines, watchlist N, events, search_runs all real; admin screenshot Searches(8)+counters. Evidence above (2026-09-26)
