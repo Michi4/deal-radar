@@ -10,7 +10,7 @@ page.on('pageerror', e => errs.push(String(e).slice(0, 100)));
 
 await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 check('index loads', await page.locator('#q').count() === 1);
-check('sources listed', (await page.locator('#sources input').count()) >= 2);
+check('sources listed', (await page.locator('#sources button').count()) >= 2);
 
 await page.fill('#q', 'ThinkPad');
 await page.click('#searchbtn');
