@@ -90,6 +90,7 @@ select.inp{max-width:100%}
 <label class="flex gap-1 items-center" title="detail pages"><input type="checkbox" id="fDet" checked/> details</label>
 <input id="warnT" class="inp" title="risk warn %" style="max-width:76px" type="number" value="35" min="0" max="100"/>
 <input id="blockT" class="inp" title="risk block %" style="max-width:76px" type="number" value="85" min="0" max="100"/>
+<input id="maxpages" class="inp" title="max pages per source (empty = all)" style="max-width:110px" type="number" min="1" placeholder="pages"/>
 </div></details>
 <div class="flex gap-2 flex-wrap items-center mt-2">
 <select id="sort" class="inp" style="max-width:190px" aria-label="sort order"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option><option value="mt">multithread</option><option value="gpe">gpu/€</option></select>
@@ -160,7 +161,9 @@ async function run(){const sel=[...document.querySelectorAll('#sources input:che
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;
 const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'contains',value:w.trim()}));
+const mp=+$('maxpages').value||undefined;
 const body={keywords:$('q').value,sources:sel,hard,required:req,...intent()};
+if(mp)body.max_pages=mp;
 $('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);status('Search started in background …');PAGE=0;
 try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 pushHist($('q').value);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();

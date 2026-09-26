@@ -134,7 +134,7 @@ class WillhabenDriver(MarketplaceDriver):
                 f"?KEYWORD={quote_plus(query.keywords)}&rows=90&sort=1")
         if query.max_price:
             base += f"&PRICE_TO={int(query.max_price)}"
-        max_pages = max(1, min(10, (query.limit + 89) // 90 + 2))
+        max_pages = query.max_pages or max(1, min(10, (query.limit + 89) // 90 + 2))
         items: list[dict] = []
         seen: set[str] = set()
         for page_no in range(1, max_pages + 1):  # sequential, polite
