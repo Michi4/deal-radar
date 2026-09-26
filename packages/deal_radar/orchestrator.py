@@ -26,7 +26,7 @@ from .decision import (
 from .driver_sdk import DriverRegistry, SearchQuery
 from .filter_engine import apply_filters
 from .risk_engine import apply_risk_policy, assess_risk
-from .scoring import enrich_cpu, rank, value_score
+from .scoring import enrich_cpu, rank, total_cost, value_score
 
 
 def dedupe_key(title: str, images: list[str]) -> str:
@@ -298,7 +298,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         dna = {"match": h["match"], "value": val, "risk": r.score,
                "completeness": round(completeness, 3), "condition": h.get("condition", 0.65),
-               "confidence": r.confidence}
+               "confidence": r.confidence,
+               "total_cost": total_cost(l.price, l.shipping_cost, l.distance_km,
+                                        float(intent.get("cost_per_km", 0) or 0))}
         why = [*fr.reasons, *val_why, *attr_hits, *(f"risk: {x}" for x in r.reasons),
                *(f"ok: {x}" for x in r.counter_evidence)]
         why.extend(bn_why)
