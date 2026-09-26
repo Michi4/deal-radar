@@ -20,6 +20,7 @@ check('search renders', true);
 // sort + blacklist-field typing are client-side (no roundtrip); only Search button queries
 let fetches = 0;
 page.on('request', r => { if (r.url().includes('/searches')) fetches++; });
+await page.click('details summary');
 await page.fill('#black', 'rucksack XYZ123');
 await page.waitForTimeout(1000);
 await page.click('#sortseg button:nth-child(2)');
@@ -50,7 +51,7 @@ await page.waitForTimeout(800);
 check('compare table', await page.locator('#results table.cmp td').count() >= 2);
 
 // watch
-await page.click('text=Watches');
+await page.locator('#topnav-center button:has-text("Watches")').click();
 await page.waitForSelector('#wq', { timeout: 15000 });
 await page.fill('#wq', 'ThinkPad X1 Test');
 await page.click('text=+ Watch');
@@ -69,7 +70,7 @@ await page.click('#vgrid');
 check('theme toggles + list/grid switch', themeClass !== undefined && rows >= 0);
 
 // marketplace lists (real driver names rendered)
-await page.getByRole('button', { name: 'Store' }).click();
+await page.locator('#topnav-center button:has-text("Store")').click();
 await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0, null, { timeout: 30000 });
 const storeTxt = await page.locator('#results').textContent();
 check('store lists drivers', storeTxt.includes('Willhaben') && storeTxt.includes('install'));
