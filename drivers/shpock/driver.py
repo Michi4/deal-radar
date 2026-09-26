@@ -4,15 +4,17 @@ Strategy: search page embeds Next.js __NEXT_DATA__ with Apollo cache; ItemSummar
 objects carry title/description/price/currency/path/canonicalURL/media/isSold/isShippable.
 """
 from __future__ import annotations
+
 import json
 import re
 from urllib.parse import quote_plus
-from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
-from deal_radar.contracts import CanonicalListing, Seller
+
+from deal_radar.contracts import CanonicalListing
+from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
 
 
 def parse_next_data(html: str, limit: int = 30) -> list[dict]:
-    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
     if not m:
         return []
     try:

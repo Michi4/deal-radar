@@ -477,8 +477,9 @@ def test_gpu_table_and_extract():
 
 
 def test_shpock_fixture():
-    from shpock.driver import parse_next_data, ShpockDriver
     from pathlib import Path as _P
+
+    from shpock.driver import ShpockDriver, parse_next_data
     html = _P(__file__).parent.joinpath("fixtures/shpock-search.html").read_text(encoding="utf-8", errors="ignore")
     items = parse_next_data(html, 20)
     assert len(items) >= 10
