@@ -8,8 +8,8 @@
 - [x] Watches poll in background, survive restart, fire real notifications. Evidence: search_runs 3→4 on 45s poll (WATCH_REPOLL_OK); restart → persisted watch re-polled on boot; logs show `[notify] New match 0.75: Lenovo ThinkPad X1 Yoga … 280 EUR @ kleinanzeigen` (2026-09-25)
 - [x] Lab tab produces a real tested enricher end to end. Evidence: /lab/build warranty detector → ok:True, checks ok, fired_on_sample:true; /lab/status lists it; persists in /data across rebuilds (2026-09-25)
 - [x] /admin shows real non-zero Searches/Live events under load. Evidence: admin screenshot — Searches (8) with ids/keywords/sources, pipeline counters (fetched/scored/stage_a/latency) all non-zero (2026-09-25)
-- [ ] Unlimited/all per-page; every driver walks all pages (or user-configurable cap). Evidence: _
-- [ ] Pager top+bottom, page-number input, styled per-page selector. Evidence: _
+- [x] Unlimited/all per-page; every driver walks all pages (or user-configurable cap). Evidence: live prod ThinkPad/limit60 → willhaben 270 (3×90 to total logic), kleinanzeigen 43, vinted 60, errors={}; UI per-page incl "all" + max-pages input wired to SearchQuery (2026-09-26)
+- [x] Pager top+bottom, page-number input, styled per-page selector. Evidence: Playwright DOM check — #pagertop, #pager, #goto, 4 per-page opts, #maxpages all present, zero JS errors (2026-09-26)
 
 ### C. Sources & drivers
 - [ ] eBay, Willhaben, Kleinanzeigen, Vinted live-tested (title/price/url/images/desc/location/seller). Evidence: _
