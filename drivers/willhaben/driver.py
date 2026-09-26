@@ -131,7 +131,9 @@ class WillhabenDriver(MarketplaceDriver):
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
         import asyncio as _aio
         base = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
-                f"?KEYWORD={quote_plus(query.keywords)}&rows=90&sort=1")
+                f"?keyword={quote_plus(query.keywords)}&rows=90&sort=1")
+        # NOTE: lowercase `keyword` — uppercase KEYWORD silently returns the UNFILTERED
+        # marketplace (13M rows). Verified live 2026-09-26.
         if query.max_price:
             base += f"&PRICE_TO={int(query.max_price)}"
         max_pages = query.max_pages or max(1, min(10, (query.limit + 89) // 90 + 2))
@@ -146,6 +148,12 @@ class WillhabenDriver(MarketplaceDriver):
                 break
             r.raise_for_status()
             cards, total = parse_next_data(r.text, 90)
+            if total is not None and total > 1000000 and query.keywords:
+                # server ignored the keyword (unfiltered dump) — flag loudly, keep client-side filtering
+                from deal_radar import metrics as _mx
+                _mx.inc("willhaben_unfiltered_dump")
+                print(f"[willhaben] WARNING: query {query.keywords!r} returned {total} rows (unfiltered?)",
+                      flush=True)
             if not cards:
                 cards = parse_dom_fallback(r.text, 90)
                 total = None
