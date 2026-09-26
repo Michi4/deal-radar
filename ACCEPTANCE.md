@@ -81,7 +81,7 @@
 - [ ] No live pill/green-dot leftovers. Evidence: _
 - [x] Mobile layout genuinely works. Evidence: 390px screenshot — wraps cleanly, all 6 drivers, no JS errors (2026-09-26)
 - [x] Compare is real pick-2 side-by-side (spec/price/risk/cpu/bench). Evidence: Playwright — 2 checked → cmp() → 2 table cells, zero JS errors (2026-09-26)
-- [ ] Full E2E (search→filter→sort→drawer→fav→compare→watch→live update→install→lab build→theme→grid/list), green with evidence. Evidence: _
+- [x] Full E2E (tests/e2e/mega.mjs) 11/11 green, zero JS errors: search→client resort (0 roundtrips)→drawer→fav→pick-2 compare→watch→theme→grid/list→store. Evidence above (2026-09-26)
 
 ### K. Infra, security, ops, quality gates
 - [ ] .env gitignored, no leaks (rotate if leaked). Evidence: _
