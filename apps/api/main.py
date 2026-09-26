@@ -448,6 +448,18 @@ def get_facts(lid: str):
     return {"listing": unquote(lid), "facts": store.get_facts(unquote(lid))}
 
 
+@app.get("/listings/{lid}/history")
+def listing_history(lid: str):
+    """Version timeline for a tracked item: price/desc/image observations."""
+    from urllib.parse import unquote
+    lid = unquote(lid)
+    rows = store.db.execute(
+        "SELECT ts, kind, old_value, new_value FROM observations WHERE listing_id=? ORDER BY ts",
+        (lid,)).fetchall()
+    return {"listing": lid, "history": [
+        {"ts": r[0], "kind": r[1], "old": r[2], "new": r[3]} for r in rows]}
+
+
 @app.get("/lab/status")
 def lab_status():
     from deal_radar.enrich import REGISTRY

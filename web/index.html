@@ -125,11 +125,14 @@ function perfEur(s){const b=benchOf(s);return (b&&s.listing.price)?b/s.listing.p
 function thumb(l,idx){const imgs=l.images||[];if(!imgs.length)return '';const i=idx||0;
 return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${imgs[i%imgs.length]}" onerror="this.remove()">${imgs.length>1?`<button class="thumbnav l" onclick="event.stopPropagation();cyc(this,-1,'${l.id}')">‹</button><button class="thumbnav r" onclick="event.stopPropagation();cyc(this,1,'${l.id}')">›</button>`:''}</div>`}
 function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listing.images||[]).length)return;const n=s.listing.images.length;let i=((+btn.parentElement.dataset.i||0)+d+n)%n;btn.parentElement.dataset.i=i;btn.parentElement.querySelector('img').src=s.listing.images[i]}
-function card(s){const l=s.listing;const fav=isFav(l.id)?'★':'☆';
+let CMP=new Set();
+function cmpTgl(id){CMP.has(id)?CMP.delete(id):CMP.add(id);if(CMP.size>2)CMP.delete([...CMP][0]);render()}
+function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+l.title+'</b><br/>'+(l.price??'?')+' '+l.currency+'<br/>'+l.source+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+s.final_score+'<br/>cpu '+(en.cpu||'—')+'<br/>bench '+(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('results').innerHTML='<div class="panel"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
+function card(s){const l=s.listing;const fav=isFav(l.id)?'★':'☆';const ck=CMP.has(l.id)?'checked':'';
 const inner=`${thumb(l)}<div class="body"><h4>${l.title||'(no title)'}</h4>
 <div><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
 <div class="lane">${s.lane} · ${s.final_score} · ${l.source} · ${l.location||''}</div>
-<div style="margin-top:6px"><button class="btn btn-ghost" onclick="event.stopPropagation();fav('${l.id}')">${fav}</button></div></div>`;
+<div style="margin-top:6px"><label style="font-size:12px"><input type="checkbox" ${ck} onclick="event.stopPropagation();cmpTgl('${l.id}')"/> compare</label> <button class="btn btn-ghost" onclick="event.stopPropagation();fav('${l.id}')">${fav}</button></div></div>`;
 return VIEW==='grid'?`<div class="card" onclick='openD("${l.id}")'>${inner}</div>`
 :`<div class="listrow" onclick='openD("${l.id}")'>${(l.images&&l.images[0])?`<img loading="lazy" src="${l.images[0]}" onerror="this.remove()">`:''}<div><b>${l.title||'(no title)'}</b><br/><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${s.lane} · ${l.source}</span> <button class="btn btn-ghost" onclick="event.stopPropagation();fav('${l.id}')">${fav}</button></div></div>`}
 let FAVS=new Set();
@@ -215,7 +218,7 @@ try{const r=await(await fetch('/marketplace')).json();
 const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button onclick="installX('${kind}','${x.id}')">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
 $('results').innerHTML='<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
-async function cmp(){if(!SID)return toast('run a search first');status('Comparing…');
+async function cmp(){if(CMP.size>=2){return cmpSel()}if(!SID)return toast('run a search first');status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
 $('results').innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
 let CAR=[];
@@ -229,12 +232,14 @@ $('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" onclick="cl
 <p style="white-space:pre-wrap;font-size:14px">${(l.description||'no description').slice(0,3000)}</p>
 <h4>Deal DNA</h4>${dna}${en?'<h4>Specs</h4>'+en:''}
 <div class="row" style="margin:8px 0"><input id="cpuin" class="inp" placeholder="correct CPU, e.g. Ryzen 5 PRO 5650U" style="flex:2"/><button class="btn btn-ghost" onclick="setCpu()">set CPU</button></div>
+<h4>Version history</h4><div id="vhist"><small>loading…</small></div>
 <h4>Why</h4><small>${(s.why||[]).join('<br/>')}</small>
 <h4>Risk evidence</h4><small>${(s.risk.reasons||[]).join('<br/>')||'none'}${(s.risk.counter_evidence||[]).length?'<br/>counter: '+s.risk.counter_evidence.join(', '):''}</small>`;
-$('drawer').classList.add('open');window._ci=0;window._lid=l.id}
+$('drawer').classList.add('open');window._ci=0;window._lid=l.id;loadHist(l.id)}
 function cgo(d){if(!CAR.length)return;window._ci=(window._ci+d+CAR.length)%CAR.length;$('carimg').src=CAR[window._ci];$('carcnt').textContent=(window._ci+1)+'/'+CAR.length}
 async function setCpu(){const v=$('cpuin').value.trim();if(!v)return;const s=LAST.find(x=>x.listing.id===window._lid);if(!s)return toast('re-run search first');
 await fetch('/listings/'+encodeURIComponent(s.listing.id)+'/facts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({field:'cpu',value:v})});toast('CPU set — re-running search to AI-check it');run()}
+async function loadHist(id){try{const h=await(await fetch('/listings/'+encodeURIComponent(id)+'/history')).json();$('vhist').innerHTML=(h.history||[]).map(x=>'<div class="hist"><b>'+x.kind+'</b> · '+new Date(x.ts*1000).toLocaleString()+'<br/><small>'+(x.old||'').slice(0,120)+' → '+(x.new||'').slice(0,120)+'</small></div>').join('')||'<small>no changes tracked yet</small>'}catch(e){$('vhist').innerHTML='<small>history unavailable</small>'}}
 function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
