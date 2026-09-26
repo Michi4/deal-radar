@@ -84,6 +84,27 @@ class RotatingProxyTransport(TransportProvider):
         return await client.get(url, **kwargs)
 
 
+class TlsImpersonatingTransport(TransportProvider):
+    """curl_cffi with browser TLS fingerprint. For hosts that 403 plain httpx (e.g. ricardo)."""
+
+    def __init__(self, impersonate: str = "chrome124", timeout: float = 20.0):
+        self.impersonate = impersonate
+        self.timeout = timeout
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        import asyncio as _aio
+
+        def _fetch() -> httpx.Response:
+            from curl_cffi import requests as _cr
+            headers = dict(kwargs.pop("headers", {}) or {})
+            r = _cr.get(url, impersonate=self.impersonate, headers=headers,
+                        timeout=self.timeout, allow_redirects=True, **kwargs)
+            return httpx.Response(r.status_code, headers=dict(r.headers), content=r.content,
+                                  request=httpx.Request("GET", url))
+
+        return await _aio.to_thread(_fetch)
+
+
 def transport_from_config(cfg: dict[str, Any] | None) -> TransportProvider:
     cfg = cfg or {"type": "direct"}
     t = cfg.get("type", "direct")
@@ -91,6 +112,8 @@ def transport_from_config(cfg: dict[str, Any] | None) -> TransportProvider:
         return ProxyTransport(cfg["url"])
     if t == "rotating":
         return RotatingProxyTransport(cfg.get("urls", []))
+    if t == "tls":
+        return TlsImpersonatingTransport(cfg.get("impersonate", "chrome124"))
     return DirectTransport(timeout=float(cfg.get("timeout", 15.0)))
 
 

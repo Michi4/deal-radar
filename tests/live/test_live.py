@@ -92,3 +92,28 @@ def test_shpock_search_live():
         l = out[0]
         assert l.title and l.url and l.images
     asyncio.run(go())
+
+
+def test_ricardo_search_live():
+    import asyncio
+
+    from deal_radar.driver_sdk import SearchQuery
+    from ricardo.driver import RicardoDriver
+    async def go():
+        out = await RicardoDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
+        assert len(out) >= 1
+        l = out[0]
+        assert l.title and l.url and l.currency == "CHF"
+    asyncio.run(go())
+
+
+def test_shpock_search_live():
+    import asyncio
+
+    from deal_radar.driver_sdk import SearchQuery
+    from shpock.driver import ShpockDriver
+    async def go():
+        out = await ShpockDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
+        assert len(out) >= 1
+        assert out[0].title and out[0].url
+    asyncio.run(go())
