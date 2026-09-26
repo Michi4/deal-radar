@@ -18,3 +18,7 @@
   Free $5 credit available at console.typesafe.ai if ever wanted.
 
 - [ ] eBay without token: search pages return decoy template cards (fake IDs, $ prices on .de, 62 title tags all 'Shop on eBay'); item pages stripped (0 EUR prices, no h1) — both verified 2026-09-26 with TLS impersonation + session cookies. Scraping it would inject FAKE listings, refused per no-fake rule. Needed: free EBAY_OAUTH_TOKEN (developer.ebay.com self-serve); token driver ready and clean-errors until then.
+
+- [ ] Lab auto-PR publish: mechanism implemented (`lab_publish` via GitHub Contents+Pulls API) but untested — needs GH_TOKEN + LAB_PUBLISH=1. PR flow itself proven separately (PR #1 opened+merged via gh CLI). Needed: token to run one end-to-end publish.
+
+- [ ] Telegram/email notifiers: implemented + unit-tested, never sent a real message. Needed: bot token+chat ID or SMTP creds for one live send each.
