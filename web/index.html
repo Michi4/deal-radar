@@ -71,7 +71,7 @@ table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.
 .btn{border-radius:.75rem;padding:.625rem .875rem;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:background-color .2s,border-color .2s,color .2s,transform .15s,box-shadow .2s}
 .btn:active{transform:scale(.97)}.btn:disabled{opacity:.5;cursor:wait}
 .btn-primary{background:var(--acc);border-color:var(--acc);color:#fff;min-height:44px}.btn-primary:hover{filter:brightness(1.12)}.btn-primary:active{transform:scale(.97)}
-.btn-ghost{background:transparent;border-color:var(--acc);color:var(--acc)}.btn-ghost:hover{background:rgba(59,130,246,.12)}
+.btn-ghost{background:transparent;border-color:var(--acc);color:var(--acc)}.btn-ghost:hover{background:var(--acc-soft)}
 input[type=checkbox]{accent-color:var(--acc);width:1.1rem;height:1.1rem}
 select.inp{max-width:100%}
 </style>
@@ -94,22 +94,23 @@ select.inp{max-width:100%}
 </div></header>
 <main class="max-w-6xl mx-auto px-3 py-3">
 <div class="mx-auto w-full" style="max-width:46rem" id="searchpanel">
-<div class="panel" style="border-color:var(--acc-d, #047857)"><div class="eyebrow">AI Ask</div> <small>plain language — the AI resolves products &amp; filters. Search flags below apply.</small>
+<div class="panel" style="border:none;background:transparent;padding:.25rem 0;box-shadow:none"><div class="eyebrow">Natural language search</div>
 <div class="flex gap-2 flex-wrap items-center mt-2">
-<input id="nl" class="inp" style="flex:3;min-width:200px" aria-label="natural language search" placeholder="Ask: iphone with USB-C charging, ThinkPad under €700 without defects…"/>
+<input id="nl" class="inp" style="flex:3;min-width:200px" aria-label="natural language search" placeholder="Describe what you want…"/>
 <button id="askbtn" class="btn btn-primary" onclick="runNL()">Ask</button></div></div>
-<div class="panel"><div class="eyebrow">Keyword search</div> <small>direct marketplace query — use <b>;</b> for multi-topic (e.g. rtx 4080; rtx 4070 ti super). Same flags apply.</small>
+<div class="panel"><div class="eyebrow">Search</div>
 <div class="grid gap-2 mt-2" style="grid-template-columns:1fr auto">
-<input id="q" class="inp" aria-label="keyword search" placeholder="keywords: ThinkPad T14 Ryzen 16GB"/>
+<input id="q" class="inp" aria-label="keyword search" placeholder="Search…"/>
 <button id="searchbtn" class="btn btn-primary" onclick="run()">Search</button></div>
-<div class="grid gap-2 mt-2 sm:grid-cols-2">
-<input id="black" class="inp" placeholder="blacklist, comma separated" title="Hide listings containing any of these words"/>
-<input id="req" class="inp" placeholder="must contain (required)" title="Keep only listings containing ALL of these words"/>
-<input id="min" class="inp" placeholder="min €" type="number" title="Minimum price"/>
-<input id="max" class="inp" placeholder="max €" type="number" title="Maximum price"/>
-</div>
+
+<details class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 p-2"><summary class="cursor-pointer text-sm opacity-70">advanced<span id="fdot" class="fdot" style="display:none"></span></summary>
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm" id="sources"></div>
-<details class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 p-2"><summary class="cursor-pointer text-sm opacity-70">filters & options<span id="fdot" class="fdot" style="display:none"></span></summary>
+<div class="grid gap-2 mt-2 sm:grid-cols-2">
+<label class="text-sm opacity-70">blacklist <small>(hide if contains)</small><input id="black" class="inp" placeholder="comma separated" title="Hide listings containing any of these words"/></label>
+<label class="text-sm opacity-70">must contain <small>(all required)</small><input id="req" class="inp" placeholder="comma separated" title="Keep only listings containing ALL of these words"/></label>
+<label class="text-sm opacity-70">min price €<input id="min" class="inp" placeholder="0" type="number" title="Minimum price"/></label>
+<label class="text-sm opacity-70">max price €<input id="max" class="inp" placeholder="no limit" type="number" title="Maximum price"/></label>
+</div>
 <div class="flex gap-3 flex-wrap items-center mt-2 text-sm">
 <label class="flex gap-1 items-center"><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
 <span class="flabel">listing kinds (on = hidden)</span><div class="pills" id="kindpills">
@@ -132,14 +133,16 @@ select.inp{max-width:100%}
 <input id="wRisk" class="inp" title="risk weight" style="max-width:64px" type="number" value="20" min="0" max="100"/>
 <input id="wComp" class="inp" title="completeness weight" style="max-width:64px" type="number" value="10" min="0" max="100"/>
 <input id="maxpages" class="inp" title="max pages per source (empty = all)" style="max-width:110px" type="number" min="1" placeholder="pages"/>
-</div></details>
+</div>
+<div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
+</details>
 <div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar" style="display:none">
 <div class="seg" role="group" aria-label="sort order" id="sortseg"></div>
 <div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
 <span id="lanes" class="pills"></span></div>
-<div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
 </div>
 <div id="status"></div>
+<div class="panel" id="applied" style="display:none"></div>
 <div class="panel" id="refinebar" style="display:none"><b>Refine loaded results</b> <small>(no re-search)</small>
 <div class="flex gap-2 flex-wrap items-center mt-2">
 <input id="rMin" class="inp" style="max-width:100px" type="number" placeholder="min €" title="Refine: minimum price"/>
@@ -231,6 +234,34 @@ function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" 
 function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
 const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
 return{ranking,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
+async function showApplied(p,subs){if(!p||!p.keywords){$('applied').style.display='none';return}
+const chip=t=>'<span class="chip">'+t+'</span>';
+let h='<div class="eyebrow">AI understood</div><div style="font-weight:700">'+p.keywords+'</div>';
+const bits=[];
+if((p.models||[]).length)bits.push('<small>models:</small> '+p.models.slice(0,8).map(m=>chip(m)).join(' '));
+const bl=(p.blacklist||[]).map(b=>b.value||b).filter(Boolean);
+if(bl.length)bits.push('<small>excluded:</small> '+bl.slice(0,8).map(w=>chip('− '+w)).join(' '));
+const rq=(p.required||[]).map(r=>r.value||r).filter(Boolean);
+if(rq.length)bits.push('<small>must contain:</small> '+rq.slice(0,8).map(w=>chip('+ '+w)).join(' '));
+const at=Object.entries(p.attributes||{}).map(([k,v])=>k+': '+v);
+if(at.length)bits.push('<small>requires:</small> '+at.map(a=>chip(a)).join(' '));
+const pr=[];
+if(p.hard&&p.hard.min_price)pr.push('≥ '+p.hard.min_price+' €');
+if(p.hard&&p.hard.max_price)pr.push('≤ '+p.hard.max_price+' €');
+if(pr.length)bits.push('<small>price:</small> '+pr.map(x=>chip(x)).join(' '));
+if(p.category)bits.push('<small>category:</small> '+chip(p.category));
+if(subs&&subs.length>1)bits.push('<small>searching as:</small> '+subs.slice(0,6).map(s=>chip(s)).join(' '));
+if(bits.length)h+='<div class="mt-2 flex gap-2 flex-wrap items-center text-sm">'+bits.join(' · ')+'</div>';
+h+='<div class="mt-2 text-sm opacity-70"><small>Filtered automatically — adjust in <b>advanced</b> and re-run, or refine below without re-search.</small></div>';
+$('applied').innerHTML=h;$('applied').style.display='';
+// mirror AI filters into advanced inputs so they are visibly applied
+try{
+if(bl.length&&!$('black').value)$('black').value=bl.slice(0,12).join(', ');
+if(rq.length&&!$('req').value)$('req').value=rq.slice(0,12).join(', ');
+if(p.hard&&p.hard.max_price&&!$('max').value)$('max').value=p.hard.max_price;
+if(p.hard&&p.hard.min_price&&!$('min').value)$('min').value=p.hard.min_price;
+}catch(e){}
+}
 async function poll(sid,onDone){for(;;){const r=await(await fetch('/searches/'+sid)).json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
 onDone(r);return}}
@@ -250,7 +281,7 @@ async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...S
 $('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:30})})).json();
 pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();
-const p=r.parsed||{};status(`<small>understood as <b>${p.keywords||''}</b> · models: ${(p.models||[]).slice(0,6).join(', ')} · ${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
+const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 async function showFavs(){tab('search');status('★ favorites');try{const f=await(await fetch('/favorites')).json();
 $('results').innerHTML=f.map(x=>`<div class="card" style="padding:10px"><b>${x.title||x.listing_id}</b><br/><span class="price">${x.price??'?'}</span> · <a href="${x.url||'#'}" target="_blank">open</a> <button class="btn btn-ghost" onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${h.kind}: ${h.old} → ${h.new}</div>`).join('')||'no changes tracked yet'}</div></div>`).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
