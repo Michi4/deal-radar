@@ -667,3 +667,34 @@ def _reg2src():
     reg.register(A())
     reg.register(B())
     return reg
+
+
+def test_total_cost_dna():
+    import asyncio
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+
+    def mk(i, price, ship):
+        return CanonicalListing(id=i, source="t", native_id=i, url="u", title=f"ThinkPad T14 {i}",
+                                description="decent description text", price=price, images=[f"http://img/{i}.jpg"],
+                                shipping_cost=ship, seller=Seller(name="s"))
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+        async def search(self, query: SearchQuery):
+            return [mk("t:1", 100.0, 10.0), mk("t:2", 105.0, 0.0)]
+    reg = DriverRegistry()
+    reg.register(F())
+    out = asyncio.run(run_search(
+        {"keywords": "thinkpad", "sources": ["t"], "limit": 5, "risk": {},
+         "enrich": False, "ocr": False, "benchmarks": False, "vision": False, "details": False},
+        reg, None, None))
+    tots = {r["listing"]["id"]: r["deal_dna"]["total_cost"] for r in out["results"]}
+    assert tots == {"t:1": 110.0, "t:2": 105.0}
