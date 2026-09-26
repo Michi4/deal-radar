@@ -200,7 +200,10 @@ try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerH
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
 const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
-const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no};
+const rules=[];const dp=+$('nDrop').value||0,rk=+$('nRisk').value||0;
+if($('nPrice')?.checked&&dp>0)rules.push({kind:'price_drop',min_drop_pct:dp});
+if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
+const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
 async function showMarket(src){status('Market — live inventory across all searches');$('results').innerHTML='<div class="empty">loading market…</div>';
