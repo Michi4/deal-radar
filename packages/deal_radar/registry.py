@@ -103,19 +103,25 @@ def install(entry: dict, index_source: str = "") -> dict:
         if src.startswith("path:"):
             shutil.copytree(src[5:], dest)
         elif src.startswith("github:"):
-            import subprocess
+            import io as _io
+            import tarfile as _tf
             _, rest = src.split(":", 1)
             sub = ""
             if ":" in rest:
                 rest, _, sub = rest.partition(":")
             repo, _, ref = rest.partition("@")
+            ref = ref or "main"
+            import httpx as _hx
+            url = f"https://github.com/{repo}/archive/refs/heads/{ref}.tar.gz"
+            r = _hx.get(url, timeout=180, follow_redirects=True)
+            r.raise_for_status()
             tmp = COMMUNITY / f".tmp-{entry['id']}"
-            cmd = ["git", "clone", "--depth", "1"]
-            if ref:
-                cmd += ["--branch", ref]
-            cmd += [f"https://github.com/{repo}", str(tmp)]
-            subprocess.run(cmd, check=True, timeout=180)
-            shutil.move(str(tmp / sub) if sub else str(tmp), dest)
+            with _tf.open(fileobj=_io.BytesIO(r.content), mode="r:gz") as tf:
+                tf.extractall(tmp, filter="data")
+            root = next(tmp.iterdir())
+            src_dir = root / sub if sub else root
+            shutil.move(str(src_dir), dest)
+            shutil.rmtree(tmp, ignore_errors=True)
         else:
             return {"ok": False, "error": f"unsupported source: {src}"}
         want = entry.get("sha256", "")
