@@ -39,8 +39,9 @@ def test_willhaben_search_live():
 def test_vinted_search_live():
     import asyncio
 
-    from deal_radar.driver_sdk import SearchQuery
     from vinted.driver import VintedDriver
+
+    from deal_radar.driver_sdk import SearchQuery
     async def go():
         out = await VintedDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
         assert len(out) >= 1
@@ -54,8 +55,9 @@ def test_ebay_clean_error_without_token():
     import asyncio
     import os
 
-    from deal_radar.driver_sdk import SearchQuery
     from ebay.driver import EbayDriver
+
+    from deal_radar.driver_sdk import SearchQuery
     os.environ.pop("EBAY_OAUTH_TOKEN", None)
     async def go():
         res, err = await EbayDriver().guarded_search(SearchQuery(keywords="ThinkPad", limit=5))
@@ -66,8 +68,9 @@ def test_ebay_clean_error_without_token():
 def test_kleinanzeigen_full_fields_live():
     import asyncio
 
-    from deal_radar.driver_sdk import SearchQuery
     from kleinanzeigen.driver import KleinanzeigenDriver
+
+    from deal_radar.driver_sdk import SearchQuery
     async def go():
         out = await KleinanzeigenDriver().search(SearchQuery(keywords="ThinkPad T460", limit=10))
         full = [l for l in out if l.title and l.price is not None and l.url and l.images]
