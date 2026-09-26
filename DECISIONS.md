@@ -19,3 +19,4 @@
 - eBay tokenless scraping REFUSED: bot-wall serves decoy cards (no prices/titles) — fake data risk.
 
 - Proxy live test used 1 request via the homelab's own webshare pool (pricematters env, never committed); justified as de-minimis infra validation.
+- Plugin/driver registry index stays PUBLIC: it lists scraper drivers, which lowers the bar for scraping at scale. Accepted because (a) every driver carries its ToS/personal-use notice, (b) drivers are polite by construction (≤1 req/s, cached), (c) the techniques are already public knowledge. Revisit if a source complains.
