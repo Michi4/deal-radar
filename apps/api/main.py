@@ -93,6 +93,9 @@ async def _run_cached(intent: dict, force: bool = False) -> dict:
     return out
 
 
+from deal_radar.notify_rules import rules_ok as _rules_ok
+
+
 async def _watcher() -> None:
     """Live loop: re-poll watched searches, push new-match events to SSE + notifiers."""
     await asyncio.sleep(5)
@@ -111,10 +114,12 @@ async def _watcher() -> None:
                 for r in out.get("results", []):
                     seen.add(r["listing"]["id"])
                 notify_on = intent.get("notify_on", ["new_top", "price_drop"])
+                rules = intent.get("notify_rules", [])
                 for r in fresh:
                     if r["lane"] in ("hidden",):
                         continue
-                    if "new_top" in notify_on and r["lane"] in ("top", "good") and r["final_score"] >= 0.5:
+                    if "new_top" in notify_on and r["lane"] in ("top", "good") and r["final_score"] >= 0.5 \
+                            and _rules_ok(rules, "new_match", r=r):
                         ev = {"kind": "new_match", "listing_id": r["listing"]["id"],
                               "title": r["listing"]["title"], "price": r["listing"]["price"],
                               "url": r["listing"]["url"], "score": r["final_score"]}
@@ -125,9 +130,7 @@ async def _watcher() -> None:
                             f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n{r['listing']['url']}",
                             {"url": r["listing"]["url"]})
                 for ev in out.get("events", []):
-                    EVENT_LOG.append(ev)
-                    if ev.get("kind") == "price_drop" or (ev.get("kind") == "price" and "notify_on" in intent and "price_drop" in notify_on):
-                        pass  # price-change notifies already handled in orchestrator via store diff
+                    EVENT_LOG.append(ev)  # price notifies are sent (rule-gated) by the orchestrator itself
         except Exception as e:
             print(f"[watcher] {e}", flush=True)
         await asyncio.sleep(15)
@@ -195,6 +198,7 @@ class SearchIntent(BaseModel):
     watch: bool = False
     poll_interval_s: int = 300
     notify_on: list[str] = ["new_top", "price_drop"]
+    notify_rules: list[dict] = []  # e.g. {"kind":"price_drop","min_drop_pct":15},{"kind":"new_match","max_risk":0.2}
     max_distance_km: float | None = None
     require_pickup: bool = False
     require_shipping: bool = False

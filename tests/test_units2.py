@@ -466,3 +466,18 @@ def test_closest_known_cpu():
     name, score = closest_known_cpu("Ryzen 7 580H")  # typo of 5800H
     assert name == "ryzen 7 5800h" and score > 0.75
     assert closest_known_cpu("zzzz not a cpu 123")[0] is None
+
+
+def test_notify_rules():
+    from deal_radar.notify_rules import rules_ok
+    assert rules_ok([], "new_match", r={"final_score": 0.1})
+    assert rules_ok([{"kind": "price_drop", "min_drop_pct": 15}], "new_match",
+                    r={"final_score": 0.9, "risk": {"score": 0.1}})
+    assert not rules_ok([{"kind": "new_match", "max_risk": 0.2}], "new_match",
+                        r={"final_score": 0.9, "risk": {"score": 0.5}})
+    assert rules_ok([{"kind": "new_match", "max_risk": 0.2, "min_score": 0.5}], "new_match",
+                    r={"final_score": 0.9, "risk": {"score": 0.1}})
+    assert not rules_ok([{"kind": "price_drop", "min_drop_pct": 15}], "price_drop",
+                        ev={"old": 100, "new": 95})
+    assert rules_ok([{"kind": "price_drop", "min_drop_pct": 15}], "price_drop",
+                    ev={"old": 100, "new": 80})

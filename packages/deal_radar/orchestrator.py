@@ -319,9 +319,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             for c in ch:
                 ev = {"listing_id": l.id, "url": l.url, "title": l.title, **c}
                 events.append(ev)
-                if notifier and c["kind"] == "price":
-                    await notifier.send(f"Price change: {l.title[:60]}",
-                                        f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
+                if notifier and c["kind"] == "price" and "price_drop" in (intent.get("notify_on", ["new_top", "price_drop"])):
+                    from .notify_rules import rules_ok as _rules_ok
+                    try:
+                        _ok = _rules_ok(intent.get("notify_rules", []), "price_drop", ev=ev)
+                    except Exception:
+                        _ok = True
+                    if _ok:
+                        await notifier.send(f"Price change: {l.title[:60]}",
+                                            f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
     # Stage B concurrent pass (cap: most uncertain first; sem bounds slow-model load)
