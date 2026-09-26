@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS observations(id INTEGER PRIMARY KEY AUTOINCREMENT, li
   ts REAL, kind TEXT, old_value TEXT, new_value TEXT);
 CREATE TABLE IF NOT EXISTS favorites(listing_id TEXT PRIMARY KEY, ts REAL, note TEXT);
 CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
+CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_id TEXT, title TEXT,
+  price REAL, currency TEXT, source TEXT, url TEXT, image TEXT, score REAL,
+  PRIMARY KEY (search_id, listing_id));
 """
 
 
@@ -92,7 +95,45 @@ class Store:
 
     def delete_search(self, sid: str) -> None:
         self.db.execute("DELETE FROM searches WHERE id=?", (sid,))
+        self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
         self.db.commit()
+
+    def save_results(self, sid: str, results: list[dict], limit: int = 12) -> None:
+        import time as _t
+        try:
+            self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
+            for i, r in enumerate(results[:limit]):
+                l = r.get("listing", {})
+                imgs = l.get("images", []) or []
+                self.db.execute("INSERT OR REPLACE INTO search_results VALUES(?,?,?,?,?,?,?,?,?,?)",
+                                (sid, i, l.get("id"), (l.get("title") or "")[:200], l.get("price"),
+                                 l.get("currency"), l.get("source"), l.get("url"),
+                                 imgs[0] if imgs else None, r.get("final_score")))
+            self.db.commit()
+        except Exception:
+            pass
+
+    def list_searches(self) -> list[dict]:
+        out = []
+        try:
+            for sid, ts, intent in self.db.execute(
+                    "SELECT id, ts, intent FROM searches ORDER BY ts DESC LIMIT 60").fetchall():
+                try:
+                    import json as _j
+                    intent = _j.loads(intent)
+                except Exception:
+                    intent = {}
+                n = self.db.execute("SELECT COUNT(*) FROM search_results WHERE search_id=?",
+                                    (sid,)).fetchone()[0]
+                thumbs = [r[0] for r in self.db.execute(
+                    "SELECT image FROM search_results WHERE search_id=? AND image IS NOT NULL "
+                    "ORDER BY rank LIMIT 4", (sid,)).fetchall()]
+                out.append({"id": sid, "ts": ts, "keywords": intent.get("keywords", ""),
+                            "watch": bool(intent.get("watch")), "sources": intent.get("sources", []),
+                            "results": n, "thumbs": thumbs})
+        except Exception:
+            pass
+        return out
 
     def set_fact(self, listing_id: str, field: str, value: str, by: str = "user") -> None:
         import time as _t

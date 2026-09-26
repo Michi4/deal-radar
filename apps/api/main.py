@@ -341,6 +341,7 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
         store.save_search(sid, base)
         LAST_RUN[sid] = time.time()
         SEEN_IDS[sid] = {r["listing"]["id"] for r in merged["results"]}
+        store.save_results(sid, merged["results"])
         EVENT_LOG.extend(merged["events"])
         EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
                           "title": f"search finished: {len(merged['results'])} results"})
@@ -376,6 +377,28 @@ async def create_search(intent: SearchIntent):
                                           "watch": data.get("watch", False), "notify_done": True})
     return await _start_job([data], {"base": data, "limit": data.get("limit", 20),
                                      "watch": data.get("watch", False), "notify_done": True})
+
+
+@app.get("/searches")
+def list_searches():
+    return {"searches": store.list_searches()}
+
+
+@app.post("/searches/{sid}/redo")
+async def redo_search(sid: str):
+    intent = SEARCHES.get(sid)
+    if intent is None:
+        try:
+            row = store.db.execute("SELECT intent FROM searches WHERE id=?", (sid,)).fetchone()
+            import json as _j
+            intent = _j.loads(row[0]) if row else None
+        except Exception:
+            intent = None
+    if not intent:
+        return {"error": "unknown search id"}
+    from copy import deepcopy
+    return await _start_job([deepcopy(intent)], {"base": deepcopy(intent), "limit": intent.get("limit", 20),
+                                                "watch": intent.get("watch", False), "notify_done": True})
 
 
 @app.get("/searches/{sid}")
