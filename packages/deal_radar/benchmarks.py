@@ -64,6 +64,9 @@ def closest_known_cpu(name: str) -> tuple[str | None, float]:
     import difflib as _d
     score = _d.SequenceMatcher(None, want, best[0]).ratio()
     return normed[best[0]], round(score, 3)
+
+
+def parse_passmark_detail(html: str) -> tuple[int | None, int | None]:
     mt = re.search(r"Multithread Rating</div>\s*<div[^>]*>(\d+)</div>", html)
     st = re.search(r"Single Thread Rating</div>\s*<div[^>]*>(\d+)</div>", html)
     return (int(mt.group(1)) if mt else None, int(st.group(1)) if st else None)
