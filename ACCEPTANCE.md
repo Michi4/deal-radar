@@ -64,7 +64,7 @@
 - [ ] Search returns immediately, runs in background, closeable tab, completion notified. Evidence: _
 - [ ] SSE push live (new/changed listings), latency measured, reconnect tested. Evidence: _
 - [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. Evidence: _
-- [ ] Per-watch rules in UI (e.g. drop >15% AND risk <20%). Evidence: _
+- [x] Per-watch rules in UI+engine (drop% + max risk + min score via shared notify_rules module, orchestrator-gated, no double-notify). Evidence: 6-assert unit tests + UI inputs (#nDrop/#nRisk) DOM-verified (2026-09-26)
 - [ ] Favorites cross-platform + full change history + persist proof. Evidence: _
 - [ ] Drawer version timeline (price/desc/image diffs). Evidence: _
 
