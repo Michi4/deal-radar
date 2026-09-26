@@ -1,6 +1,5 @@
 """Per-watch notification rules shared by orchestrator (price events) and API watcher (new matches)."""
 from __future__ import annotations
-from typing import Any
 
 
 def rule_ok(rule: dict, kind: str, r: dict | None = None, ev: dict | None = None) -> bool:
