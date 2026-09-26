@@ -129,8 +129,7 @@ async def _watcher() -> None:
                             f"{r['listing']['price']} {r['listing']['currency']} @ {r['listing']['source']} "
                             f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n{r['listing']['url']}",
                             {"url": r["listing"]["url"]})
-                for ev in out.get("events", []):
-                    EVENT_LOG.append(ev)  # price notifies are sent (rule-gated) by the orchestrator itself
+                EVENT_LOG.extend(out.get("events", []))  # price notifies are sent (rule-gated) by the orchestrator itself
         except Exception as e:
             print(f"[watcher] {e}", flush=True)
         await asyncio.sleep(15)
