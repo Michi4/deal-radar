@@ -1,21 +1,17 @@
-# PROGRESS.md — 2026-09-26, end of autonomous session
+# PROGRESS.md — 2026-09-26, continued session
 
 ## Verified state
-- ACCEPTANCE: 73/76 checked with live evidence; 3 open = all BLOCKED with entries + working fallbacks
-  (ebay-tokenless, lab auto-PR GH_TOKEN, Signal-alive + telegram/email creds).
-- verify.sh GREEN (ruff+mypy+86% coverage, pinned CI versions), CI green, clean-clone pytest green.
-- Prod (homeserver): 6 drivers live, marketplace remote index, Lab builds+fires, watcher autonomy proven,
-  SSE live, backup cron ran, jump-host deploys working.
-- Brains: Frankfurt Kev (<2s), laptop Ollama 3b + VL, OpenRouter last resort, breakers everywhere.
+- ACCEPTANCE: nearly all checked with live evidence; 3 open = BLOCKED (ebay-tokenless, lab auto-PR GH_TOKEN, Signal-alive + telegram/email).
+- Mega-E2E 11/11 + quick E2E 10/10 green, zero JS errors. Drawer version history E2E-proven.
+- verify.sh GREEN (ruff+mypy+86%), CI green, clean-clone green.
+- Prod: 6 drivers, marketplace remote index, Lab builds+fires, watcher autonomy, SSE live, backup cron, jump deploys.
 
 ## Next (needs human)
-1. EBAY_OAUTH_TOKEN, Signal SIM re-link, GH_TOKEN, telegram/email creds, Mumbai creds.
-2. User eyes on the Tailwind UI (screenshots verified, taste is theirs).
-3. OpenRouter-free vision when uncongested (local VL covers it when laptop awake).
+1. Signal receipt confirmation (2 test messages sent, both accepted with timestamps).
+2. EBAY_OAUTH_TOKEN, GH_TOKEN, telegram/email creds, Mumbai creds.
+3. Eyes on Tailwind UI.
 
-## Standing notes
-- NEVER push without local verify.sh GREEN (burned twice).
-- Fixture HTML may contain third-party keys → scrub before commit (burned once, Mapbox).
-- test mocks: bare `patch.object` (correct) vs `new=lambda` (breaks async ctx managers).
-- NL disk cache is prompt-versioned; server volume persists it (stale-intent safe).
-- One AI per tiny host (Frankfurt thrash lesson).
+## Next (autonomous, when continuing)
+1. eBay token path the day a token exists (driver ready).
+2. Free-vision via OpenRouter when uncongested (local VL covers laptop-awake).
+3. More drivers via DRIVER_AUTHORING.md (tutti/medimops need browser rendering — heavy).
