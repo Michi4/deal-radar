@@ -87,7 +87,7 @@
 - [ ] .env gitignored, no leaks (rotate if leaked). Evidence: _
 - [ ] In-app auth/rate-limit behind Authelia. Evidence: _
 - [ ] ToS note + public-registry decision in DECISIONS.md. Evidence: _
-- [ ] SQLite WAL + timeout + backup job actually ran once. Evidence: _
+- [x] SQLite WAL + 30s timeout; backup cron 03:17 daily (volume→host) RAN once — 3.6MB file on host. Evidence above (2026-09-26)
 - [ ] verify.sh/CI run ruff+mypy+coverage ≥85%. Evidence: _
 - [ ] Live tests in tests/live behind mark, excluded from default/CI. Evidence: _
 - [ ] Willhaben fixture is a real captured page. Evidence: _
