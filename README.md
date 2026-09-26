@@ -28,6 +28,18 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 - **Vision:** tesseract OCR on photos + VLM photo↔description consistency (`LOCAL_MODEL_VISION`), concurrent bounded pass.
 - **Enrichment fabric** (`packages/deal_radar/enrich.py`): CPU→real PassMark scores, market-cohort stats, cross-source image-dupe hints.
 
+## Environment (required vs optional)
+| var | required? | without it |
+|---|---|---|
+| (none) | — | app runs: search, filters, risk %, favorites, watches work offline |
+| `EBAY_OAUTH_TOKEN` | no | ebay driver clean-errors, excluded from defaults |
+| `CLOUD_API_URL` + `CLOUD_API_KEY` | no | NL falls back to deterministic parser; Stage B uses Kev/heuristics |
+| `KEV_URL` | no | Stage B uses cloud/heuristic fallback |
+| `LOCAL_API_URL` / `LOCAL_MODEL_VISION` | no | NL/vision via cloud or skipped fast (breaker) |
+| `SIGNAL_NUMBER` / `NTFY_TOPIC_URL` / `WEBHOOK_URL` | no | alerts log only |
+| `API_KEY`, `RATE_PER_MIN` | no | open + 120/min default (set behind Authelia in prod) |
+| `LAB_ENABLED`, `GH_TOKEN`/`LAB_PUBLISH` | no | AI Lab + PR publishing stay off |
+
 ## Key behaviors
 - Scam = **percentage + evidence**, never boolean. Default = flag/sort-down; hard-hide only if `risk.hard_filter_enabled` + over `block_threshold`. Great deals go to **review lane**, never silently dropped.
 - Filters per field (`title|description|tags|category|seller_name|location|postcode|shipping|condition|ocr|attributes.*|price|distance_km|shipping_cost|pickup|shipping_available`): contains/not_contains/regex/equals/lt/gt/range/in/exists. **Missing fields → rule N/A → pass**, never error.
