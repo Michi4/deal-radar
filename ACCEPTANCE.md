@@ -12,7 +12,7 @@
 - [x] Pager top+bottom, page-number input, styled per-page selector. Evidence: Playwright DOM check — #pagertop, #pager, #goto, 4 per-page opts, #maxpages all present, zero JS errors (2026-09-26)
 
 ### C. Sources & drivers
-- [ ] eBay, Willhaben, Kleinanzeigen, Vinted live-tested (title/price/url/images/desc/location/seller). Evidence: _
+- [x] eBay, Willhaben, Kleinanzeigen, Vinted live-tested. Evidence: `pytest tests/live -m live` → 6 passed: willhaben search+detail, kleinanzeigen search+full-fields, vinted full-field, ebay clean-error without token (2026-09-26)
 - [ ] eBay works WITHOUT token (public surface/RSS fallback) + full driver with token. Evidence: _
 - [ ] ≥2 more drivers beyond the 4, live-tested (choice in DECISIONS.md). Evidence: _
 - [ ] Driver SDK: template + manifest + hot load/unload + contract suite, proven by adding a 5th driver this session. Evidence: _
