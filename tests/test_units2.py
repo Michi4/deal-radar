@@ -433,3 +433,17 @@ def test_filter_properties():
             r3 = apply_filters(l, {"max_price": 1}, None, None)
             assert r3.passed
     prop()
+
+
+def test_required_and_semantics():
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.filter_engine import apply_filters
+
+    def L(t):
+        return CanonicalListing(id="r", source="t", native_id="1", url="u", title=t,
+                                description="d", price=1.0, seller=Seller(name="s"))
+    req = [{"fields": ["title"], "op": "contains", "value": "pro"},
+           {"fields": ["title"], "op": "contains", "value": "256"}]
+    assert apply_filters(L("iPhone 15 Pro 256GB"), {}, None, None, req).passed
+    assert not apply_filters(L("iPhone 15 Pro 128GB"), {}, None, None, req).passed
+    assert not apply_filters(L("iPhone 15 256GB"), {}, None, None, req).passed
