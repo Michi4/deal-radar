@@ -37,7 +37,10 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 
 ## Deploy
 - Homeserver (primary): `deploy/homeserver/` (Traefik websecure + Authelia), `dealradar.home.websters.at`.
-- AI brains: Kev-0.8B + Ollama qwen2.5:3b on Frankfurt (systemd, WG `10.8.1.1`); vision model on laptop.
+- AI brains (verified live 2026-09-26): Kev-0.8B on **Frankfurt** (systemd, WG `10.8.1.1:8001`, answers <2s);
+  NL text via laptop Ollama qwen2.5:3b (`LOCAL_API_URL`, 192.168.1.172:11434); vision via laptop qwen2.5vl:3b
+  (`LOCAL_VISION_API_URL`); OpenRouter-free last resort. Order: local → OpenRouter → deterministic
+  heuristics. Everything degrades gracefully: no keys/models = heuristics + parsers, still fully working.
 - Full env reference: `deploy/homeserver/.env.sample` (secrets stay in server `.env`, never git).
 - Back up sqlite: `sqlite3 /data/dealradar.db ".backup '/backups/dealradar-$(date +%F).db'"` on cron.
 
