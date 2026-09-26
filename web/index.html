@@ -55,23 +55,27 @@ select.inp{max-width:100%}
 <header class="sticky top-0 z-20 backdrop-blur border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85">
 <div class="max-w-6xl mx-auto px-3 py-2 flex gap-2 items-center flex-wrap">
 <b class="text-lg">deal-radar</b>
-<button class="btn btn-ghost !px-2" onclick="theme()" title="light/dark" aria-label="toggle theme">◐</button>
-<button class="btn btn-ghost" onclick="tab('search')">Search</button>
-<button class="btn btn-ghost" onclick="showFavs()">★ <span id="favn">0</span></button>
-<button class="btn btn-ghost" onclick="tab('watches')">Watches</button>
-<button class="btn btn-ghost" onclick="cmp()">⇄ Compare</button>
-<button class="btn btn-ghost" onclick="tab('market')">🏪 Market</button>
-<button class="btn btn-ghost" onclick="tab('store')">🧩 Store</button>
-<button class="btn btn-ghost" onclick="tab('lab')">🧪 Lab</button>
+<button class="btn btn-ghost !px-2" onclick="theme()" title="Light / dark mode" aria-label="toggle theme"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z"/></svg></button>
+<button class="btn btn-ghost" onclick="tab('search')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg><span>Search</span></button>
+<button class="btn btn-ghost" onclick="showFavs()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span id="favn">0</span></button>
+<button class="btn btn-ghost" onclick="tab('watches')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 003.4 0"/></svg><span>Watches</span></button>
+<button class="btn btn-ghost" onclick="cmp()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><span>Compare</span></button>
+
+<button class="btn btn-ghost" onclick="tab('store')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Store</span></button>
+<button class="btn btn-ghost" onclick="tab('lab')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 006.2 21h11.6a2 2 0 001.7-2.5L14 9V3"/></svg><span>Lab</span></button>
+<button class="btn btn-ghost" onclick="tab('history')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Searches</span></button>
 <a href="/admin" class="text-sm text-blue-500">admin</a>
-<button class="btn btn-ghost !px-2" id="vgrid" onclick="setView('grid')" aria-label="grid view">▦</button>
-<button class="btn btn-ghost !px-2" id="vlist" onclick="setView('list')" aria-label="list view">☰</button>
+<button class="btn btn-ghost !px-2" id="vgrid" onclick="setView('grid')" aria-label="grid view" title="Grid view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+<button class="btn btn-ghost !px-2" id="vlist" onclick="setView('list')" aria-label="list view" title="List view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button>
 </div></header>
 <main class="max-w-6xl mx-auto px-3 py-3">
 <div class="panel" id="searchpanel">
-<div class="flex gap-2 flex-wrap items-center">
+<div class="panel" style="border-color:#1d4ed8"><b>AI Ask</b> <small>plain language — the AI resolves products &amp; filters. Search flags below apply.</small>
+<div class="flex gap-2 flex-wrap items-center mt-2">
 <input id="nl" class="inp" style="flex:3;min-width:200px" aria-label="natural language search" placeholder="Ask: iphone with USB-C charging, ThinkPad under €700 without defects…"/>
-<button id="askbtn" class="btn btn-primary" onclick="runNL()">Ask</button></div>
+<button id="askbtn" class="btn btn-primary" onclick="runNL()">Ask</button></div></div>
+<div class="panel"><b>Keyword search</b> <small>direct marketplace query — use <b>;</b> for multi-topic (e.g. rtx 4080; rtx 4070 ti super). Same flags apply.</small>
+<div class="flex gap-2 flex-wrap items-center mt-2">
 <div class="flex gap-2 flex-wrap items-center mt-2">
 <input id="q" class="inp" style="flex:2;min-width:160px" aria-label="keyword search" placeholder="keywords: ThinkPad T14 Ryzen 16GB"/>
 <input id="min" class="inp" placeholder="min €" style="max-width:90px" type="number"/>
@@ -109,6 +113,14 @@ select.inp{max-width:100%}
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
 </div>
 <div id="status"></div>
+<div class="panel" id="refinebar" style="display:none"><b>Refine loaded results</b> <small>(no re-search)</small>
+<div class="flex gap-2 flex-wrap items-center mt-2">
+<input id="rMin" class="inp" style="max-width:100px" type="number" placeholder="min €" title="Refine: minimum price"/>
+<input id="rMax" class="inp" style="max-width:100px" type="number" placeholder="max €" title="Refine: maximum price"/>
+<input id="rBlack" class="inp" style="flex:1;min-width:140px" placeholder="+ blacklist words" title="Refine: hide listings containing these (comma separated)"/>
+<input id="rReq" class="inp" style="flex:1;min-width:140px" placeholder="+ must contain" title="Refine: keep only listings containing these (comma separated)"/>
+<button class="btn btn-primary" onclick="render()">apply</button><button class="btn btn-ghost" onclick="rMin.value=rMax.value=rBlack.value=rReq.value='';render()">clear</button>
+</div></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pagertop" style="display:none"><button class="btn btn-ghost" onclick="page(-1)">←</button><span id="pinfotop" class="text-sm"></span><button class="btn btn-ghost" onclick="page(1)">→</button><input id="goto" class="inp" placeholder="page #" type="number" style="max-width:80px"/><button class="btn btn-ghost" onclick="PAGE=Math.max(0,(+$('goto').value||1)-1);render()">go</button></div>
 <div id="results"></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pager" style="display:none"><button class="btn btn-ghost" onclick="page(-1)">←</button><span id="pinfo" class="text-sm"></span><button class="btn btn-ghost" onclick="page(1)">→</button></div>
@@ -156,7 +168,14 @@ else if(m==='mt')arr.sort((a,b)=>benchOf(b)-benchOf(a));
 else if(m==='gpe')arr.sort((a,b)=>{const gb=x=>{const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0};return gb(b)-gb(a)});
 else arr.sort((a,b)=>b.final_score-a.final_score);
 return arr}
-function render(){const arr=filtered();const pp=+$('perpage').value;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
+function refined(arr){const mn=+$('rMin').value||null,mx=+$('rMax').value||null;
+const bl=($('rBlack').value||'').split(',').map(w=>w.trim().toLowerCase()).filter(Boolean);
+const rq=($('rReq').value||'').split(',').map(w=>w.trim().toLowerCase()).filter(Boolean);
+return arr.filter(s=>{const l=s.listing;if(mn!=null&&(l.price??1e18)<mn)return false;if(mx!=null&&(l.price??-1)>mx)return false;
+const t=((l.title||'')+' '+(l.description||'')).toLowerCase();
+if(bl.some(w=>t.includes(w)))return false;if(rq.length&&!rq.every(w=>t.includes(w)))return false;return true})}
+function render(){const arr=refined(filtered());
+$('refinebar').style.display=LAST.length?'':'none';const pp=+$('perpage').value;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
 const lanes=[...new Set(LAST.map(s=>s.lane))];
 $('lanes').innerHTML=lanes.map(l=>`<label><input type="checkbox" class="lanef" value="${l}" onchange="render()"/> hide ${l}</label>`).join(' ');
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
@@ -195,7 +214,7 @@ $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 async function showFavs(){tab('search');status('★ favorites');try{const f=await(await fetch('/favorites')).json();
 $('results').innerHTML=f.map(x=>`<div class="card" style="padding:10px"><b>${x.title||x.listing_id}</b><br/><span class="price">${x.price??'?'}</span> · <a href="${x.url||'#'}" target="_blank">open</a> <button class="btn btn-ghost" onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${h.kind}: ${h.old} → ${h.new}</div>`).join('')||'no changes tracked yet'}</div></div>`).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function unfavWrap(){}
-function tab(t){if(t==='watches')showWatches();if(t==='store')showStore();if(t==='market')showMarket();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
+function tab(t){if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
 async function showLab(){let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
 $('results').innerHTML=`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" class="btn btn-primary" onclick="mkLab()">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 async function mkLab(){$('labbtn').disabled=true;$('labout').innerHTML='<small>AI is writing + testing code… (1-3 min)</small>';
@@ -214,15 +233,16 @@ if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
-async function showMarket(src){status('Market — live inventory across all searches');$('results').innerHTML='<div class="empty">loading market…</div>';
-try{const r=await(await fetch('/market?limit=60'+(src?'&source='+src:''))).json();
-$('results').innerHTML=(r.items||[]).map(x=>`<div class="card" style="padding:0"><a href="${x.url}" target="_blank" style="text-decoration:none;color:inherit">${x.image?`<img class="thumb" loading="lazy" src="${x.image}" onerror="this.remove()">`:''}<div class="body"><h4>${x.title||'(no title)'}</h4><div><span class="price">${x.price??'?'} ${x.currency||''}</span> <span class="lane">${x.source}</span></div></div></a></div>`).join('')||'<div class="empty">Market is empty — run a search first.</div>';
-$('results').innerHTML=`<div class="rgrid">${$('results').innerHTML}</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
-async function showStore(){status('Plugin marketplace — one-click install, versioned, PR-contributed');$('results').innerHTML='<div class="empty">loading store…</div>';
-try{const r=await(await fetch('/marketplace')).json();
-const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button onclick="installX('${kind}','${x.id}')">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
-$('results').innerHTML='<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
-async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
+async function showHistory(){status('Searches — jump back in anytime, delete or re-run');$('results').innerHTML='<div class="empty">loading…</div>';
+try{const r=await(await fetch('/searches')).json();
+const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
+const thumbs=(s.thumbs||[]).map(u=>'<img loading="lazy" src="'+u+'" onerror="this.remove()" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>').join('');
+return '<div class="card" style="padding:10px;cursor:default"><b>'+(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+'<br/><small>'+when+' · '+(s.sources||[]).join('+')+' · '+s.results+' results</small><div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" onclick="openSearch(\''+s.id+'\')">open</button><button class="btn btn-ghost" onclick="redoSearch(\''+s.id+'\')">re-run</button><button class="btn btn-ghost" onclick="delSearch(\''+s.id+'\')">delete</button></div></div>'};
+$('results').innerHTML='<div class="rgrid">'+r.searches.map(tile).join('')+'</div>'||'<div class="empty">No searches yet.</div>';$('pager').style.display='none'}catch(e){status('<div class="err">'+e+'</div>')}}
+async function openSearch(id){const r=await(await fetch('/searches/'+id)).json();
+if(r.status==='running'){toast('still running…');return}LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
+async function redoSearch(id){const r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json();toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
+async function delSearch(id){await fetch('/searches/'+id,{method:'DELETE'});showHistory()}
 async function cmp(){if(CMP.size>=2){return cmpSel()}if(!SID)return toast('run a search first');status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
 $('results').innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
