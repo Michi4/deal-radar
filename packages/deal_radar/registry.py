@@ -24,10 +24,25 @@ DRIVERS_DIR = ROOT / "drivers"
 COMMUNITY = DRIVERS_DIR / "community"
 LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(COMMUNITY)))
 INDEX_SOURCES = ["drivers/registry.json"]
+REMOTE_INDEX = "https://raw.githubusercontent.com/Michi4/deal-radar/main/marketplace/index.json"
 
 
 def load_index(source: str = "") -> dict:
-    src = source or INDEX_SOURCES[0]
+    if not source:
+        # remote first (versioned, PR-contributed), local fallback offline
+        try:
+            return _load_remote()
+        except Exception:
+            source = INDEX_SOURCES[0]
+    return _load_one(source)
+
+
+def _load_remote() -> dict:
+    with urllib.request.urlopen(REMOTE_INDEX, timeout=20) as r:
+        return json.loads(r.read().decode())
+
+
+def _load_one(src: str) -> dict:
     if src.startswith("http"):
         with urllib.request.urlopen(src, timeout=20) as r:
             return json.loads(r.read().decode())
