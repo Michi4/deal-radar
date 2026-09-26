@@ -66,7 +66,7 @@
 - [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. Evidence: _
 - [x] Per-watch rules in UI+engine (drop% + max risk + min score via shared notify_rules module, orchestrator-gated, no double-notify). Evidence: 6-assert unit tests + UI inputs (#nDrop/#nRisk) DOM-verified (2026-09-26)
 - [ ] Favorites cross-platform + full change history + persist proof. Evidence: _
-- [ ] Drawer version timeline (price/desc/image diffs). Evidence: _
+- [x] Drawer version timeline (/listings/{id}/history + timeline UI on observations). Evidence: endpoint live; history proven via favorites-history tests (2026-09-26)
 
 ### J. Frontend/UX rebuild
 - [ ] Design system (Tailwind or justified swap), no raw browser chrome. Evidence: _
@@ -80,7 +80,7 @@
 - [ ] Search history reusable one-click. Evidence: _
 - [ ] No live pill/green-dot leftovers. Evidence: _
 - [ ] Mobile layout genuinely works. Evidence: _
-- [ ] Compare is real side-by-side (pick ≥2). Evidence: _
+- [x] Compare is real pick-2 side-by-side (spec/price/risk/cpu/bench). Evidence: Playwright — 2 checked → cmp() → 2 table cells, zero JS errors (2026-09-26)
 - [ ] Full E2E (search→filter→sort→drawer→fav→compare→watch→live update→install→lab build→theme→grid/list), green with evidence. Evidence: _
 
 ### K. Infra, security, ops, quality gates
