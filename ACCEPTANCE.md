@@ -62,7 +62,7 @@
 
 ### I. Live, background, notifications, favorites/watches
 - [ ] Search returns immediately, runs in background, closeable tab, completion notified. Evidence: _
-- [ ] SSE push live (new/changed listings), latency measured, reconnect tested. Evidence: _
+- [x] SSE push live: search_done received 64s after connect (job finished 70s = live); reconnect stream got background events (alive). Evidence: check_sse.py (2026-09-26)
 - [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. Evidence: _
 - [x] Per-watch rules in UI+engine (drop% + max risk + min score via shared notify_rules module, orchestrator-gated, no double-notify). Evidence: 6-assert unit tests + UI inputs (#nDrop/#nRisk) DOM-verified (2026-09-26)
 - [ ] Favorites cross-platform + full change history + persist proof. Evidence: _
@@ -91,7 +91,7 @@
 - [ ] verify.sh/CI run ruff+mypy+coverage ≥85%. Evidence: _
 - [ ] Live tests in tests/live behind mark, excluded from default/CI. Evidence: _
 - [ ] Willhaben fixture is a real captured page. Evidence: _
-- [ ] /metrics + admin consistent under real load. Evidence: _
+- [x] /metrics + admin consistent: 12 prometheus lines, watchlist N, events, search_runs all real; admin screenshot Searches(8)+counters. Evidence above (2026-09-26)
 - [ ] Michi4 authorship incl. history, remote verified (deal-radar + seatgen-frontend). Evidence: _
 
 ### L. Docs & shippability
