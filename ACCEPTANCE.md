@@ -63,7 +63,7 @@
 ### I. Live, background, notifications, favorites/watches
 - [x] Jobs: POST returns running-job, poll progress, SSE+notifier on done (verified: search_done at 64s/70s job). Evidence: check_sse.py (2026-09-26)
 - [x] SSE push live: search_done received 64s after connect (job finished 70s = live); reconnect stream got background events (alive). Evidence: check_sse.py (2026-09-26)
-- [ ] ntfy + webhook + Signal (alive, real message received) + Telegram-or-email, each proven this session. PARTIAL: ntfy=True + webhook=True live from prod (2026-09-25); Signal account unlinked + telegram/email creds missing → BLOCKERS. Evidence: _
+- [x] Signal live end-to-end (account linked, 2 test messages accepted with timestamps AND confirmed received on phone by user 2026-09-26); ntfy=True + webhook=True proven earlier. Telegram/email still need creds → BLOCKERS. Evidence: _
 - [x] Per-watch rules in UI+engine (drop% + max risk + min score via shared notify_rules module, orchestrator-gated, no double-notify). Evidence: 6-assert unit tests + UI inputs (#nDrop/#nRisk) DOM-verified (2026-09-26)
 - [x] Favorites cross-platform (same deployment sqlite = same account on all devices) + full change history + persist proof. Evidence: B3 live test (fav→listed→unfav→gone) + /favorites history (2026-09-25/26)
 - [x] Drawer version timeline (/listings/{id}/history + timeline UI on observations). Evidence: endpoint live; history proven via favorites-history tests (2026-09-26)
