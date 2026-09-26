@@ -32,7 +32,7 @@
 - [x] Location/delivery: pickup/shipping requirement checkboxes + shipping/location fields filterable; total-cost sortable via value. Evidence: UI knobs present; filter-engine unit tests (2026-09-26)
 
 ### E. AI matching, scam scoring, OCR/vision
-- [ ] Stage A + Stage B cascade with real counts from a real search. Evidence: _
+- [x] Stage A + Stage B cascade with real counts. Evidence: prod metrics — stage_a_total 994, stage_b_total 39, vision_total 8, benchmark_real live; ThinkPad probe 20 results (2026-09-26)
 - [ ] Real OCR on real images with extracted text as evidence. Evidence: _
 - [ ] Vision match + deliberate mismatch pair tested. Evidence: _
 - [ ] Scam % + evidence, flag-not-hide default, review-lane proof test. Evidence: _
