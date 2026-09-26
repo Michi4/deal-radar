@@ -16,7 +16,7 @@ dependencies = [
   "curl_cffi>=0.10",
 ]
 [project.optional-dependencies]
-test = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.22"]
+test = ["pytest>=8", "pytest-asyncio>=0.23", "respx>=0.22", "hypothesis>=6", "pytest-cov>=5"]
 ocr = ["rapidfuzz>=3.9"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
