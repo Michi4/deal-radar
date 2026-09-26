@@ -49,7 +49,7 @@
 ### G. Plugin marketplace (drivers/enrichers, NOT listings)
 - [x] Remote versioned index live (raw.githubusercontent, 6 drivers + 3 enrichers). Evidence: prod check_store (2026-09-26)
 - [x] Remote install proven live (tpldemo via github tarball in prod, ok:True; tarball path, no git binary). Evidence above (2026-09-26)
-- [ ] Publicly contributable via PR, flow proven with a real PR this session. Evidence: _
+- [x] PR flow proven: opened PR #1 (template marketplace entry), installed FROM the PR branch live in prod (ok:True), merged. Evidence above (2026-09-26)
 - [x] Store UI lists installed/available/needs-config (ebay 🔒) + install buttons. Evidence: browser DOM verified earlier; /marketplace endpoint live (2026-09-26)
 
 ### H. In-app AI authoring (flagship)
