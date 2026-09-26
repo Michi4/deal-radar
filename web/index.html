@@ -73,7 +73,7 @@ select.inp{max-width:100%}
 <input id="nl" class="inp" style="flex:3;min-width:200px" aria-label="natural language search" placeholder="Ask: iphone with USB-C charging, ThinkPad under €700 without defects…"/>
 <button id="askbtn" class="btn btn-primary" onclick="runNL()">Ask</button></div>
 <div class="flex gap-2 flex-wrap items-center mt-2">
-<input id="q" class="inp" style="flex:2;min-width:160px" aria-label="keyword search" placeholder="keywords: ThinkPad T14 Ryzen 16GB" value="ThinkPad"/>
+<input id="q" class="inp" style="flex:2;min-width:160px" aria-label="keyword search" placeholder="keywords: ThinkPad T14 Ryzen 16GB"/>
 <input id="min" class="inp" placeholder="min €" style="max-width:90px" type="number"/>
 <input id="max" class="inp" placeholder="max €" style="max-width:90px" type="number"/>
 <input id="black" class="inp" placeholder="blacklist, comma separated" style="flex:1;min-width:140px"/>
@@ -83,7 +83,10 @@ select.inp{max-width:100%}
 <details class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 p-2"><summary class="cursor-pointer text-sm opacity-70">advanced: flags, thresholds, drivers</summary>
 <div class="flex gap-3 flex-wrap items-center mt-2 text-sm">
 <label class="flex gap-1 items-center"><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
-<label class="flex gap-1 items-center"><input type="checkbox" id="hideGesuche" checked/> hide Gesuche/parts</label>
+<label class="flex gap-1 items-center" title="Hide buy-request ads (Ankauf/Suche/Tausch)"><input type="checkbox" id="hideWant" checked/> hide Gesuche</label>
+<label class="flex gap-1 items-center" title="Hide parts/repair/defective listings"><input type="checkbox" id="hideParts" checked/> hide parts</label>
+<label class="flex gap-1 items-center" title="Hide accessories: cases, boxes, cables, chargers, contracts"><input type="checkbox" id="hideAcc" checked/> hide accessories</label>
+<label class="flex gap-1 items-center" title="Minimum relevance score 0..1 — lower shows more, higher is stricter"><input id="minMatch" class="inp" style="max-width:70px" type="number" value="12" min="0" max="100"/> min relevance %</label>
 <label class="flex gap-1 items-center" title="OCR photos"><input type="checkbox" id="fOcr" checked/> OCR</label>
 <label class="flex gap-1 items-center" title="CPU benchmarks"><input type="checkbox" id="fBench" checked/> bench</label>
 <label class="flex gap-1 items-center" title="photo vision check"><input type="checkbox" id="fVision" checked/> vision</label>
@@ -141,7 +144,9 @@ function isFav(id){return FAVS.has(id)}
 async function fav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});await loadFavs();render()}
 async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});await loadFavs();showFavs()}
 function filtered(){let arr=[...LAST];
-if($('hideGesuche').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/demoted/));
+if($('hideWant').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/buy-request/));
+if($('hideParts').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/parts\/repair/));
+if($('hideAcc').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/accessory\/box/));
 const hide=[...document.querySelectorAll('.lanef:checked')].map(i=>i.value);arr=arr.filter(s=>!hide.includes(s.lane));
 const m=$('sort').value;
 if(m==='plo')arr.sort((a,b)=>(a.listing.price??1e18)-(b.listing.price??1e18));
@@ -171,7 +176,7 @@ if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} 
 onDone(r);return}}
 async function run(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
-const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;
+const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
 const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'contains',value:w.trim()}));
 const mp=+$('maxpages').value||undefined;
 const body={keywords:$('q').value,sources:sel,hard,required:req,...intent()};
