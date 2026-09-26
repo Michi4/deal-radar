@@ -90,6 +90,13 @@ select.inp{max-width:100%}
 <label class="flex gap-1 items-center" title="detail pages"><input type="checkbox" id="fDet" checked/> details</label>
 <input id="warnT" class="inp" title="risk warn %" style="max-width:76px" type="number" value="35" min="0" max="100"/>
 <input id="blockT" class="inp" title="risk block %" style="max-width:76px" type="number" value="85" min="0" max="100"/>
+<label title="pickup only"><input type="checkbox" id="fPick"/> pickup</label>
+<label title="shipped only"><input type="checkbox" id="fShip"/> shipped</label>
+<span class="text-sm opacity-70">weights:</span>
+<input id="wMatch" class="inp" title="match weight" style="max-width:64px" type="number" value="35" min="0" max="100"/>
+<input id="wValue" class="inp" title="value weight" style="max-width:64px" type="number" value="35" min="0" max="100"/>
+<input id="wRisk" class="inp" title="risk weight" style="max-width:64px" type="number" value="20" min="0" max="100"/>
+<input id="wComp" class="inp" title="completeness weight" style="max-width:64px" type="number" value="10" min="0" max="100"/>
 <input id="maxpages" class="inp" title="max pages per source (empty = all)" style="max-width:110px" type="number" min="1" placeholder="pages"/>
 </div></details>
 <div class="flex gap-2 flex-wrap items-center mt-2">
@@ -153,7 +160,9 @@ function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${'<di
 function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
 function pushHist(q){HIST=[q,...HIST.filter(x=>x!==q)].slice(0,8);localStorage.setItem('drh',JSON.stringify(HIST));drawHist()}
 function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" onclick="nl.value=${JSON.stringify(h)};runNL()">${h.slice(0,30)}</button>`).join('')}
-function intent(){return{blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30}}
+function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
+const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
+return{ranking,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
 async function poll(sid,onDone){for(;;){const r=await(await fetch('/searches/'+sid)).json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
 onDone(r);return}}
