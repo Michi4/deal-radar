@@ -22,7 +22,9 @@ let fetches = 0;
 page.on('request', r => { if (r.url().includes('/searches')) fetches++; });
 await page.fill('#black', 'rucksack XYZ123');
 await page.waitForTimeout(1000);
-await page.selectOption('#sort', 'plo');
+await page.click('#sortseg button:nth-child(2)');
+await p_wait(1500);
+await page.click('#sortseg button:nth-child(2)');
 await p_wait(1500);
 check('resort client-side, no roundtrip', fetches === 0);
 
