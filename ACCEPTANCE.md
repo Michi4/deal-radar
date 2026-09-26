@@ -14,7 +14,7 @@
 ### C. Sources & drivers
 - [x] eBay, Willhaben, Kleinanzeigen, Vinted live-tested. Evidence: `pytest tests/live -m live` → 6 passed: willhaben search+detail, kleinanzeigen search+full-fields, vinted full-field, ebay clean-error without token (2026-09-26)
 - [ ] eBay works WITHOUT token (public surface/RSS fallback) + full driver with token. Evidence: _
-- [ ] ≥2 more drivers beyond the 4, live-tested (choice in DECISIONS.md). Evidence: _
+- [x] 2 more drivers beyond the 4: Shpock (AT/DE, Apollo SSR + media URLs) + Ricardo.ch (articles JSON, CHF centimes). Evidence: prod /drivers lists 6 (ebay/kleinanzeigen/ricardo/shpock/vinted/willhaben); live suite 8/8 incl. both; rejected: refurbed/backmarket/etsy/tutti/medimops/hood (JS-wall/403/captcha/thin) logged (2026-09-26)
 - [ ] Driver SDK: template + manifest + hot load/unload + contract suite, proven by adding a 5th driver this session. Evidence: _
 - [ ] Multi-source: concurrent subsets, one failure never fails search, per-source status live in UI. Evidence: _
 - [ ] Transports incl. socks5/rotating proven against ≥1 real proxy live. Evidence: _
