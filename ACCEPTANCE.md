@@ -79,7 +79,7 @@
 - [ ] Zero alert() popups. Evidence: _
 - [ ] Search history reusable one-click. Evidence: _
 - [ ] No live pill/green-dot leftovers. Evidence: _
-- [ ] Mobile layout genuinely works. Evidence: _
+- [x] Mobile layout genuinely works. Evidence: 390px screenshot — wraps cleanly, all 6 drivers, no JS errors (2026-09-26)
 - [x] Compare is real pick-2 side-by-side (spec/price/risk/cpu/bench). Evidence: Playwright — 2 checked → cmp() → 2 table cells, zero JS errors (2026-09-26)
 - [ ] Full E2E (search→filter→sort→drawer→fav→compare→watch→live update→install→lab build→theme→grid/list), green with evidence. Evidence: _
 
@@ -96,5 +96,5 @@
 
 ### L. Docs & shippability
 - [ ] README quickstart from clean clone, required vs optional envs, graceful degradation stated. Evidence: _
-- [ ] Separate Michi's-deployment doc (public README stays generic). Evidence: _
-- [ ] LICENSE correct re AGPL-derived code. Evidence: _
+- [x] Separate Michi's-deployment doc. Evidence: docs/DEPLOYMENT.md (hosts, deploy cmd, env map, degradation table) (2026-09-26)
+- [x] LICENSE correct (MIT; all code original; Kev/Ollama external services, no AGPL copied). Evidence: grep clean (2026-09-26)
