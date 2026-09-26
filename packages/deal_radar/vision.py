@@ -155,7 +155,8 @@ def _parse_vision(data: dict) -> dict:
         shows = float(out.get("shows_item", 0.5))
         note = str(out.get("note", ""))
         # small VLMs sometimes score high while describing a mismatch — trust the words
-        if _re.search(r"not match|doesn.?t (show|match)|different (product|item)|wrong item|unrelated",
+        if _re.search(r"not match|doesn.?t (show|match)|different (product|item)|wrong item|unrelated|"
+                      r"\bnot a\b.{0,40}listing|\bis not (the|a)\b|does not (show|depict|contain)",
                       note, _re.IGNORECASE):
             shows = min(shows, 0.25)
         return {"shows_item": shows,

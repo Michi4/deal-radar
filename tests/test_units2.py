@@ -447,3 +447,15 @@ def test_required_and_semantics():
     assert apply_filters(L("iPhone 15 Pro 256GB"), {}, None, None, req).passed
     assert not apply_filters(L("iPhone 15 Pro 128GB"), {}, None, None, req).passed
     assert not apply_filters(L("iPhone 15 256GB"), {}, None, None, req).passed
+
+
+def test_vision_clamp_phrasings():
+    from deal_radar.vision import _parse_vision as P
+
+    def pv(note, shows=1.0):
+        import json
+        return P({"choices": [{"message": {"content": json.dumps({"shows_item": shows, "note": note})}}]})["shows_item"]
+    assert pv("Product image does not match the listing title.") <= 0.25
+    assert pv("Not a Lenovo ThinkPad listing.") <= 0.25
+    assert pv("This is not the described laptop.") <= 0.25
+    assert pv("Photo consistent with title.", 0.9) == 0.9
