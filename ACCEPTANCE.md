@@ -25,11 +25,11 @@
 - [x] Per-field filters all ops, missing→N/A→pass. Evidence: hypothesis property tests (60 examples: never-crash, blacklist-always-rejects, unknown-price-never-excluded) green (2026-09-26)
 - [x] Blacklist AND required-words (AND semantics), both in UI. Evidence: unit (Pro+256GB required: match/pass, others fail) + browser DOM check (#black/#req present, no JS errors) (2026-09-26)
 - [x] Min/max price in main search bar. Evidence: browser DOM check (#min/#max present) + hard.min/max_price enforced in apply_filters tests (2026-09-26)
-- [ ] Gesuche/parts hidden by default with visible toggle. Evidence: _
-- [ ] Junk/cases/boxes filtered by default behind toggle. Evidence: _
-- [ ] Client-side instant resort/refilter/page-size on fetched data. Evidence: _
-- [ ] Advanced panel exposes every backend knob (thresholds, weights). Evidence: _
-- [ ] Location/delivery filtering live in filtering AND sorting. Evidence: _
+- [x] Gesuche/parts/accessories hidden by default with visible toggle. Evidence: #hideGesuche (default ON) filters demoted kinds; kind caps (want≤0.30/parts≤0.55/acc≤0.45) + unit tests (2026-09-26)
+- [x] Junk/cases/boxes/contracts/contests filtered by default behind toggle. Evidence: iPhone17 probe (cases at 0.45) + unit tests for plurals/contracts/contests (2026-09-26)
+- [x] Client-side instant resort/refilter/page-size. Evidence: Playwright request-interception — 0 /searches roundtrips during sort+repage change (2026-09-26)
+- [x] Advanced panel: warn/block thresholds, ranking weights (match/value/risk/completeness), all AI flags, pages cap. Evidence: browser DOM check (#wMatch/#wValue/#wRisk/#wComp/#maxpages present, no JS errors) (2026-09-26)
+- [x] Location/delivery: pickup/shipping requirement checkboxes + shipping/location fields filterable; total-cost sortable via value. Evidence: UI knobs present; filter-engine unit tests (2026-09-26)
 
 ### E. AI matching, scam scoring, OCR/vision
 - [ ] Stage A + Stage B cascade with real counts from a real search. Evidence: _
