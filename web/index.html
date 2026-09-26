@@ -233,6 +233,11 @@ if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
+async function showStore(){status('Plugin marketplace — drivers & enrichers, one-click install');$('results').innerHTML='<div class="empty">loading store…</div>';
+try{const r=await(await fetch('/marketplace')).json();
+const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button class="btn btn-primary" onclick="installX('${kind}','${x.id}')">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
+$('results').innerHTML='<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
 async function showHistory(){status('Searches — jump back in anytime, delete or re-run');$('results').innerHTML='<div class="empty">loading…</div>';
 try{const r=await(await fetch('/searches')).json();
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
