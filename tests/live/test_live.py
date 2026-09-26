@@ -108,18 +108,21 @@ def test_ricardo_search_live():
     asyncio.run(go())
 
 import pytest as _pt
+
 _ptmark = _pt.mark.live
 
 
 @_pt.mark.live
 def test_willhaben_lowercase_keyword_filters():
-    import urllib.request, re, json
+    import json
+    import re
+    import urllib.request
     H = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0",
          "Accept-Language": "de-AT,de;q=0.9"}
     base = "https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
     html = urllib.request.urlopen(
         urllib.request.Request(base + "?keyword=iPhone%2017&rows=10", headers=H),
         timeout=30).read().decode("utf-8", "ignore")
-    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S)
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.DOTALL)
     sr = json.loads(m.group(1))["props"]["pageProps"].get("searchResult") or {}
     assert (sr.get("rowsFound") or 0) < 1000000, "keyword ignored by server?"
