@@ -16,3 +16,5 @@
   Wiring (container → `10.8.1.2:8082`) verified working.
 - [ ] Jev key: user has none (dropped as requirement — Kev + local/cloud models cover it).
   Free $5 credit available at console.typesafe.ai if ever wanted.
+
+- [ ] eBay without token: search pages return decoy template cards (fake IDs, $ prices on .de, 62 title tags all 'Shop on eBay'); item pages stripped (0 EUR prices, no h1) — both verified 2026-09-26 with TLS impersonation + session cookies. Scraping it would inject FAKE listings, refused per no-fake rule. Needed: free EBAY_OAUTH_TOKEN (developer.ebay.com self-serve); token driver ready and clean-errors until then.
