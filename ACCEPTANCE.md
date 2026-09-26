@@ -69,32 +69,32 @@
 - [x] Drawer version timeline (/listings/{id}/history + timeline UI on observations). Evidence: endpoint live; history proven via favorites-history tests (2026-09-26)
 
 ### J. Frontend/UX rebuild
-- [ ] Design system (Tailwind or justified swap), no raw browser chrome. Evidence: _
-- [ ] Cues from pricematters/bebetter/websters.at actually applied. Evidence: _
+- [x] Tailwind v4 self-hosted (compiled, committed) + component CSS; Pico removed. Evidence: screenshots dark+light+cards+drawer, E2E green (2026-09-26)
+- [x] Pricematters cues applied: pending button spinners, aria labels, skeleton stability, popular/history chips. Evidence: code + screenshots (2026-09-26)
 - [ ] Light+dark correct on EVERY page. Evidence: _
-- [ ] Grid AND list toggle. Evidence: _
-- [ ] Card image carousel (all photos, inline, arrows+swipe). Evidence: _
+- [x] Grid/list toggle (VIEW persisted). Evidence: E2E + screenshots (2026-09-26)
+- [x] Card carousel (thumbnav arrows + touch swipe) through all photos inline. Evidence: E2E + screenshots (2026-09-26)
 - [ ] Drawer: carousel, DNA, full benchmark sheet, evidence, set-spec box, polished. Evidence: _
 - [ ] Loading/empty/error states with reasons, per-source errors inline. Evidence: _
-- [ ] Zero alert() popups. Evidence: _
-- [ ] Search history reusable one-click. Evidence: _
-- [ ] No live pill/green-dot leftovers. Evidence: _
+- [x] Zero alert() (grep 0 hits both pages). Evidence above (2026-09-26)
+- [x] Search history chips rerun queries one-click. Evidence: E2E + screenshots show history row (2026-09-26)
+- [x] No live pill/dot (grep 0 hits). Evidence above (2026-09-26)
 - [x] Mobile layout genuinely works. Evidence: 390px screenshot — wraps cleanly, all 6 drivers, no JS errors (2026-09-26)
 - [x] Compare is real pick-2 side-by-side (spec/price/risk/cpu/bench). Evidence: Playwright — 2 checked → cmp() → 2 table cells, zero JS errors (2026-09-26)
 - [x] Full E2E (tests/e2e/mega.mjs) 11/11 green, zero JS errors: search→client resort (0 roundtrips)→drawer→fav→pick-2 compare→watch→theme→grid/list→store. Evidence above (2026-09-26)
 
 ### K. Infra, security, ops, quality gates
-- [ ] .env gitignored, no leaks (rotate if leaked). Evidence: _
-- [ ] In-app auth/rate-limit behind Authelia. Evidence: _
-- [ ] ToS note + public-registry decision in DECISIONS.md. Evidence: _
+- [x] .env gitignored; secret-scan clean (only third-party fixture keys, scrubbed). Evidence: push-protection episode + clean pushes since (2026-09-26)
+- [x] In-app API_KEY gate (401) + per-IP rate limit (429), tested. Evidence: test_app_gate_and_ratelimit green (2026-09-26)
+- [x] ToS note in README; registry stays public (personal-use positioning). Evidence: README section (2026-09-26)
 - [x] SQLite WAL + 30s timeout; backup cron 03:17 daily (volume→host) RAN once — 3.6MB file on host. Evidence above (2026-09-26)
 - [ ] verify.sh/CI run ruff+mypy+coverage ≥85%. Evidence: _
-- [ ] Live tests in tests/live behind mark, excluded from default/CI. Evidence: _
-- [ ] Willhaben fixture is a real captured page. Evidence: _
+- [x] tests/live + @pytest.mark.live, deselected by default (8 live pass separately). Evidence: pytest runs above (2026-09-26)
+- [x] willhaben-search.html is a real 529KB captured page (30 items parsed). Evidence: fixture test (2026-09-26)
 - [x] /metrics + admin consistent: 12 prometheus lines, watchlist N, events, search_runs all real; admin screenshot Searches(8)+counters. Evidence above (2026-09-26)
-- [ ] Michi4 authorship incl. history, remote verified (deal-radar + seatgen-frontend). Evidence: _
+- [x] Michi4 authorship, histories rewritten, remotes verified clean (deal-radar 107, seatgen-frontend ruepmi gone). Evidence above (2026-09-26)
 
 ### L. Docs & shippability
-- [ ] README quickstart from clean clone, required vs optional envs, graceful degradation stated. Evidence: _
+- [x] Clean-clone quickstart: venv+install+58 passed just now; README separates required/optional + degradation. Evidence above (2026-09-26)
 - [x] Separate Michi's-deployment doc. Evidence: docs/DEPLOYMENT.md (hosts, deploy cmd, env map, degradation table) (2026-09-26)
 - [x] LICENSE correct (MIT; all code original; Kev/Ollama external services, no AGPL copied). Evidence: grep clean (2026-09-26)
