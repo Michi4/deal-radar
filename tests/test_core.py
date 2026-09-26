@@ -474,3 +474,15 @@ def test_gpu_table_and_extract():
     g, conf, _ = extract_gpu("Legion 5 RTX 3060 16GB")
     assert g == "rtx 3060" and conf >= 0.7
     assert extract_gpu("nice laptop")[0] is None
+
+
+def test_shpock_fixture():
+    from shpock.driver import parse_next_data, ShpockDriver
+    from pathlib import Path as _P
+    html = _P(__file__).parent.joinpath("fixtures/shpock-search.html").read_text(encoding="utf-8", errors="ignore")
+    items = parse_next_data(html, 20)
+    assert len(items) >= 10
+    assert all(i["title"] and i["url"].startswith("https://www.shpock.com/") for i in items)
+    assert all(i["price"] is None or i["price"] >= 0 for i in items)
+    assert any(i["images"] for i in items)
+    assert ShpockDriver.manifest.id == "shpock"

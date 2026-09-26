@@ -78,3 +78,16 @@ def test_kleinanzeigen_full_fields_live():
         d = await KleinanzeigenDriver().fetch_detail(full[0].native_id or full[0].url)
         assert d is None or len(d.description or "") >= 0
     asyncio.run(go())
+
+
+def test_shpock_search_live():
+    import asyncio
+
+    from deal_radar.driver_sdk import SearchQuery
+    from shpock.driver import ShpockDriver
+    async def go():
+        out = await ShpockDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
+        assert len(out) >= 1
+        l = out[0]
+        assert l.title and l.url and l.images
+    asyncio.run(go())
