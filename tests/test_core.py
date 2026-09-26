@@ -490,8 +490,9 @@ def test_shpock_fixture():
 
 
 def test_ricardo_fixture():
-    from ricardo.driver import parse_cards, RicardoDriver
     from pathlib import Path as _P
+
+    from ricardo.driver import RicardoDriver, parse_cards
     html = _P(__file__).parent.joinpath("fixtures/ricardo-search.html").read_text(encoding="utf-8", errors="ignore")
     items = parse_cards(html, 20)
     assert len(items) >= 10

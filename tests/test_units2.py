@@ -397,6 +397,6 @@ def test_condition_signals():
 
 
 def test_tls_transport_config():
-    from deal_radar.driver_sdk import transport_from_config, TlsImpersonatingTransport
+    from deal_radar.driver_sdk import TlsImpersonatingTransport, transport_from_config
     assert isinstance(transport_from_config({"type": "tls"}), TlsImpersonatingTransport)
     assert isinstance(transport_from_config({"type": "tls", "impersonate": "safari"}), TlsImpersonatingTransport)
