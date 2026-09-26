@@ -45,6 +45,19 @@ table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.
 #toasts{position:fixed;right:12px;bottom:12px;z-index:60;max-width:21.25rem}.toast{background:#fff;border:1px solid var(--acc);color:#0f172a;border-radius:.625rem;padding:.625rem;margin-top:.5rem;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,.25);animation:fadeUp .2s ease}
 .dark .toast{background:#0f172a;color:#e2e8f0}
 .hist{border-left:2px solid var(--acc);margin:6px 0 6px 4px;padding-left:10px;font-size:12px}
+.seg{display:inline-flex;background:var(--tw-seg,#f1f5f9);border:1px solid rgb(203 213 225);border-radius:12px;padding:3px;gap:2px}
+.dark .seg{background:#020617;border-color:#1e293b}
+.seg button{border:none;background:transparent;padding:.4rem .8rem;font-size:.83rem;font-weight:600;border-radius:9px;cursor:pointer;color:inherit;opacity:.65}
+.seg button.active{background:var(--acc);color:#fff;opacity:1}
+.seg button .arr{font-size:.75em;margin-left:2px}
+.pills{display:flex;flex-wrap:wrap;gap:.4rem}
+.pills button{border:1px solid rgb(203 213 225);background:transparent;color:inherit;border-radius:20px;padding:.35rem .9rem;font-size:.83rem;font-weight:600;cursor:pointer;transition:border-color .12s,background .12s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dark .pills button{border-color:#334155}
+.pills button.active{background:var(--acc);border-color:var(--acc);color:#fff}
+.pills button.dim{opacity:.45}
+.fdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--acc);margin-left:4px}
+.fsec{margin-bottom:.6rem}.flabel{display:block;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:.35rem}
+.best-badge{display:inline-block;background:var(--acc);color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:2px 10px;margin-bottom:6px}
 .chip{font-size:12px;border:1px solid rgb(203 213 225);border-radius:99px;padding:4px 10px;cursor:pointer;background:transparent}
 .dark .chip{border-color:#334155;color:#e2e8f0}.chip:hover{border-color:var(--acc)}
 .err{background:#fef2f2;border:1px solid #ef4444;color:#991b1b;border-radius:.625rem;padding:.625rem;margin:.5rem 0;font-size:13px}
@@ -96,12 +109,14 @@ select.inp{max-width:100%}
 <input id="max" class="inp" placeholder="max €" type="number" title="Maximum price"/>
 </div>
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm" id="sources"></div>
-<details class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 p-2"><summary class="cursor-pointer text-sm opacity-70">advanced: flags, thresholds, drivers</summary>
+<details class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 p-2"><summary class="cursor-pointer text-sm opacity-70">filters & options<span id="fdot" class="fdot" style="display:none"></span></summary>
 <div class="flex gap-3 flex-wrap items-center mt-2 text-sm">
 <label class="flex gap-1 items-center"><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
-<label class="flex gap-1 items-center" title="Hide buy-request ads (Ankauf/Suche/Tausch)"><input type="checkbox" id="hideWant" checked/> hide Gesuche</label>
-<label class="flex gap-1 items-center" title="Hide parts/repair/defective listings"><input type="checkbox" id="hideParts" checked/> hide parts</label>
-<label class="flex gap-1 items-center" title="Hide accessories: cases, boxes, cables, chargers, contracts"><input type="checkbox" id="hideAcc" checked/> hide accessories</label>
+<span class="flabel">listing kinds (on = hidden)</span><div class="pills" id="kindpills">
+<button class="active" title="Hide buy-request ads (Ankauf/Suche/Tausch)" onclick="toggleKind('want')">Gesuche</button>
+<button class="active" title="Hide parts/repair/defective listings" onclick="toggleKind('parts')">parts</button>
+<button class="active" title="Hide accessories: cases, boxes, cables, chargers, contracts" onclick="toggleKind('acc')">accessories</button>
+</div>
 <label class="flex gap-1 items-center" title="Minimum relevance score 0..1 — lower shows more, higher is stricter"><input id="minMatch" class="inp" style="max-width:70px" type="number" value="12" min="0" max="100"/> min relevance %</label>
 <label class="flex gap-1 items-center" title="OCR photos"><input type="checkbox" id="fOcr" checked/> OCR</label>
 <label class="flex gap-1 items-center" title="CPU benchmarks"><input type="checkbox" id="fBench" checked/> bench</label>
@@ -118,10 +133,10 @@ select.inp{max-width:100%}
 <input id="wComp" class="inp" title="completeness weight" style="max-width:64px" type="number" value="10" min="0" max="100"/>
 <input id="maxpages" class="inp" title="max pages per source (empty = all)" style="max-width:110px" type="number" min="1" placeholder="pages"/>
 </div></details>
-<div class="flex gap-2 flex-wrap items-center mt-2">
-<select id="sort" class="inp" style="max-width:190px" aria-label="sort order"><option value="score">sort: score</option><option value="plo">price ↑</option><option value="phi">price ↓</option><option value="ppe">perf/€</option><option value="mt">multithread</option><option value="gpe">gpu/€</option><option value="tc">total cost</option></select>
-<select id="perpage" class="inp" style="max-width:130px" aria-label="results per page" onchange="PAGE=0;render()"><option>20</option><option>50</option><option>100</option><option value="100000">all</option></select>
-<span id="lanes" class="flex gap-1 flex-wrap text-sm"></span></div>
+<div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar" style="display:none">
+<div class="seg" role="group" aria-label="sort order" id="sortseg"></div>
+<div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
+<span id="lanes" class="pills"></span></div>
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
 </div>
 <div id="status"></div>
@@ -155,8 +170,8 @@ function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listin
 let CMP=new Set();
 function cmpTgl(id){CMP.has(id)?CMP.delete(id):CMP.add(id);if(CMP.size>2)CMP.delete([...CMP][0]);render()}
 function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+l.title+'</b><br/>'+(l.price??'?')+' '+l.currency+'<br/>'+l.source+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+s.final_score+'<br/>cpu '+(en.cpu||'—')+'<br/>bench '+(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('results').innerHTML='<div class="panel"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
-function card(s){const l=s.listing;const fav=isFav(l.id)?'★':'☆';const ck=CMP.has(l.id)?'checked':'';
-const inner=`${thumb(l)}<div class="body"><h4>${l.title||'(no title)'}</h4>
+function card(s,idx){const l=s.listing;const best=(idx===0&&(SORT==='ppe'||SORT==='gpe'))?'<span class="best-badge">best value</span><br/>':'';const fav=isFav(l.id)?'★':'☆';const ck=CMP.has(l.id)?'checked':'';
+const inner=`${thumb(l)}<div class="body">${best}<h4>${l.title||'(no title)'}</h4>
 <div><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
 <div class="lane">${s.lane} · ${s.final_score} · ${l.source} · ${l.location||''}</div>
 <div style="margin-top:6px"><label style="font-size:12px"><input type="checkbox" ${ck} onclick="event.stopPropagation();cmpTgl('${l.id}')"/> compare</label> <button class="btn btn-ghost" onclick="event.stopPropagation();fav('${l.id}')">${fav}</button></div></div>`;
@@ -167,14 +182,26 @@ async function loadFavs(){try{const f=await(await fetch('/favorites')).json();FA
 function isFav(id){return FAVS.has(id)}
 async function fav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});await loadFavs();render()}
 async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});await loadFavs();showFavs()}
+const SORTS=[{id:'score',label:'Score'},{id:'price',label:'Price'},{id:'ppe',label:'Perf/€'},{id:'mt',label:'Multithread'},{id:'gpe',label:'GPU/€'},{id:'tc',label:'Total'}];
+let SORT='score',PDIR=1,PERPAGE=20,SRCS=new Set(),HIDELANES=new Set(),HIDEKIND={want:true,parts:true,acc:true};
+function setSort(id){if(id==='price'&&SORT==='price')PDIR*=-1;else{SORT=id;PDIR=1}PAGE=0;drawSegs();render()}
+function setPP(n){PERPAGE=n;PAGE=0;drawSegs();render()}
+function toggleSrc(id){SRCS.has(id)?SRCS.delete(id):SRCS.add(id);drawSegs()}
+function toggleLane(l){HIDELANES.has(l)?HIDELANES.delete(l):HIDELANES.add(l);render()}
+function toggleKind(k){HIDEKIND[k]=!HIDEKIND[k];drawSegs();render()}
+function drawKinds(){const map={want:'Gesuche',parts:'parts',acc:'accessories'};const el=document.querySelector('#kindpills');if(!el)return;
+el.innerHTML=Object.entries(map).map(([k,l])=>`<button class="${HIDEKIND[k]?'active':''}" onclick="toggleKind('${k}')">${l}</button>`).join('')}
+function drawSegs(){drawKinds();const sg=$('sortseg');if(sg)sg.innerHTML=SORTS.map(o=>{const a=SORT===o.id;const arr=o.id==='price'?(PDIR===1?'↓':'↑'):'';return `<button class="${a?'active':''}" onclick="setSort('${o.id}')">${o.label}<span class="arr">${arr}</span></button>`}).join('');
+const pg=$('pageseg');if(pg)pg.innerHTML=[20,50,100,'all'].map(n=>{const v=n==='all'?100000:n;return `<button class="${PERPAGE===v?'active':''}" onclick="setPP(${v})">${n}</button>`}).join('');
+const ln=$('lanes');if(ln)ln.innerHTML=[...new Set(LAST.map(s=>s.lane))].map(l=>`<button class="${HIDELANES.has(l)?'':'active'}" onclick="toggleLane('${l}')">${l}</button>`).join('');
+const fdot=$('fdot');if(fdot)fdot.style.display=(($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value)?'inline-block':'none')}
 function filtered(){let arr=[...LAST];
-if($('hideWant').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/buy-request/));
-if($('hideParts').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/parts\/repair/));
-if($('hideAcc').checked)arr=arr.filter(s=>!JSON.stringify(s.why).match(/accessory\/box/));
-const hide=[...document.querySelectorAll('.lanef:checked')].map(i=>i.value);arr=arr.filter(s=>!hide.includes(s.lane));
-const m=$('sort').value;
-if(m==='plo')arr.sort((a,b)=>(a.listing.price??1e18)-(b.listing.price??1e18));
-else if(m==='phi')arr.sort((a,b)=>(b.listing.price??-1)-(a.listing.price??-1));
+if(HIDEKIND.want)arr=arr.filter(s=>!JSON.stringify(s.why).match(/buy-request/));
+if(HIDEKIND.parts)arr=arr.filter(s=>!JSON.stringify(s.why).match(/parts\/repair/));
+if(HIDEKIND.acc)arr=arr.filter(s=>!JSON.stringify(s.why).match(/accessory\/box/));
+arr=arr.filter(s=>!HIDELANES.has(s.lane));
+const m=SORT;
+if(m==='price')arr.sort((a,b)=>PDIR*((a.listing.price??1e18)-(b.listing.price??1e18)));
 else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));
 else if(m==='mt')arr.sort((a,b)=>benchOf(b)-benchOf(a));
 else if(m==='tc')arr.sort((a,b)=>((a.deal_dna||{}).total_cost??a.listing.price??1e18)-((b.deal_dna||{}).total_cost??b.listing.price??1e18));
@@ -187,12 +214,13 @@ const rq=($('rReq').value||'').split(',').map(w=>w.trim().toLowerCase()).filter(
 return arr.filter(s=>{const l=s.listing;if(mn!=null&&(l.price??1e18)<mn)return false;if(mx!=null&&(l.price??-1)>mx)return false;
 const t=((l.title||'')+' '+(l.description||'')).toLowerCase();
 if(bl.some(w=>t.includes(w)))return false;if(rq.length&&!rq.every(w=>t.includes(w)))return false;return true})}
-function render(){const arr=refined(filtered());
-$('refinebar').style.display=LAST.length?'':'none';const pp=+$('perpage').value;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
-const lanes=[...new Set(LAST.map(s=>s.lane))];
-$('lanes').innerHTML=lanes.map(l=>`<label><input type="checkbox" class="lanef" value="${l}" onchange="render()"/> hide ${l}</label>`).join(' ');
+function render(){const active=($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value||$('hideRisk').checked||HIDEKIND.want||HIDEKIND.parts||HIDEKIND.acc)?1:0;
+const fd=$('fdot');if(fd)fd.style.display=active?'inline-block':'none';
+const arr=refined(filtered());
+$('refinebar').style.display=LAST.length?'':'none';const tb=$('toolbar');if(tb)tb.style.display=LAST.length?'flex':'none';const pp=PERPAGE;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
+drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
-$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map(card).join('')}</div>`:slice.map(card).join('');
+$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
 $('results').innerHTML+=arr.length?'':`<div class="empty">No results. Try fewer filters or another query.</div>`;
 $('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`}
 function page(d){PAGE+=d;render();window.scrollTo(0,0)}
@@ -206,7 +234,7 @@ return{ranking,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fi
 async function poll(sid,onDone){for(;;){const r=await(await fetch('/searches/'+sid)).json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
 onDone(r);return}}
-async function run(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
+async function run(){const sel=[...SRCS];
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
 const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'contains',value:w.trim()}));
@@ -218,7 +246,7 @@ try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type'
 pushHist($('q').value);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${JSON.stringify(r.driver_errors||{})}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
-async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
+async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
 $('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:30})})).json();
 pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();
@@ -238,7 +266,7 @@ async function showWatches(){status('Watches — re-polled automatically, surviv
 $('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" class="inp" placeholder="watch query" style="flex:2"/><input id="wmax" class="inp" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><input id="nDrop" class="inp" placeholder="drop % ≥" type="number" style="max-width:90px" title="only notify drops of at least this %"/><input id="nRisk" class="inp" placeholder="risk ≤ %" type="number" style="max-width:90px" title="only notify new matches below this risk %"/><button class="btn btn-primary" onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
-async function mkWatch(){const sel=[...document.querySelectorAll('#sources input:checked')].map(i=>i.value);
+async function mkWatch(){const sel=[...SRCS];
 const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
 const rules=[];const dp=+$('nDrop')?.value||0,rk=+$('nRisk')?.value||0;
 if($('nPrice')?.checked&&dp>0)rules.push({kind:'price_drop',min_drop_pct:dp});
@@ -287,7 +315,8 @@ function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
 async function init(){try{const d=await(await fetch('/drivers')).json();
-$('sources').innerHTML=d.map(x=>{const ok=x.configured!==false;return `<label style="${ok?'':'opacity:.45'}" title="${ok?'':('needs '+(x.requires||[]).join(','))}"><input type="checkbox" ${ok?'checked':''} value="${x.id}"/> ${x.display_name}${ok?'':' 🔒'}</label>`}).join(' ')}catch(e){}
+d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});
+$('sources').innerHTML='<span class="flabel">sources</span><div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} onclick="toggleSrc('${x.id}')">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
 drawHist();loadFavs();setView(VIEW);
 try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.kind!=='new_match'&&m.kind!=='search_done'&&m.kind!=='price')return;toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){}};es.onerror=()=>{toast('live feed reconnecting…')}}catch(e){}}
 init();
