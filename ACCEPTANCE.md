@@ -75,7 +75,7 @@
 - [x] Grid/list toggle (VIEW persisted). Evidence: E2E + screenshots (2026-09-26)
 - [x] Card carousel (thumbnav arrows + touch swipe) through all photos inline. Evidence: E2E + screenshots (2026-09-26)
 - [ ] Drawer: carousel, DNA, full benchmark sheet, evidence, set-spec box, polished. Evidence: _
-- [ ] Loading/empty/error states with reasons, per-source errors inline. Evidence: _
+- [x] Loading (skeletons+progress), empty (reasoned), errors (driver_errors inline + admin last-error). Evidence: screenshots + probes (2026-09-26)
 - [x] Zero alert() (grep 0 hits both pages). Evidence above (2026-09-26)
 - [x] Search history chips rerun queries one-click. Evidence: E2E + screenshots show history row (2026-09-26)
 - [x] No live pill/dot (grep 0 hits). Evidence above (2026-09-26)
