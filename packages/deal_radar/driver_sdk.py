@@ -32,6 +32,7 @@ class SearchQuery(BaseModel):
     location: str = ""
     radius_km: int | None = None
     limit: int = 20
+    max_pages: int | None = None  # user-configurable page cap; None = driver default (walk to exhaustion)
 
 
 class HealthStatus(BaseModel):

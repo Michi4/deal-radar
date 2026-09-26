@@ -187,6 +187,7 @@ class SearchIntent(BaseModel):
     ranking: dict | None = None
     enrich: bool = True
     limit: int = 20
+    max_pages: int | None = None  # per-source page cap; empty = walk to exhaustion
     watch: bool = False
     poll_interval_s: int = 300
     notify_on: list[str] = ["new_top", "price_drop"]
@@ -244,6 +245,7 @@ class NLQuery(BaseModel):
     watch: bool = False
     poll_interval_s: int = 300
     limit: int = 20
+    max_pages: int | None = None
     ocr: bool = True
     benchmarks: bool = True
     vision: bool = True
@@ -265,7 +267,7 @@ async def create_nl_search(q: NLQuery):
                         "ranking": None, "attributes": parsed.get("attributes", {}),
                         "models": parsed.get("models", []) or [],
                         "required": parsed.get("required", []),
-                        "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
+                        "enrich": True, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
                         "vision": q.vision, "details": q.details,
                         "limit": max(6, q.limit // max(1, len(queries))),
                         "watch": False, "poll_interval_s": q.poll_interval_s,
@@ -276,7 +278,7 @@ async def create_nl_search(q: NLQuery):
             "ranking": None, "attributes": parsed.get("attributes", {}),
             "models": parsed.get("models", []) or [],
             "required": parsed.get("required", []),
-            "enrich": True, "ocr": q.ocr, "benchmarks": q.benchmarks,
+            "enrich": True, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
             "vision": q.vision, "details": q.details,
             "limit": q.limit, "watch": q.watch,
             "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}

@@ -43,7 +43,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     q = SearchQuery(keywords=intent.get("keywords", ""), category=intent.get("category", ""),
                     max_price=(intent.get("hard") or {}).get("max_price"),
                     min_price=(intent.get("hard") or {}).get("min_price"),
-                    limit=int(intent.get("limit", 20)))
+                    limit=int(intent.get("limit", 20)),
+                    max_pages=int(intent["max_pages"]) if intent.get("max_pages") else None)
     hard = intent.get("hard", {}) or {}
     if isinstance(hard, list):  # model sometimes returns bare rules list
         hard = {"rules": hard}
