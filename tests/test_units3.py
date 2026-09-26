@@ -9,6 +9,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages"))
 from deal_radar import decision as D
 
 
+class _NetDown(Exception):
+    pass
+
+
 def _resp(payload=None, status=200):
     m = AsyncMock()
     m.status_code = status
@@ -94,8 +98,8 @@ def test_stage_b_via_cloud_shapes():
 
 def _mk(id_, **kw):
     from deal_radar.contracts import CanonicalListing, Seller
-    d = dict(title="T", description="Some decent description text here for scoring",
-             price=100.0, images=["i1"], url="https://x/1", seller=Seller(name="s"))
+    d = {"title": "T", "description": "Some decent description text here for scoring",
+         "price": 100.0, "images": ["i1"], "url": "https://x/1", "seller": Seller(name="s")}
     d.update(kw)
     return CanonicalListing(id=id_, source="t", native_id=id_, **d)
 
@@ -156,11 +160,13 @@ def test_orchestrator_lanes_and_gates():
         {"keywords": "thinkpad", "sources": ["t"], "limit": 10, "risk": {},
          "enrich": False, "ocr": False, "benchmarks": False, "vision": False, "details": False},
         _reg([_mk("t:1", title="ThinkPad T14", price=100)]), st, N()))
+    assert out3["results"]
     out4 = asyncio.run(run_search(
         {"keywords": "thinkpad", "sources": ["t"], "limit": 10, "risk": {},
          "enrich": False, "ocr": False, "benchmarks": False, "vision": False, "details": False},
         _reg([_mk("t:1", title="ThinkPad T14 new title", price=90)]), st, N()))
     assert any("Price" in n for n in notes)
+    assert out4["results"]
     st.close()
 
 
@@ -253,7 +259,7 @@ def test_notifications_all_channels():
     from deal_radar import notifications as N
 
     async def boom(*a, **k):
-        raise Exception("net down")
+        raise _NetDown("net down")
 
     async def ok200(*a, **k):
         class R:
@@ -442,9 +448,9 @@ def test_vision_ocr_paths():
         assert V.ocr_bytes(b"fake-bytes") == "Hello Board"
         assert V.ocr_bytes(b"fake-bytes") == "Hello Board"  # cache hit
     V._ocr_cache.clear()
-    with patch.object(V, "download_image", return_value=b"img"):
-        with patch.object(V.shutil, "which", return_value="/usr/bin/tesseract"), \
-             patch.object(V.subprocess, "run") as run:
+    with patch.object(V, "download_image", return_value=b"img"), \
+         patch.object(V.shutil, "which", return_value="/usr/bin/tesseract"), \
+         patch.object(V.subprocess, "run") as run:
             run.return_value.stdout = "Serial 123"
             run.return_value.returncode = 0
             assert V.ocr_listing_images(["http://x/1.jpg", "http://x/1.jpg"]) == ["Serial 123"]
@@ -532,8 +538,8 @@ def test_decision_branches_extra():
     assert heuristic_decide("t", "leichte Gebrauchsspuren", 1, "t")["condition"] == 0.55
     assert heuristic_decide("t", "B-Ware", 1, "t")["condition"] == 0.55
     # nl cache roundtrip on temp path
-    with tempfile.TemporaryDirectory() as td:
-        with patch.object(D, "_NL_CACHE", str(Path(td) / "nl.json")):
+    with tempfile.TemporaryDirectory() as td, \
+         patch.object(D, "_NL_CACHE", str(Path(td) / "nl.json")):
             D._nl_store("hello world", {"keywords": "hello"})
             assert D._nl_cached("hello world") == {"keywords": "hello"}
             assert D._nl_cached("other") is None
@@ -557,7 +563,7 @@ def test_decision_branches_extra():
     async def fake_post(*a, **k):
         calls["n"] += 1
         if calls["n"] <= len(D.CLOUD_MODELS):
-            raise Exception("down")
+            raise _NetDown("down")
         class R:
             status_code = 200
             def raise_for_status(self): pass
@@ -590,8 +596,8 @@ def test_orchestrator_branches_extra():
 
     def mk(i, **kw):
         src = kw.pop("src", "t")
-        d = dict(title="ThinkPad T14 Ryzen 7 5800H 16GB", description="great laptopabholung ".ljust(60, "x"),
-                 price=500.0, images=["http://img/1.jpg"], url="u", seller=Seller(name="s"))
+        d = {"title": "ThinkPad T14 Ryzen 7 5800H 16GB", "description": "great laptopabholung ".ljust(60, "x"),
+             "price": 500.0, "images": ["http://img/1.jpg"], "url": "u", "seller": Seller(name="s")}
         d.update(kw)
         return CanonicalListing(id=i, source=src, native_id=i, **d)
 
