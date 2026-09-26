@@ -1,16 +1,21 @@
-# PROGRESS.md — current state + next steps (fresh sessions start here)
+# PROGRESS.md — 2026-09-26, end of autonomous session
 
-## State (2026-09-25 ~05:30)
-Live at https://dealradar.home.websters.at. Keyword search 48s cold / 0.1s warm (cache);
-watcher re-polls in background so watches stay fresh without waiting.
-Brains: Frankfurt Kev-0.8B ONLY (Ollama removed — co-hosting thrashed the 2 vCPUs);
-NL text → laptop Ollama; vision → laptop VL; OpenRouter-free last resort.
-verify.sh GREEN, 27 pytest + Playwright E2E green, CI green.
+## Verified state
+- ACCEPTANCE: 73/76 checked with live evidence; 3 open = all BLOCKED with entries + working fallbacks
+  (ebay-tokenless, lab auto-PR GH_TOKEN, Signal-alive + telegram/email creds).
+- verify.sh GREEN (ruff+mypy+86% coverage, pinned CI versions), CI green, clean-clone pytest green.
+- Prod (homeserver): 6 drivers live, marketplace remote index, Lab builds+fires, watcher autonomy proven,
+  SSE live, backup cron ran, jump-host deploys working.
+- Brains: Frankfurt Kev (<2s), laptop Ollama 3b + VL, OpenRouter last resort, breakers everywhere.
 
-## Next 5
-1. Opportunistic: OpenRouter free vision when uncongested; Mumbai when creds exist.
-2. Telegram/email live test when user provides creds; Signal needs SIM re-link (user).
-3. eBay token (user) to enable third source.
-4. More drivers via docs/DRIVER_AUTHORING.md (vinted/shpock candidates).
-5. Frontend beauty round (currently functional vanilla; user offered Vue pick).
-See ACCEPTANCE.md, BLOCKERS.md, DECISIONS.md.
+## Next (needs human)
+1. EBAY_OAUTH_TOKEN, Signal SIM re-link, GH_TOKEN, telegram/email creds, Mumbai creds.
+2. User eyes on the Tailwind UI (screenshots verified, taste is theirs).
+3. OpenRouter-free vision when uncongested (local VL covers it when laptop awake).
+
+## Standing notes
+- NEVER push without local verify.sh GREEN (burned twice).
+- Fixture HTML may contain third-party keys → scrub before commit (burned once, Mapbox).
+- test mocks: bare `patch.object` (correct) vs `new=lambda` (breaks async ctx managers).
+- NL disk cache is prompt-versioned; server volume persists it (stale-intent safe).
+- One AI per tiny host (Frankfurt thrash lesson).
