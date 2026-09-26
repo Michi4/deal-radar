@@ -232,8 +232,17 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 metrics.inc("benchmark_skipped_vague")
             else:
                 try:
-                    from .benchmarks import fetch_passmark_cpu
+                    from .benchmarks import closest_known_cpu, fetch_passmark_cpu
                     real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
+                    if real is None:
+                        # closest-real-match fallback (list endpoint is JS-walled)
+                        alt, score = closest_known_cpu(str(cpu_fact.value))
+                        if alt and alt.lower() != str(cpu_fact.value).lower():
+                            bn_why.append(f"exact page miss — closest real CPU: {alt} ({score:.0%})")
+                            metrics.inc("benchmark_closest_retry")
+                            real = await asyncio.to_thread(fetch_passmark_cpu, alt)
+                            if real:
+                                bn_why.append(f"benchmark via closest match {alt}")
                     if real:
                         enrich = [e for e in enrich if e.field not in ("cpu_benchmark",)]
                         enrich.append(EnrichmentFact(field="cpu_benchmark", value=real["multi"], confidence=0.97,
