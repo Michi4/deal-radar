@@ -6,10 +6,12 @@ for pure auctions without buy-now — those get price=None, never dropped.
 CHF amounts are centimes: 3550 -> CHF 35.50.
 """
 from __future__ import annotations
+
 import re
 from urllib.parse import quote_plus
-from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
+
 from deal_radar.contracts import CanonicalListing, Seller
+from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
 
 
 def parse_cards(html: str, limit: int = 30) -> list[dict]:
@@ -17,7 +19,7 @@ def parse_cards(html: str, limit: int = 30) -> list[dict]:
     seen: set[str] = set()
     # primary: embedded "articles" JSON array (double-escaped in page source)
     clean = html.replace('\\"', '"').replace("\\\\", "\\")
-    m = re.search(r'"articles":\[(.*)\]\s*,\s*"[a-zA-Z]+":', clean, re.S)
+    m = re.search(r'"articles":\[(.*)\]\s*,\s*"[a-zA-Z]+":', clean, re.DOTALL)
     if m:
         for chunk in re.split(r'\{"id":"', m.group(1))[1:]:
             idm = re.match(r"(\d+)\"", chunk)

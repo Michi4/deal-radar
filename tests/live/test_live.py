@@ -97,8 +97,9 @@ def test_shpock_search_live():
 def test_ricardo_search_live():
     import asyncio
 
-    from deal_radar.driver_sdk import SearchQuery
     from ricardo.driver import RicardoDriver
+
+    from deal_radar.driver_sdk import SearchQuery
     async def go():
         out = await RicardoDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
         assert len(out) >= 1
@@ -110,8 +111,9 @@ def test_ricardo_search_live():
 def test_shpock_search_live():
     import asyncio
 
-    from deal_radar.driver_sdk import SearchQuery
     from shpock.driver import ShpockDriver
+
+    from deal_radar.driver_sdk import SearchQuery
     async def go():
         out = await ShpockDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
         assert len(out) >= 1
