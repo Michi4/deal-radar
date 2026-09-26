@@ -273,8 +273,8 @@ def test_favorites_history():
 def test_registry_check_builtin_drivers():
     from deal_radar.registry import check, installed, load_index
     ids = installed()
-    assert {"willhaben", "kleinanzeigen", "ebay", "vinted"} <= set(ids)
-    for did in ("willhaben", "kleinanzeigen", "ebay", "vinted"):
+    assert {"willhaben", "kleinanzeigen", "ebay", "vinted", "shpock", "ricardo"} <= set(ids)
+    for did in ("willhaben", "kleinanzeigen", "ebay", "vinted", "shpock", "ricardo"):
         r = check(did)
         assert r["ok"], r
     assert load_index() == {"drivers": []} or isinstance(load_index().get("drivers"), list)
@@ -487,3 +487,14 @@ def test_shpock_fixture():
     assert all(i["price"] is None or i["price"] >= 0 for i in items)
     assert any(i["images"] for i in items)
     assert ShpockDriver.manifest.id == "shpock"
+
+
+def test_ricardo_fixture():
+    from ricardo.driver import parse_cards, RicardoDriver
+    from pathlib import Path as _P
+    html = _P(__file__).parent.joinpath("fixtures/ricardo-search.html").read_text(encoding="utf-8", errors="ignore")
+    items = parse_cards(html, 20)
+    assert len(items) >= 10
+    assert all(i["title"] and i["url"].startswith("https://www.ricardo.ch/de/a/") for i in items)
+    assert any(i["price"] for i in items) and any(i["images"] for i in items)
+    assert RicardoDriver.manifest.id == "ricardo"

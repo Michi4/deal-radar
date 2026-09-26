@@ -394,3 +394,9 @@ def test_condition_signals():
     assert heuristic_decide("iPhone defekt Display gesprungen", "kaputt", 5, "iphone")["condition"] == 0.25
     mid = heuristic_decide("iPhone gebraucht", "leichte Gebrauchsspuren", 5, "iphone")["condition"]
     assert mid == 0.55
+
+
+def test_tls_transport_config():
+    from deal_radar.driver_sdk import transport_from_config, TlsImpersonatingTransport
+    assert isinstance(transport_from_config({"type": "tls"}), TlsImpersonatingTransport)
+    assert isinstance(transport_from_config({"type": "tls", "impersonate": "safari"}), TlsImpersonatingTransport)
