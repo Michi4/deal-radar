@@ -8,6 +8,8 @@
       "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --color-emerald-400: oklch(76.5% 0.177 163.223);
+    --color-emerald-600: oklch(59.6% 0.145 163.225);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-slate-100: oklch(96.8% 0.007 247.896);
     --color-slate-200: oklch(92.9% 0.013 255.508);
@@ -16,11 +18,15 @@
     --color-slate-950: oklch(12.9% 0.042 264.695);
     --color-white: #fff;
     --spacing: 0.25rem;
+    --container-5xl: 64rem;
     --container-6xl: 72rem;
     --text-sm: 0.875rem;
     --text-sm--line-height: calc(1.25 / 0.875);
     --text-lg: 1.125rem;
     --text-lg--line-height: calc(1.75 / 1.125);
+    --text-xl: 1.25rem;
+    --text-xl--line-height: calc(1.75 / 1.25);
+    --font-weight-bold: 700;
     --radius-lg: 0.5rem;
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
@@ -208,6 +214,12 @@
   .min-h-screen {
     min-height: 100vh;
   }
+  .w-full {
+    width: 100%;
+  }
+  .max-w-5xl {
+    max-width: var(--container-5xl);
+  }
   .max-w-6xl {
     max-width: var(--container-6xl);
   }
@@ -258,6 +270,9 @@
   .p-2 {
     padding: calc(var(--spacing) * 2);
   }
+  .p-4 {
+    padding: calc(var(--spacing) * 4);
+  }
   .\!px-2 {
     padding-inline: calc(var(--spacing) * 2) !important;
   }
@@ -278,11 +293,25 @@
     font-size: var(--text-sm);
     line-height: var(--tw-leading, var(--text-sm--line-height));
   }
+  .text-xl {
+    font-size: var(--text-xl);
+    line-height: var(--tw-leading, var(--text-xl--line-height));
+  }
+  .font-bold {
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
   .text-blue-500 {
     color: var(--color-blue-500);
   }
+  .text-emerald-600 {
+    color: var(--color-emerald-600);
+  }
   .text-slate-900 {
     color: var(--color-slate-900);
+  }
+  .underline {
+    text-decoration-line: underline;
   }
   .opacity-60 {
     opacity: 60%;
@@ -294,6 +323,11 @@
     --tw-backdrop-blur: blur(8px);
     -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
     backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+  }
+  @media (width >= 40rem) {
+    .sm\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   .dark\:border-slate-800:where(.dark, .dark *) {
     border-color: var(--color-slate-800);
@@ -307,6 +341,9 @@
       background-color: color-mix(in oklab, var(--color-slate-950) 85%, transparent);
     }
   }
+  .dark\:text-emerald-400:where(.dark, .dark *) {
+    color: var(--color-emerald-400);
+  }
   .dark\:text-slate-100:where(.dark, .dark *) {
     color: var(--color-slate-100);
   }
@@ -315,6 +352,10 @@
   syntax: "*";
   inherits: false;
   initial-value: solid;
+}
+@property --tw-font-weight {
+  syntax: "*";
+  inherits: false;
 }
 @property --tw-backdrop-blur {
   syntax: "*";
@@ -356,6 +397,7 @@
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
       --tw-border-style: solid;
+      --tw-font-weight: initial;
       --tw-backdrop-blur: initial;
       --tw-backdrop-brightness: initial;
       --tw-backdrop-contrast: initial;
