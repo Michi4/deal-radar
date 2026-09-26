@@ -22,9 +22,9 @@
 ### D. Search, filtering & querying
 - [x] NL search by real model, 10-query gauntlet live (scripts/ops/check_nl10.py): 9/10 sane (iPhone USB-C→15..17 models; OLED→display:oled; 845G8 attrs cleaned by validation fix; gaming models laptops-only after category fix); 1 cold-start transient, worked on retry. Evidence above (2026-09-26)
 - [x] Multi-term search ("rtx 4070 OR rtx 4060") in one result set. Evidence: `;`-split live → subqueries 2, 12 results = 6×4070 + 6×4060, errors={} (2026-09-26)
-- [ ] Per-field filters all ops, missing→N/A→pass. Property-based tests. Evidence: _
-- [ ] Blacklist AND required-words, both in UI. Evidence: _
-- [ ] Min/max price in main search bar. Evidence: _
+- [x] Per-field filters all ops, missing→N/A→pass. Evidence: hypothesis property tests (60 examples: never-crash, blacklist-always-rejects, unknown-price-never-excluded) green (2026-09-26)
+- [x] Blacklist AND required-words (AND semantics), both in UI. Evidence: unit (Pro+256GB required: match/pass, others fail) + browser DOM check (#black/#req present, no JS errors) (2026-09-26)
+- [x] Min/max price in main search bar. Evidence: browser DOM check (#min/#max present) + hard.min/max_price enforced in apply_filters tests (2026-09-26)
 - [ ] Gesuche/parts hidden by default with visible toggle. Evidence: _
 - [ ] Junk/cases/boxes filtered by default behind toggle. Evidence: _
 - [ ] Client-side instant resort/refilter/page-size on fetched data. Evidence: _
