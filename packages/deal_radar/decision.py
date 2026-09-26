@@ -194,8 +194,11 @@ NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON Sear
              "exclude [] (words that disqualify: accessories like case/hülle/kabel/charger, wrong variants, "
              "other brands, 'defekt' if user wants working), "
              "category, hard {max_price, min_price, rules[]}, blacklist[] ({fields,op,value}), "
-             "attributes {} (requirements like connector:usb-c), risk_note. "
+             "attributes {} (ONLY requirements stated or logically forced by the query, e.g. connector:usb-c "
+             "for USB-C charging; NEVER invent processor/screen/ram values the query does not mention), risk_note. "
              "Rules use {field,op,value} with op in contains,not_contains,regex,lt,gt,range,equals. "
+             "Every model in models[] must be the SAME product category as the query (laptop query -> laptop models only, "
+             "never desktops/phones). "
              "Never invent prices. Missing info -> omit the key.")
 
 
@@ -280,10 +283,24 @@ async def nl_to_intent(text: str) -> dict:
         def _maker(v: str) -> bool:
             return _re2.sub(r"[^a-z0-9]+", "", v.lower()) in makers
         bl = [b for b in bl if not (_selfterm(str(b.get("value", ""))) or _maker(str(b.get("value", ""))))]
+        # attr validation: drop invented attributes whose value shares nothing with the query.
+        # (e.g. query "hp elitebook 845 g8" must not gain processor=i7/screen=15.6 out of thin air)
+        qtokens = set(_re2.findall(r"[a-z0-9]{2,}", text.lower()))
+        synonyms = {"usb-c": {"usb", "c", "type-c", "charging", "charge", "cable", "laden"},
+                    "usb": {"usb", "charging", "cable", "laden"},
+                    "oled": {"oled", "display", "screen", "bildschirm"},
+                    "lightning": {"lightning", "apple", "iphone"}}
+        attrs = cloud.get("attributes", {}) or {}
+        kept_attrs = {}
+        for ak, av in attrs.items():
+            vtokens = set(_re2.findall(r"[a-z0-9]{2,}", str(av).lower()))
+            extra = synonyms.get(str(av).lower(), set())
+            if vtokens & qtokens or extra & qtokens:
+                kept_attrs[ak] = av
         intent = {"keywords": cloud["keywords"], "category": cloud.get("category", ""),
                   "hard": cloud.get("hard", {}) if isinstance(cloud.get("hard"), dict) else {"rules": cloud.get("hard", [])},
                   "blacklist": bl,
-                  "whitelist": [], "attributes": cloud.get("attributes", {}),
+                  "whitelist": [], "attributes": kept_attrs,
                   "models": models,
                   "risk": {}, "enrich": True, "limit": 20}
         _nl_store(text, intent)
