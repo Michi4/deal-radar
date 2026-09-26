@@ -459,3 +459,10 @@ def test_vision_clamp_phrasings():
     assert pv("Not a Lenovo ThinkPad listing.") <= 0.25
     assert pv("This is not the described laptop.") <= 0.25
     assert pv("Photo consistent with title.", 0.9) == 0.9
+
+
+def test_closest_known_cpu():
+    from deal_radar.benchmarks import closest_known_cpu
+    name, score = closest_known_cpu("Ryzen 7 580H")  # typo of 5800H
+    assert name == "ryzen 7 5800h" and score > 0.75
+    assert closest_known_cpu("zzzz not a cpu 123")[0] is None

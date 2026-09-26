@@ -40,6 +40,35 @@ def parse_passmark_detail(html: str) -> tuple[int | None, int | None]:
     return (int(mt.group(1)) if mt else None, int(st.group(1)) if st else None)
 
 
+def closest_known_cpu(name: str) -> tuple[str | None, float]:
+    """Closest real CPU when the exact page 404s: difflib over static DB + cached PassMark + GPU table."""
+    import difflib
+    want = _norm(name)
+    candidates: dict[str, str] = {c: c for c in STATIC_DB}
+    try:
+        disk = _load()
+        for k, v in disk.items():
+            if isinstance(v, dict):
+                candidates[k.replace("v2:", "")] = k.replace("v2:", "")
+    except Exception:
+        pass
+    try:
+        for k in _gpu_mem:
+            candidates[k] = k
+    except Exception:
+        pass
+    normed = {_norm(c): c for c in candidates}
+    best = difflib.get_close_matches(want, list(normed), n=1, cutoff=0.75)
+    if not best:
+        return None, 0.0
+    import difflib as _d
+    score = _d.SequenceMatcher(None, want, best[0]).ratio()
+    return normed[best[0]], round(score, 3)
+    mt = re.search(r"Multithread Rating</div>\s*<div[^>]*>(\d+)</div>", html)
+    st = re.search(r"Single Thread Rating</div>\s*<div[^>]*>(\d+)</div>", html)
+    return (int(mt.group(1)) if mt else None, int(st.group(1)) if st else None)
+
+
 GPU_LIST_URL = "https://www.videocardbenchmark.net/gpu_list.php"
 _gpu_mem: dict[str, dict] = {}
 _gpu_ts: float = 0.0
