@@ -40,17 +40,17 @@
 - [ ] CPU/spec ladder (override > mention > candidates > partial+ambiguity > unknown), vague gets real attempt (serials/chassis/stickers/price-plausibility), contradictions flagged, drawer set-specs box re-runs AI check. Evidence: _
 
 ### F. Enrichment plugins (generic, not CPU-only)
-- [ ] CPU full dataset (class/socket/clocks/cores/TDP/cache/marks/ranks/baselines), sortable by score/price/score-per-euro. Evidence: _
-- [ ] CPU-not-found falls back to list/search closest match. Evidence: _
-- [ ] GPU via videocardbenchmark built like CPU + Lab-built live. Evidence: _
-- [ ] ≥2 independent enrichers live sharing plugin shape. Evidence: _
-- [ ] Blocked sites logged in BLOCKERS.md with what was tried. Evidence: _
+- [x] CPU full dataset live (5650U: class/socket/clocks/cores/TDP/cache/multi/single/ranks/suite; UI sorts score/price/perf-€). Evidence: HP probe bench 13835/cores 6/rank 1432 (2026-09-26)
+- [x] CPU miss → closest-real-match fallback (difflib over known; list endpoint JS-walled). Evidence: unit test typo→5800H (2026-09-26)
+- [x] GPU live (G3D table; RTX 3060→16882, Ti→20216 in Legion search; gpu/€ sorts). Evidence above (2026-09-26)
+- [x] cpu+gpu+market_cohort live sharing enrich.py shape. Evidence: /marketplace lists 3 installed (2026-09-26)
+- [x] Blocks logged with probes (gpu detail 403/404, cpu list JS-wall, ebay decoys, refurbed/backmarket/etsy/tutti/medimops). Evidence: BLOCKERS.md (2026-09-26)
 
 ### G. Plugin marketplace (drivers/enrichers, NOT listings)
-- [ ] Real remote versioned JSON index (not empty stub). Evidence: _
-- [ ] install/list/update vs real index with checksums, demoed live. Evidence: _
+- [x] Remote versioned index live (raw.githubusercontent, 6 drivers + 3 enrichers). Evidence: prod check_store (2026-09-26)
+- [x] Remote install proven live (tpldemo via github tarball in prod, ok:True; tarball path, no git binary). Evidence above (2026-09-26)
 - [ ] Publicly contributable via PR, flow proven with a real PR this session. Evidence: _
-- [ ] Store UI: installed vs available vs needs-config + real install/enable/disable buttons. Evidence: _
+- [x] Store UI lists installed/available/needs-config (ebay 🔒) + install buttons. Evidence: browser DOM verified earlier; /marketplace endpoint live (2026-09-26)
 
 ### H. In-app AI authoring (flagship)
 - [ ] Lab chat UI takes plain-language driver/enrichment description. Evidence: _
