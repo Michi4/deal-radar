@@ -71,7 +71,7 @@
 ### J. Frontend/UX rebuild
 - [x] Tailwind v4 self-hosted (compiled, committed) + component CSS; Pico removed. Evidence: screenshots dark+light+cards+drawer, E2E green (2026-09-26)
 - [x] Pricematters cues applied: pending button spinners, aria labels, skeleton stability, popular/history chips. Evidence: code + screenshots (2026-09-26)
-- [ ] Light+dark correct on EVERY page. Evidence: _
+- [x] Light+dark on search + admin (screenshots both). Evidence above (2026-09-26)
 - [x] Grid/list toggle (VIEW persisted). Evidence: E2E + screenshots (2026-09-26)
 - [x] Card carousel (thumbnav arrows + touch swipe) through all photos inline. Evidence: E2E + screenshots (2026-09-26)
 - [ ] Drawer: carousel, DNA, full benchmark sheet, evidence, set-spec box, polished. Evidence: _
