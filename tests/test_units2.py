@@ -400,3 +400,36 @@ def test_tls_transport_config():
     from deal_radar.driver_sdk import TlsImpersonatingTransport, transport_from_config
     assert isinstance(transport_from_config({"type": "tls"}), TlsImpersonatingTransport)
     assert isinstance(transport_from_config({"type": "tls", "impersonate": "safari"}), TlsImpersonatingTransport)
+
+
+def test_filter_properties():
+    import random
+
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.filter_engine import apply_filters
+
+    @given(st.text(max_size=40), st.floats(allow_nan=False, allow_infinity=False, min_value=0, max_value=1e6), st.booleans())
+    @settings(max_examples=60, derandomize=True)
+    def prop(title, price, has_desc):
+        rng = random.Random(hash((title, price, has_desc)) % (2 ** 32))
+        l = CanonicalListing(id="p", source="t", native_id="1", url="u", title=title,
+                             description=("desc word " + title) if has_desc else "",
+                             price=price if rng.random() > 0.3 else None,
+                             seller=Seller(name="s"))
+        # invariant 1: never crash, always a FilterResult
+        r = apply_filters(l, {"max_price": 500, "rules": [
+            {"fields": ["title", "description"], "op": "not_contains", "value": "zzzq"},
+            {"field": "price", "op": "lt", "value": 100000}]}, None, None)
+        assert isinstance(r.passed, bool)
+        # invariant 2: blacklist hit on present word always rejects
+        if "word" in (title + " " + l.description).lower():
+            r2 = apply_filters(l, {}, [{"fields": ["title", "description"], "op": "not_contains", "value": "word"}], None)
+            assert not r2.passed
+        # invariant 3: unknown price never excluded by price bounds
+        if l.price is None:
+            r3 = apply_filters(l, {"max_price": 1}, None, None)
+            assert r3.passed
+    prop()

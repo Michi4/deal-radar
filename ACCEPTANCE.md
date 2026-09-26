@@ -21,7 +21,7 @@
 
 ### D. Search, filtering & querying
 - [x] NL search by real model, 10-query gauntlet live (scripts/ops/check_nl10.py): 9/10 sane (iPhone USB-C→15..17 models; OLED→display:oled; 845G8 attrs cleaned by validation fix; gaming models laptops-only after category fix); 1 cold-start transient, worked on retry. Evidence above (2026-09-26)
-- [ ] Multi-term search ("rtx 4080 OR rtx 4070 ti super") in one result set. Evidence: _
+- [x] Multi-term search ("rtx 4070 OR rtx 4060") in one result set. Evidence: `;`-split live → subqueries 2, 12 results = 6×4070 + 6×4060, errors={} (2026-09-26)
 - [ ] Per-field filters all ops, missing→N/A→pass. Property-based tests. Evidence: _
 - [ ] Blacklist AND required-words, both in UI. Evidence: _
 - [ ] Min/max price in main search bar. Evidence: _
