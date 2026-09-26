@@ -99,7 +99,8 @@ class TlsImpersonatingTransport(TransportProvider):
             headers = dict(kwargs.pop("headers", {}) or {})
             r = _cr.get(url, impersonate=self.impersonate, headers=headers,
                         timeout=self.timeout, allow_redirects=True, **kwargs)
-            return httpx.Response(r.status_code, headers=dict(r.headers), content=r.content,
+            clean = {str(k): str(v) for k, v in dict(r.headers).items()}
+            return httpx.Response(r.status_code, headers=clean, content=r.content,
                                   request=httpx.Request("GET", url))
 
         return await _aio.to_thread(_fetch)
