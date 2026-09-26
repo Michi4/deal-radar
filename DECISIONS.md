@@ -17,3 +17,5 @@
 - Laya evaluated twice, NOT adopted: laya-serve on PyPI is a 0.1 stub (no server code);
   reported accuracy ~0.77 trails Kev; Frankfurt Kev answers <2s. Revisit when laya-serve matures.
 - eBay tokenless scraping REFUSED: bot-wall serves decoy cards (no prices/titles) — fake data risk.
+
+- Proxy live test used 1 request via the homelab's own webshare pool (pricematters env, never committed); justified as de-minimis infra validation.
