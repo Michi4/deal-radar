@@ -1,31 +1,129 @@
-{"registry": "deal-radar marketplace", "version": 1,
+{
+ "registry": "deal-radar marketplace",
+ "version": 1,
  "contribute": "PR to marketplace/index.json in Michi4/deal-radar (see docs/DRIVER_AUTHORING.md)",
  "drivers": [
-  {"id": "willhaben", "version": "0.3.0", "display_name": "Willhaben",
-   "source": "builtin", "capabilities": ["search", "fetch_detail", "images", "location", "seller"],
-   "author": "deal-radar core", "license": "MIT"},
-  {"id": "kleinanzeigen", "version": "0.4.0", "display_name": "Kleinanzeigen",
-   "source": "builtin", "capabilities": ["search", "fetch_detail", "images", "location", "paged"],
-   "author": "deal-radar core", "license": "MIT"},
-  {"id": "vinted", "version": "0.1.0", "display_name": "Vinted",
-   "source": "builtin", "capabilities": ["search", "images", "paged"],
-   "author": "deal-radar core", "license": "MIT"},
-  {"id": "shpock", "version": "0.1.0", "display_name": "Shpock",
-   "source": "builtin", "capabilities": ["search", "images", "shipping"],
-   "author": "deal-radar core", "license": "MIT"},
-  {"id": "ricardo", "version": "0.1.0", "display_name": "Ricardo (CH)",
-   "source": "builtin", "capabilities": ["search", "images", "location"],
-   "author": "deal-radar core", "license": "MIT"},
-  {"id": "ebay", "version": "0.1.0", "display_name": "eBay (official API)",
-   "source": "builtin", "requires": ["EBAY_OAUTH_TOKEN"],
-   "capabilities": ["search", "fetch_detail", "images"],
-   "author": "deal-radar core", "license": "MIT"}
+  {
+   "id": "willhaben",
+   "version": "0.3.0",
+   "display_name": "Willhaben",
+   "source": "builtin",
+   "capabilities": [
+    "search",
+    "fetch_detail",
+    "images",
+    "location",
+    "seller"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "kleinanzeigen",
+   "version": "0.4.0",
+   "display_name": "Kleinanzeigen",
+   "source": "builtin",
+   "capabilities": [
+    "search",
+    "fetch_detail",
+    "images",
+    "location",
+    "paged"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "vinted",
+   "version": "0.1.0",
+   "display_name": "Vinted",
+   "source": "builtin",
+   "capabilities": [
+    "search",
+    "images",
+    "paged"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "shpock",
+   "version": "0.1.0",
+   "display_name": "Shpock",
+   "source": "builtin",
+   "capabilities": [
+    "search",
+    "images",
+    "shipping"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "ricardo",
+   "version": "0.1.0",
+   "display_name": "Ricardo (CH)",
+   "source": "builtin",
+   "capabilities": [
+    "search",
+    "images",
+    "location"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "ebay",
+   "version": "0.1.0",
+   "display_name": "eBay (official API)",
+   "source": "builtin",
+   "requires": [
+    "EBAY_OAUTH_TOKEN"
+   ],
+   "capabilities": [
+    "search",
+    "fetch_detail",
+    "images"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "_template",
+   "version": "0.1.0",
+   "display_name": "Template (copy me)",
+   "source": "github:Michi4/deal-radar@main:drivers/_template",
+   "capabilities": [
+    "search"
+   ],
+   "author": "deal-radar core",
+   "license": "MIT"
+  }
  ],
  "enrichers": [
-  {"id": "cpu_benchmark", "version": "0.1.0", "display_name": "CPU benchmarks (PassMark)",
-   "source": "builtin", "author": "deal-radar core", "license": "MIT"},
-  {"id": "gpu_benchmark", "version": "0.1.0", "display_name": "GPU benchmarks (videocardbenchmark)",
-   "source": "builtin", "author": "deal-radar core", "license": "MIT"},
-  {"id": "market_cohort", "version": "0.1.0", "display_name": "Market cohort stats",
-   "source": "builtin", "author": "deal-radar core", "license": "MIT"}
- ]}
+  {
+   "id": "cpu_benchmark",
+   "version": "0.1.0",
+   "display_name": "CPU benchmarks (PassMark)",
+   "source": "builtin",
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "gpu_benchmark",
+   "version": "0.1.0",
+   "display_name": "GPU benchmarks (videocardbenchmark)",
+   "source": "builtin",
+   "author": "deal-radar core",
+   "license": "MIT"
+  },
+  {
+   "id": "market_cohort",
+   "version": "0.1.0",
+   "display_name": "Market cohort stats",
+   "source": "builtin",
+   "author": "deal-radar core",
+   "license": "MIT"
+  }
+ ]
+}
