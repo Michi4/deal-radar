@@ -83,8 +83,9 @@ def test_kleinanzeigen_full_fields_live():
 def test_shpock_search_live():
     import asyncio
 
-    from deal_radar.driver_sdk import SearchQuery
     from shpock.driver import ShpockDriver
+
+    from deal_radar.driver_sdk import SearchQuery
     async def go():
         out = await ShpockDriver().search(SearchQuery(keywords="ThinkPad", limit=5))
         assert len(out) >= 1
