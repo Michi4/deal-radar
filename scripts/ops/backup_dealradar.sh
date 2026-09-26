@@ -10,7 +10,7 @@ else
   docker exec dealradar-api python -c "
 import sqlite3
 s = sqlite3.connect('/data/dealradar.db')
-d = sqlite3.connect('$D/dealradar.db')
+d = sqlite3.connect(\"$D/dealradar.db\")
 s.backup(d)
 print('python backup OK')
 "
