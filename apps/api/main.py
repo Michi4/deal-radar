@@ -455,10 +455,16 @@ def lab_status():
 
 @app.get("/marketplace")
 def marketplace():
-    """Public plugin/driver marketplace index (versioned JSON, PR-contributed)."""
-    import json as _j
-    p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
-    idx = _j.loads(p.read_text()) if p.exists() else {"drivers": [], "enrichers": []}
+    """Public plugin/driver marketplace index (remote versioned JSON, PR-contributed)."""
+    from deal_radar.registry import load_index
+    try:
+        idx = load_index()
+    except Exception:
+        idx = {"drivers": [], "enrichers": []}
+    if not idx.get("drivers"):
+        import json as _j
+        p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
+        idx = _j.loads(p.read_text()) if p.exists() else {"drivers": [], "enrichers": []}
     from deal_radar.enrich import REGISTRY
     from deal_radar.registry import installed
     inst = set(installed())
