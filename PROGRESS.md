@@ -79,6 +79,15 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Navbar: absolute-centering attempt caused collisions → reverted to grid (provably
   non-overlapping at 1100/1280/1600). Logo stays container-left by grid design.
 
+## Verified 2026-09-27 (open-search fix batch)
+- History-open root-caused: open re-ran the full pipeline inline (minutes of hung HTTP
+  -> NetworkError, esp. during deploys). Now: compressed snapshots persisted per job,
+  served instantly, never re-run; explicit re-run button for fresh.
+- Killed the last inline handlers (img onerror x3 -> delegated remover): zero
+  script-src-attr violations from app code. Remaining CSP noise = extensions.
+- Tile actions wrapped in try/catch (no more uncaught promise deaths).
+- verify GREEN, 88 passed, mega 11/11, xss 4/4. Deployed + healthy.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
