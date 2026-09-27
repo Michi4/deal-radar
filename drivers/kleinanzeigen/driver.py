@@ -182,6 +182,10 @@ class KleinanzeigenDriver(MarketplaceDriver):
             url = f"https://www.kleinanzeigen.de/{slug}/k0"
         else:
             url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
+        # geo: verified live 2026-09-27 (?locationStr=<plz+ort>&radius=<km>)
+        if (query.location or "").strip():
+            from urllib.parse import quote_plus as _qp
+            url += f"?locationStr={_qp(query.location.strip())}&radius={int(query.radius_km or 50)}"
         items: list[dict] = []
         seen_urls: set[str] = set()
         for _page in range(query.max_pages or 10**9):  # walk to exhaustion (breaks when no next-page link); sequential + polite, never concurrent from one IP

@@ -17,7 +17,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),resetFilters:()=>resetFilters(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),resetFilters:()=>resetFilters(),geoloc:()=>doGeoloc(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -28,6 +28,23 @@ let SMODE='nl';
 function setMode(m){SMODE=m;try{localStorage.setItem('drmode',m)}catch(e){}
 const nl=$('nlform'),qw=$('qform');if(nl)nl.style.display=m==='nl'?'':'none';if(qw)qw.style.display=m==='kw'?'':'none';
 document.querySelectorAll('#modeseg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m))}
+async function doGeoloc(){
+if(!navigator.geolocation)return toast('no geolocation in this browser');
+toast('locating…');
+navigator.geolocation.getCurrentPosition(async pos=>{
+try{
+const key=pos.coords.latitude.toFixed(2)+','+pos.coords.longitude.toFixed(2);
+const cached=JSON.parse(localStorage.getItem('drgeo')||'{}');
+if(cached[key]){$('locQ').value=cached[key];saveFilters();return toast('location: '+cached[key])}
+const r=await(await fetch('https://nominatim.openstreetmap.org/reverse?lat='+pos.coords.latitude+'&lon='+pos.coords.longitude+'&format=jsonv2',{headers:{Accept:'application/json'}})).json();
+const a=r.address||{};
+const val=((a.postcode||'')?a.postcode+' ':'')+(a.city||a.town||a.village||a.state||'');
+$('locQ').value=val;cached[key]=val;
+try{localStorage.setItem('drgeo',JSON.stringify(cached))}catch(e2){}
+saveFilters();toast('location: '+val);
+}catch(e){toast('reverse-geocode failed')}
+},{enableHighAccuracy:false,timeout:15000});
+}
 function paintChecks(){document.querySelectorAll('.ck>input').forEach(c=>c.closest('.ck').classList.toggle('on',c.checked))}
 async function api(path,opts={},retries=0){
 let last=null;
@@ -153,7 +170,7 @@ function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" 
 function histGo(h){if(SMODE==='kw'){$('q').value=h;run()}else{$('nl').value=h;runNL()}}
 function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
 const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
-return{ranking,category:$('catSel').value,cat_map:($('catAuto')&&$('catAuto').checked)?{}:{kleinanzeigen:$('catKa').value},blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
+return{ranking,category:$('catSel').value,location:$('locQ').value.trim(),radius_km:+$('locR').value||undefined,cat_map:($('catAuto')&&$('catAuto').checked)?{}:{kleinanzeigen:$('catKa').value},blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
 async function showApplied(p,subs){if(!p||!p.keywords||!String(p.keywords).trim()){$('applied').style.display='none';return}
 const chip=t=>'<span class="chip">'+esc(t)+'</span>';
 let h='<div class="eyebrow">AI understood</div><div style="font-weight:700">'+esc(p.keywords)+'</div>';
@@ -215,11 +232,11 @@ let FAVMAP={};
 async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await api('/favorites',{},1);FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
 $('pageview').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}${h.kind==='price'?chg(h.old,h.new):''}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
-const DEFF={black:'',req:'',min:'',max:'',minMatch:12,catSel:'',catKa:'',catAuto:1,fOcr:1,fBench:1,fVision:1,fDet:1,warnT:35,blockT:85,hideRisk:0,fPick:0,fShip:0,wMatch:35,wValue:35,wRisk:20,wComp:10,maxpages:'',limitN:'',deepN:150};
+const DEFF={black:'',req:'',min:'',max:'',minMatch:12,catSel:'',catKa:'',catAuto:1,locQ:'',locR:'',fOcr:1,fBench:1,fVision:1,fDet:1,warnT:35,blockT:85,hideRisk:0,fPick:0,fShip:0,wMatch:35,wValue:35,wRisk:20,wComp:10,maxpages:'',limitN:'',deepN:150};
 function advState(){const g=id=>{const e=$(id);return e?(e.type==='checkbox'?(e.checked?1:0):e.value):''};
-return {black:g('black'),req:g('req'),min:g('min'),max:g('max'),minMatch:g('minMatch'),fOcr:g('fOcr'),fBench:g('fBench'),fVision:g('fVision'),fDet:g('fDet'),warnT:g('warnT'),blockT:g('blockT'),hideRisk:g('hideRisk'),fPick:g('fPick'),fShip:g('fShip'),wMatch:g('wMatch'),wValue:g('wValue'),wRisk:g('wRisk'),wComp:g('wComp'),maxpages:g('maxpages'),limitN:g('limitN'),deepN:g('deepN'),catSel:g('catSel'),catKa:g('catKa'),catAuto:g('catAuto'),sort:SORT,perpage:PERPAGE,sources:[...SRCS],kinds:{...HIDEKIND}}}
+return {black:g('black'),req:g('req'),min:g('min'),max:g('max'),minMatch:g('minMatch'),fOcr:g('fOcr'),fBench:g('fBench'),fVision:g('fVision'),fDet:g('fDet'),warnT:g('warnT'),blockT:g('blockT'),hideRisk:g('hideRisk'),fPick:g('fPick'),fShip:g('fShip'),wMatch:g('wMatch'),wValue:g('wValue'),wRisk:g('wRisk'),wComp:g('wComp'),maxpages:g('maxpages'),limitN:g('limitN'),deepN:g('deepN'),catSel:g('catSel'),catKa:g('catKa'),catAuto:g('catAuto'),locQ:g('locQ'),locR:g('locR'),sort:SORT,perpage:PERPAGE,sources:[...SRCS],kinds:{...HIDEKIND}}}
 function applyAdvState(f){if(!f)return;const s=id=>$(id);const put=(id,v)=>{const e=s(id);if(e==null||v==null)return;if(e.type==='checkbox')e.checked=!!+v;else e.value=v};
-for(const k of ['black','req','min','max','minMatch','warnT','blockT','wMatch','wValue','wRisk','wComp','maxpages','deepN','catSel','catKa'])put(k,f[k]);for(const k of ['catAuto'])put(k,f[k]);
+for(const k of ['black','req','min','max','minMatch','warnT','blockT','wMatch','wValue','wRisk','wComp','maxpages','deepN','catSel','catKa','locQ','locR'])put(k,f[k]);for(const k of ['catAuto'])put(k,f[k]);
 for(const k of ['fOcr','fBench','fVision','fDet','hideRisk','fPick','fShip'])put(k,f[k]);
 if(f.limitN!=null){const el=s('limitN');if(el&&![...el.options].some(o=>o.value==String(f.limitN))){const o=document.createElement('option');o.value=o.textContent=String(f.limitN);el.appendChild(o)}put('limitN',f.limitN)}
 if(f.sort)SORT=f.sort;if(f.perpage)PERPAGE=+f.perpage||20;
@@ -236,7 +253,7 @@ const hd=it.hard||{};put('min',hd.min_price);put('max',hd.max_price);
 if(hd.min_match!=null)$('minMatch').value=Math.round(hd.min_match*100);
 if(it.max_pages!=null)put('maxpages',it.max_pages);
 if(it.limit!=null){const el=$('limitN');if(el&&![...el.options].some(o=>o.value==String(it.limit))){const o=document.createElement('option');o.value=o.textContent=String(it.limit);el.appendChild(o)}put('limitN',it.limit)}
-if(it.enrich_top_n!=null)put('deepN',it.enrich_top_n);if(it.category!=null)put('catSel',it.category);if(it.cat_map&&it.cat_map.kleinanzeigen)put('catKa',it.cat_map.kleinanzeigen);
+if(it.enrich_top_n!=null)put('deepN',it.enrich_top_n);if(it.category!=null)put('catSel',it.category);if(it.location!=null)put('locQ',it.location);if(it.radius_km!=null)put('locR',it.radius_km);if(it.cat_map&&it.cat_map.kleinanzeigen)put('catKa',it.cat_map.kleinanzeigen);
 if(it.sources&&it.sources.length){SRCS=new Set(it.sources)}
 paintChecks();drawSegs();mirrorRefine()}
 function mirrorRefine(){try{$('rMin').value=$('min').value;$('rMax').value=$('max').value;$('rBlack').value=$('black').value;$('rReq').value=$('req').value}catch(e){}}
@@ -296,8 +313,8 @@ const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading=
 const jb=s.job||null;
 const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':'<span class="jobpill">done</span>'):'';
 const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
-return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
-const tiles=(r.searches||[]).map(tile).join('');
+return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+((s.sources||[]).map(esc).join('+')||'all sources')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
+const tiles=(r.searches||[]).map(s=>{try{return tile(s)}catch(e){return '<div class="card" style="padding:10px"><b>'+esc(s.keywords||'(query)')+'</b><br/><small>unreadable entry</small><div class="row"><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button></div></div>'}}).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},8000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
 async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+encodeURIComponent(id))}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}

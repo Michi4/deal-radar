@@ -55,6 +55,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     limit=int(_lim) if _lim else 1000000,
                     max_pages=int(intent["max_pages"]) if intent.get("max_pages") else None,
                     sid=intent.get("_sid", ""),
+                    location=str(intent.get("location", "") or "")[:120],
+                    radius_km=int(intent["radius_km"]) if intent.get("radius_km") else None,
                     cat_map=dict(intent.get("cat_map", {}) or {}))
     hard = intent.get("hard", {}) or {}
     if isinstance(hard, list):  # model sometimes returns bare rules list

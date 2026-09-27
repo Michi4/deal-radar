@@ -69,6 +69,10 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}
 <section id="tab-drivers" style="display:none"><div class="card"><div class="eyebrow">Drivers — enable / disable / install</div><div id="drivers"></div></div></section>
 <section id="tab-secrets" style="display:none"><div class="card"><div class="eyebrow">Tokens &amp; keys — values never leave this box, never shown back</div><div id="secrets"></div><div id="secmsg"></div><small style="opacity:.6">Saved to the server database and applied live (no restart). Server env stays the fallback.</small></div></section>
 <section id="tab-searches" style="display:none"><div class="card"><div class="eyebrow">Searches (<span id="nsearch">0</span>)</div><div class="tscroll" id="searches"></div></div></section>
+<section id="tab-danger" style="display:none"><div class="card"><div class="eyebrow">Danger zone — no undo</div>
+<p class="text-sm" style="opacity:.7">Wipes all searches, results, favorites, history, jobs and listings on this instance. Schema, settings/secrets and Lab-built code survive.</p>
+<div class="row" style="margin-top:.6rem"><button class="btn btn-ghost" id="resetarm">wipe all data…</button></div>
+<div id="resetmsg"></div></div></section>
 <section id="tab-events" style="display:none"><div class="card"><div class="eyebrow">Live events (<span id="nev">0</span>)</div><div id="evclear" style="margin-bottom:.5rem"></div><div id="events"></div></div></section>
 <p class="text-sm" style="opacity:.65;margin-top:.6rem">auto-refreshes every 15s · <span id="updated"></span></p>
 </main><script src="/static/admin.js"></script></body></html>

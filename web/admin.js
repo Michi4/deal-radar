@@ -6,7 +6,7 @@ document.getElementById('themebtn').onclick = () => {
   localStorage.setItem('drt', dark ? 'dark' : 'light');
 };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const TABS = ['Overview', 'Drivers', 'Secrets', 'Searches', 'Events'];
+const TABS = ['Overview', 'Drivers', 'Secrets', 'Searches', 'Events', 'Danger'];
 let activeTab = 'Overview';
 function drawTabs() {
   document.getElementById('tabs').innerHTML = TABS.map(t =>
@@ -122,6 +122,19 @@ async function loadSecrets() {
     }));
   } catch (e) { showMsg(String(e.message || e)); }
 }
+const _rb = document.getElementById('resetarm');
+if (_rb) _rb.addEventListener('click', async () => {
+  if (!_rb.dataset.armed) {
+    _rb.dataset.armed = '1'; _rb.textContent = 'click again to confirm WIPE';
+    setTimeout(() => { if (_rb.isConnected) { delete _rb.dataset.armed; _rb.textContent = 'wipe all data…'; } }, 10000);
+    return;
+  }
+  try {
+    const r = await api('/admin/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET' }) });
+    document.getElementById('resetmsg').innerHTML = `<div class="err">wiped: ${esc(JSON.stringify(r.wiped || {}))}</div>`;
+    tick();
+  } catch (e) { showMsg(String(e.message || e)); }
+});
 setInterval(tick, 15000);
 tick();
 loadSecrets();

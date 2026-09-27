@@ -347,6 +347,11 @@ def nl_fallback(text: str) -> dict:
         attrs["display"] = "oled"
     if "lightning" in tl:
         attrs["connector"] = "lightning"
+    # location hint ("near Wien", "bei Berlin", "around Graz", "in 1010")
+    location = ""
+    mloc = re.search(r"(?:near|nearby|bei|around|aroundabout|um|in der n(?:ä|a)he von|n(?:ä|a)he)\s+([a-zäöüß\- ]{2,30}?)(?:,| unter | under | |$)", tl)
+    if mloc:
+        location = mloc.group(1).strip()
     # category browse intent ("alle laptops", "everything in phones", "autos unter 5000")
     category = ""
     cat_words = {"laptop": "laptops", "laptops": "laptops", "notebook": "laptops",
@@ -368,7 +373,7 @@ def nl_fallback(text: str) -> dict:
     kw = re.sub(r"\s+", " ", kw).strip()
     if category:
         kw = ""
-    return {"keywords": kw if category else (kw or tl[:80]), "category": category, "hard": hard, "blacklist": blacklist,
+    return {"keywords": kw if category else (kw or tl[:80]), "category": category, "location": location, "hard": hard, "blacklist": blacklist,
             "whitelist": [], "attributes": attrs, "risk": {}, "enrich": True, "limit": 20}
 
 

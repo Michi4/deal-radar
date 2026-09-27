@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC
+from typing import ClassVar
 from urllib.parse import quote_plus
 
 from deal_radar.contracts import CanonicalListing, Seller
@@ -128,6 +129,14 @@ class WillhabenDriver(MarketplaceDriver):
                               regions=["at"], capabilities=["search", "fetch_detail", "images", "location", "seller"],
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=20)
 
+    # Bundesland -> areaId, extracted live 2026-09-27 from marktplatz __NEXT_DATA__
+    # (navigator "Bundesland"). Verified: areaId=900 returns Vienna-only results.
+    AREAS: ClassVar[dict] = {"burgenland": "1", "kärnten": "2", "kaernten": "2",
+                             "niederösterreich": "3", "niederoesterreich": "3",
+                             "oberösterreich": "4", "oberoesterreich": "4",
+                             "salzburg": "5", "steiermark": "6", "tirol": "7",
+                             "vorarlberg": "8", "wien": "900", "vienna": "900"}
+
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
         import asyncio as _aio
         base = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
@@ -136,6 +145,10 @@ class WillhabenDriver(MarketplaceDriver):
         # marketplace (13M rows). Verified live 2026-09-26.
         if query.max_price:
             base += f"&PRICE_TO={int(query.max_price)}"
+        # geo: Bundesland-level (?areaId=), cities/postcodes fall back to keywords
+        loc = (query.location or "").strip().lower()
+        if loc and loc in self.AREAS:
+            base += f"&areaId={self.AREAS[loc]}"
         max_pages = query.max_pages or 10**9  # walk to exhaustion (breaks on empty page)
         items: list[dict] = []
         seen: set[str] = set()

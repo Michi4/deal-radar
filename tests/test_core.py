@@ -717,3 +717,24 @@ def test_core_driver_disable_reenable_roundtrip():
         except Exception:
             pass
         m.load_drivers()
+
+
+def test_admin_reset_requires_confirm():
+    import os
+    import sys
+    import tempfile
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+
+    from deal_radar.store import Store
+    c = TestClient(m.app)
+    assert c.post("/admin/reset", json={"confirm": "nope"}).status_code == 400
+    # destructive path runs against an isolated store, never the dev database
+    st = Store(os.path.join(tempfile.mkdtemp(), "wipe.db"))
+    st.save_search("s1", {"keywords": "t"}, total=3)
+    st.favorite("x", "n")
+    wiped = st.reset_all_data()
+    assert wiped["searches"] >= 1 and wiped["favorites"] >= 1
+    assert st.list_searches() == [] and st.favorites_with_history() == []
+    st.close()

@@ -266,6 +266,11 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="fld"><span>warn from %</span><input id="warnT" class="inp" type="number" value="35" min="0" max="100" title="Risk warn threshold"/></label>
 <label class="fld"><span>block from %</span><input id="blockT" class="inp" type="number" value="85" min="0" max="100" title="Risk block threshold"/></label>
 </div></div>
+<div class="fsec"><span class="flabel">location</span><div class="fgrid3">
+<label class="fld"><span>near city / postcode</span><input id="locQ" class="inp" placeholder="e.g. Wien, 1010" title="kleinanzeigen: postcode+city radius search; willhaben: Bundesland (e.g. Wien)"/></label>
+<label class="fld"><span>radius km</span><input id="locR" class="inp" type="number" min="1" max="1000" placeholder="50" title="Search radius in km"/></label>
+<label class="fld"><span>&nbsp;</span><button type="button" class="btn btn-ghost" data-act="geoloc" title="Use browser location (via OpenStreetMap reverse-geocode, cached)">📍 locate me</button></label>
+</div><small style="opacity:.6">Server-side geo where supported. Browser location is reverse-geocoded locally-cached via OpenStreetMap.</small></div>
 <div class="fsec"><span class="flabel">delivery</span><div class="flex gap-2 flex-wrap items-center">
 <label class="ck"><input type="checkbox" id="fPick"/> pickup only</label>
 <label class="ck"><input type="checkbox" id="fShip"/> shipped only</label>

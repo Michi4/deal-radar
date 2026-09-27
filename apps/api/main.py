@@ -445,6 +445,8 @@ class SearchIntent(BaseModel):
     poll_interval_s: int = Field(default=1800, ge=60, le=604800)
     notify_on: list[str] = ["new_top", "price_drop"]
     notify_rules: list[dict] = Field(default=[], max_length=20)  # e.g. {"kind":"price_drop","min_drop_pct":15},{"kind":"new_match","max_risk":0.2}
+    location: str = Field(default="", max_length=120)
+    radius_km: int | None = Field(default=None, ge=1, le=1000)
     max_distance_km: float | None = Field(default=None, ge=0, le=20000)
     require_pickup: bool = False
     require_shipping: bool = False
@@ -674,6 +676,8 @@ class NLQuery(BaseModel):
     sources: list[str] | None = Field(default=None, max_length=10)
     watch: bool = False
     poll_interval_s: int = Field(default=1800, ge=60, le=604800)
+    location: str = Field(default="", max_length=120)
+    radius_km: int | None = Field(default=None, ge=1, le=1000)
     limit: int | None = Field(default=None, ge=1, le=100000)  # None = unlimited
     max_pages: int | None = Field(default=None, ge=1, le=50)
     ocr: bool = True
@@ -1184,6 +1188,25 @@ def lab_status():
     from deal_radar.registry import installed
     return {"enabled": bool(os.getenv("LAB_ENABLED")), "enrichers": sorted(REGISTRY.keys()),
             "drivers": installed()}
+
+
+class ResetConfirm(BaseModel):
+    confirm: str = ""
+
+
+@app.post("/admin/reset")
+def admin_reset(req: ResetConfirm):
+    """Owner-authorized full data wipe. Requires {"confirm": "RESET"} — no undo."""
+    if req.confirm != "RESET":
+        return JSONResponse({"ok": False, "error": 'send {"confirm": "RESET"} to wipe'}, status_code=400)
+    counts = store.reset_all_data()
+    SEARCHES.clear()
+    SEEN_IDS.clear()
+    LAST_RUN.clear()
+    JOBS.clear()
+    EVENT_LOG.clear()
+    RESULT_CACHE.clear()
+    return {"ok": True, "wiped": counts}
 
 
 @app.delete("/events")

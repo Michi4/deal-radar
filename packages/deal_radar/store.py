@@ -202,6 +202,21 @@ class Store:
                                 (sid, _t.time(), status, done, total, json.dumps(intent), summary))
             self.db.commit()
 
+    def reset_all_data(self) -> dict:
+        """Wipe all user/search data (owner-authorized full reset). Keeps schema,
+        settings (incl. secrets) and lab-built code. Returns counts."""
+        counts = {}
+        with self._lock:
+            for t in ("search_results", "observations", "favorites", "searches",
+                      "jobs", "listings", "fact_overrides"):
+                try:
+                    cur = self.db.execute(f"DELETE FROM {t}")
+                    counts[t] = cur.rowcount
+                except Exception:
+                    counts[t] = -1
+            self.db.commit()
+        return counts
+
     def job_interrupt_stale(self) -> int:
         """Mark running jobs from a previous process as interrupted. Returns count."""
         with self._lock:
@@ -237,7 +252,7 @@ class Store:
                 except Exception:
                     intent = {}
                 out.append({"id": sid, "ts": ts, "keywords": intent.get("keywords", ""),
-                            "watch": bool(intent.get("watch")), "sources": intent.get("sources", []),
+                            "watch": bool(intent.get("watch")), "sources": intent.get("sources") or [],
                             "results": total or counts.get(sid, 0), "thumbs": thumbs.get(sid, []),
                             "job": {"status": st or "done", "done": dn or 0,
                                     "total": tt or 0} if st else None})
