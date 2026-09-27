@@ -49,5 +49,5 @@
 - [x] Running searches as in-grid tiles (jobart shimmer, grid+list variants, per-job controls)
 - [x] Margin pass (toolbar panel surface, pager scroll, sidebar reflow, balance guard in verify)
 - [x] willhaben categories researched honestly (slugs serve generic mix, verticals need session API/parses — logged, keyword fallback)
-- [ ] Fresh-profile proof (searches survive new browser)
+- [x] Fresh-profile proof (clean context: 19 server cards, zero localStorage dependency)
 - [ ] Shutdown laptop (only at the very end, confirm first)
