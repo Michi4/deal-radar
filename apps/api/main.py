@@ -160,6 +160,22 @@ def _intent_key(intent: dict) -> str:
     return hashlib.sha256(json.dumps(intent, sort_keys=True, default=str).encode()).hexdigest()[:32]
 
 
+def _bounded_append(ev: dict) -> None:
+    EVENT_LOG.append(ev)
+    del EVENT_LOG[:-5000]
+
+
+def _cache_evict() -> None:
+    if len(RESULT_CACHE) > 200:
+        for k in sorted(RESULT_CACHE, key=lambda k: RESULT_CACHE[k][0])[:len(RESULT_CACHE) - 200]:
+            RESULT_CACHE.pop(k, None)
+    # finished jobs: drop heavy payloads (status + snapshot-on-disk remain servable)
+    done = [k for k, v in JOBS.items() if v.get("status") not in ("running", "paused")]
+    for k in done[:max(0, len(done) - 300)]:
+        JOBS[k].pop("result", None)
+        JOBS[k].pop("partial", None)
+
+
 async def _run_cached(intent: dict, force: bool = False) -> dict:
     key = _intent_key(intent)
     now = time.time()
@@ -288,6 +304,12 @@ async def _watcher() -> None:
         except Exception as e:
             metrics.inc("watcher_errors")
             print(f"[watcher] {type(e).__name__}: {e}", flush=True)
+        try:
+            _cache_evict()
+            del EVENT_LOG[:-5000]
+            _prune_sessions()
+        except Exception:
+            pass
         await asyncio.sleep(15)
 
 
@@ -338,6 +360,11 @@ for _sid, _intent in store.load_searches().items():
     SEARCHES[_sid] = _intent
     if _intent.get("watch"):
         LAST_RUN[_sid] = 0  # re-poll watched searches right after restart
+        try:
+            _snap = store.load_snapshot(_sid) or {}
+            SEEN_IDS[_sid] = {r["listing"]["id"] for r in _snap.get("results", [])}
+        except Exception:
+            pass
 static_dir = Path(__file__).resolve().parents[2] / "web"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -616,9 +643,12 @@ async def _notify_watch_changes(intent: dict, merged: dict) -> None:
 async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
     try:
         outs = []
-        from deal_radar import orchestrator as _orc
         for i, data in enumerate(intents):
+            _pt0 = time.time()
             while JOBS[sid].get("control") == "pause":
+                if time.time() - _pt0 > 6 * 3600:  # abandoned pause auto-releases
+                    JOBS[sid]["control"] = "stop"
+                    break
                 JOBS[sid]["detail"] = f"paused at sub-search {i + 1}/{len(intents)}"
                 await asyncio.sleep(2)
                 if JOBS[sid].get("control") == "stop":
@@ -645,7 +675,6 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
                 outs.append(await _run_cached(data, force=True))
             finally:
                 data.pop("_sid", None)
-                _orc._STOP.discard(sid)
             # progressive partials: UI renders these while the job continues
             try:
                 part = _merge_outs(outs, meta.get("limit", None))
@@ -669,13 +698,15 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
         SEARCHES[sid] = base
         store.save_search(sid, base, len(merged["results"]))
         try:
-            store.save_snapshot(sid, merged)
+            _t0snap = time.time()
+            await asyncio.to_thread(store.save_snapshot, sid, merged)
+            metrics.observe_latency("snapshot_save", time.time() - _t0snap)
         except Exception:
             pass
         merged["flags"] = {k: bool(base.get(k, True)) for k in
                            ("enrich", "ocr", "benchmarks", "vision", "details")}
         if base.get("watch"):
-            _notify_watch_changes(base, merged)
+            await _notify_watch_changes(base, merged)
         LAST_RUN[sid] = time.time()
         SEEN_IDS[sid] = {r["listing"]["id"] for r in merged["results"]}
         store.save_results(sid, merged["results"])
@@ -695,6 +726,10 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
     except Exception as e:
         JOBS[sid].update({"status": "error", "error": f"{type(e).__name__}: {e}"})
         try:
+            from deal_radar import orchestrator as _orc3
+            _orc3._STOP.discard(sid)
+            _orc3._PAUSE.discard(sid)
+            _orc3._PAUSE_SINCE.pop(sid, None)
             store.job_upsert(sid, "error", JOBS[sid].get("done", 0),
                              len(intents), summary=f"{type(e).__name__}: {e}"[:200])
         except Exception:
@@ -717,15 +752,22 @@ async def create_search(intent: SearchIntent):
     data["hard"] = {**(data.get("hard") or {}), "rules": rules}
     cats = [c.strip().lower() for c in str(data.get("category", "") or "").split(",") if c.strip()][:4]
     if len(cats) > 1 and not [p for p in (data.get("keywords", "") or "").split(";") if p.strip()][1:]:
-        intents = [{**data, "category": c} for c in cats]
+        lim = data.get("limit")
+        intents = [{**data, "category": c,
+                    "limit": None if lim is None else max(6, lim // len(cats))} for c in cats]
         return await _start_job(intents, {"base": {**data, "watch": data.get("watch", False)},
                                           "subqueries": [f"cat:{c}" for c in cats],
                                           "limit": data.get("limit"), "watch": data.get("watch", False),
                                           "notify_done": True})
     # multi-query: "rtx 4080; rtx 4070 ti super" -> parallel sub-searches, merged
+    # (cartesian with categories when both given, total fan-out capped at 6)
     parts = [p.strip() for p in (data.get("keywords", "") or "").split(";") if p.strip()]
     if len(parts) > 1:
-        intents = [{**data, "keywords": p, "watch": False} for p in parts[:6]]
+        combo = [(p, c) for p in parts[:6] for c in (cats or [""] )][:6]
+        lim = data.get("limit")
+        intents = [{**data, "keywords": p, "category": c, "watch": False,
+                    "limit": None if lim is None else max(6, lim // max(1, len(combo)))}
+                   for p, c in combo]
         return await _start_job(intents, {"base": {**data, "watch": data.get("watch", False)},
                                           "subqueries": parts[:6], "limit": data.get("limit", 20),
                                           "watch": data.get("watch", False), "notify_done": True})
@@ -832,8 +874,8 @@ async def get_search(sid: str):
                                           "confidence": 0.0, "total_cost": price or 0.0},
                              "risk": {"score": 0.0, "confidence": 0.0, "severity": "low",
                                       "reasons": [], "counter_evidence": []},
-                             "enrichments": [], "value_score": 0.5, "final_score": score or 0.5,
-                             "lane": "top",
+                             "enrichments": [], "value_score": 0.5, "final_score": score if score is not None else 0.5,
+                             "lane": "review",
                              "why": ["reconstructed from saved rows (pre-snapshot search) — re-run for full analysis"]})
         except Exception:
             recs = []
@@ -869,6 +911,8 @@ def stop_search(sid: str):
     job = JOBS.get(sid)
     if job is None:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
+    if job.get("status") != "running":
+        return JSONResponse({"error": "job is not running"}, status_code=409)
     job["control"] = "stop"
     try:
         from deal_radar import orchestrator as _orc
@@ -884,6 +928,8 @@ def pause_search(sid: str):
     job = JOBS.get(sid)
     if job is None:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
+    if job.get("status") != "running":
+        return JSONResponse({"error": "job is not running"}, status_code=409)
     job["control"] = "pause"
     try:
         from deal_radar import orchestrator as _orc
@@ -898,6 +944,8 @@ def resume_search(sid: str):
     job = JOBS.get(sid)
     if job is None:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
+    if job.get("status") != "running":
+        return JSONResponse({"error": "job is not running"}, status_code=409)
     job["control"] = "run"
     try:
         from deal_radar import orchestrator as _orc
@@ -1016,27 +1064,41 @@ def marketplace_uninstall(did: str):
     out = uninstall(did)
     if not out.get("ok"):
         return JSONResponse(out, status_code=404)
-    try:
-        if did in registry._drivers:
-            del registry._drivers[did]
-    except Exception:
-        pass
+    registry.unregister(did)
     return out
 
 
 @app.post("/marketplace/install")
 def marketplace_install(req: InstallRequest):
     """Single-click install from the marketplace index (checksummed + contract-checked)."""
-    import json as _j
-    p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
-    idx = _j.loads(p.read_text()) if p.exists() else {"drivers": []}
+    from deal_radar.registry import load_index
+    try:
+        idx = load_index()
+    except Exception:
+        idx = {"drivers": []}
+    if not idx.get("drivers"):
+        import json as _j
+        p = Path(__file__).resolve().parents[2] / "marketplace" / "index.json"
+        idx = _j.loads(p.read_text()) if p.exists() else {"drivers": []}
     entry = next((d for d in idx.get("drivers", []) if d["id"] == req.id), None)
     if not entry:
         return JSONResponse({"ok": False, "error": f"unknown marketplace id: {req.id}"}, status_code=404)
     if entry.get("source") == "builtin":
         return {"ok": True, "installed": req.id, "note": "built in — enable per search"}
-    from deal_radar.registry import install
-    return install(entry)
+    from deal_radar.registry import install, load_driver_module
+    out = install(entry)
+    if out.get("ok"):
+        try:
+            mod = load_driver_module(entry["id"])
+            drivers = [v for v in vars(mod).values() if isinstance(v, type)
+                       and getattr(v, "manifest", None) is not None
+                       and v.__name__.endswith("Driver")]
+            if drivers:
+                registry.register(drivers[0]())
+        except Exception as e:
+            return {"ok": True, "installed": entry["id"],
+                    "note": f"installed but live load failed ({e}); restarts to activate"}
+    return out
 
 
 @app.get("/notifications/status")
@@ -1095,7 +1157,11 @@ async def lab_follow(req: LabFollow):
     """User steps in: new instruction applied on top of the previous attempt's code."""
     if not os.getenv("LAB_ENABLED"):
         return JSONResponse({"ok": False, "error": "LAB_ENABLED=0 (code-writing disabled)"}, status_code=400)
-    prev = LAB_JOBS.get(req.job_id, {})
+    if not req.job_id or req.job_id not in LAB_JOBS:
+        return JSONResponse({"error": "unknown lab job"}, status_code=404)
+    if not req.followup.strip():
+        return JSONResponse({"error": "followup text required"}, status_code=400)
+    prev = LAB_JOBS[req.job_id]
     res = prev.get("result", {}) if isinstance(prev, dict) else {}
     code = res.get("code", "")
     if not code and res.get("path"):

@@ -1,6 +1,6 @@
 let RUNNING=false;
-const ACTIVEJOBS=new Map();let FOLLOWED=null;const ABORTSET=new Set();
-function leave(sid){ACTIVEJOBS.delete(sid);ABORTSET.delete(sid);if(!ACTIVEJOBS.size)RUNNING=false}
+const ACTIVEJOBS=new Map();let FOLLOWED=null;const ABORTSET=new Map();
+function leave(sid){ACTIVEJOBS.delete(sid);ABORTSET.delete(sid);if(FOLLOWED===sid)FOLLOWED=null;for(const [k,t] of ABORTSET)if(Date.now()-t>600000)ABORTSET.delete(k);if(!ACTIVEJOBS.size)RUNNING=false}
 function claim(sid){FOLLOWED=sid}
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
 const $=id=>document.getElementById(id);
@@ -11,7 +11,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),resetFilters:()=>resetFilters(),redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.add(a);try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),resetFilters:()=>resetFilters(),redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -142,7 +142,7 @@ function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" 
 function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
 const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
 return{ranking,category:$('catSel').value,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
-async function showApplied(p,subs){if(!p||!p.keywords){$('applied').style.display='none';return}
+async function showApplied(p,subs){if(!p||!p.keywords||!String(p.keywords).trim()){$('applied').style.display='none';return}
 const chip=t=>'<span class="chip">'+esc(t)+'</span>';
 let h='<div class="eyebrow">AI understood</div><div style="font-weight:700">'+esc(p.keywords)+'</div>';
 const bits=[];
@@ -173,10 +173,12 @@ mirrorRefine();
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 let LASTDUR=0;
-async function poll(sid,onDone){const t0=Date.now();RUNNING=true;claim(sid);ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});let dark=0;for(;;){if(ABORTSET.has(sid)){leave(sid);return}let r;try{r=await api('/searches/'+encodeURIComponent(sid))}catch(e){const msg=String(e.message||e);if(msg.includes('login required')||msg.startsWith('auth session')){leave(sid);return}dark++;status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);if(dark>40){if(sid===FOLLOWED)status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);leave(sid);return}await new Promise(x=>setTimeout(x,3000));continue}dark=0;
+async function poll(sid,onDone){const t0=Date.now();RUNNING=true;claim(sid);ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});let dark=0;for(;;){if(ABORTSET.has(sid)){leave(sid);return}let r;try{r=await api('/searches/'+encodeURIComponent(sid))}catch(e){const msg=String(e.message||e);if(msg.includes('login required')||msg.startsWith('auth session')){leave(sid);return}dark++;if(sid===FOLLOWED)status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(sid)}">stop</button></div>`);if(dark>40){if(sid===FOLLOWED)status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);else toast('background search lost contact — reopen it from Searches');leave(sid);return}await new Promise(x=>setTimeout(x,3000));continue}dark=0;
 if(r.status==='running'){ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run'});if(sid!==FOLLOWED){await new Promise(x=>setTimeout(x,3000));continue}if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
 status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(sid)}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
-RUNNING=false;const mine=sid===FOLLOWED;leave(sid);if(!mine){toast('background search finished');return}SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
+RUNNING=false;const mine=sid===FOLLOWED;const st=r.status,er=r.error;leave(sid);
+if(st==='error'||er){toast(`search failed: ${(er||'error').toString().slice(0,120)}`);if(mine)status(`<div class="err">search failed: ${esc(String(er||'error').slice(0,200))}</div>`);return}
+if(!mine){toast('background search finished');return}SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
 async function run(){const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
@@ -186,14 +188,14 @@ const mp=+$('maxpages').value||undefined;
 const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:limN,...intent()};
 if(mp)body.max_pages=mp;
 $('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
-try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},3);
+try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},0);
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 $('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
-try{const j=await api('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})},3);
+try{const j=await api('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})},0);
 pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${esc(netMsg(e))}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
@@ -231,25 +233,26 @@ function hideSearchChrome(){for(const id of ['toolbar','refinebar','pagertop','p
 function markActive(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t))}
 function hideChrome(){['toolbar','refinebar','pagertop','pager'].forEach(id=>{const e=$(id);if(e)e.style.display='none'})}
 let HISTT=null;
-function showPage(search){for(const id of ['searchpanel','status','applied','refinebar','pagertop','results','pager'])pv(id,search);pv('pageview',!search)}
+function showPage(search){for(const id of ['searchpanel','status','refinebar','pagertop','results','pager'])pv(id,search);pv('pageview',!search);const ap=$('applied');if(ap)ap.style.display=(search&&ap.innerHTML.trim())?'':'none'}
 function pv(id,show){const e=$(id);if(e)e.style.display=show?'':'none'}
-function tab(t){markActive(t);if(HISTT){clearInterval(HISTT);HISTT=null}if(t!=='search')hideChrome();showPage(t==='search');if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
+function tab(t){markActive(t);LABLIVE=null;if(HISTT){clearInterval(HISTT);HISTT=null}if(t!=='search')hideChrome();showPage(t==='search');if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
 async function showLab(){hideSearchChrome();hideChrome();let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
-$('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
+$('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px" aria-label="plugin kind"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3" aria-label="build instruction"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 const LABSTAGES=['prompting','waiting_model','validating','saving','contract_check','done'];
 function labStageHtml(job){return LABSTAGES.map(s=>{const done=(job.log||[]).some(l=>l.stage===s);const cur=job.stage===s&&job.status==='running';return `<span class="chip ${done?'active':''}">${cur?'⏳ ':''}${s.replace('_',' ')}</span>`}).join(' ')}
 async function followLab(){const jid=$('labjid').value,fw=$('labfu').value.trim();if(!jid||!fw)return toast('write a follow-up first');$('labbtn').disabled=true;
 try{const r=await api('/lab/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jid,followup:fw})},0);followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
-async function followLabJob(jid){if(!jid){$('labout').innerHTML='<div class="err">build rejected — see server config (LAB_ENABLED?)</div>';$('labbtn').disabled=false;return}for(;;){let r;try{r=await api('/lab/build/'+encodeURIComponent(jid),{},1)}catch(e){$('labout').innerHTML=`<div class="err">lost contact: ${esc(netMsg(e))}</div>`;$('labbtn').disabled=false;return}
+let LABLIVE=null;
+async function followLabJob(jid){LABLIVE=jid;if(!jid){$('labout').innerHTML='<div class="err">build rejected — see server config (LAB_ENABLED?)</div>';$('labbtn').disabled=false;return}for(;;){let r;try{r=await api('/lab/build/'+encodeURIComponent(jid),{},1)}catch(e){$('labout').innerHTML=`<div class="err">lost contact: ${esc(netMsg(e))}</div>`;$('labbtn').disabled=false;return}
 const log=(r.log||[]).map(l=>`<div><small>${esc(l.stage)} — ${esc(l.msg)}</small></div>`).join('');
 let tail='';
 if(r.status==='done'||r.status==='failed'||r.status==='error'){const ok=r.status==='done';const res=r.result||{};
 tail=(ok?`<div>✅ <b>${esc(res.id||'')}</b> built, checked, hot-loaded.<br/><small>${esc(JSON.stringify(res.checks||{}).slice(0,300))}</small></div>`:`<div class="err">failed: ${esc(res.error||r.status)}<br/><small>${esc((res.code||'').slice(0,500))}</small></div>`)
-+`<div class="row mt-2"><input id="labfu" class="inp" style="flex:2" placeholder="step in: fix, change, extend… (e.g. also flag empty boxes)"/><button class="btn btn-primary" data-act="followLab">send follow-up</button></div><input id="labjid" type="hidden" value="${jid}"/>`;
++`<div class="row mt-2"><input id="labfu" class="inp" style="flex:2" aria-label="follow-up instruction" placeholder="step in: fix, change, extend… (e.g. also flag empty boxes)"/><button class="btn btn-primary" data-act="followLab">send follow-up</button></div><input id="labjid" type="hidden" value="${jid}"/>`;
 $('labbtn').disabled=false}
 $('labout').innerHTML=`<div class="mt-2">${labStageHtml(r)}</div><div class="mt-2">${log}</div><div class="mt-2">${tail}</div>`;
 if(r.status!=='running'){window.scrollTo(0,document.body.scrollHeight);return}
-await new Promise(x=>setTimeout(x,2000))}}
+await new Promise(x=>setTimeout(x,2000));if(LABLIVE!==jid)return}}
 async function mkLab(){const q=$('labq').value.trim();if(!q)return toast('describe what to build first');
 try{const st=await(await fetch('/lab/status')).json();if(!st.enabled){$('labout').innerHTML='<div class="err">Lab is disabled on this server (LAB_ENABLED=0). Enable it in the environment to build.</div>';return}}catch(e){}$('labbtn').disabled=true;$('labout').innerHTML='<small>starting…</small>';
 try{const r=await api('/lab/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:$('labkind').value,instruction:q})},0);await followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
@@ -267,11 +270,11 @@ const rules=[];const dp=+$('nDrop')?.value||0,rk=+$('nRisk')?.value||0;
 if($('nPrice')?.checked&&dp>0)rules.push({kind:'price_drop',min_drop_pct:dp});
 if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:mins*60,notify_on:no,notify_rules:rules};
-try{const r=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},2);
+try{const r=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},0);
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}catch(e){toast('watch failed: '+netMsg(e))}}
 async function showStore(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await api('/marketplace',{},1);
-const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.source&&x.source!=='builtin'?` <button class="btn btn-ghost" data-act="uninstallX" data-kind="${kind}" data-arg="${esc(x.id)}">uninstall</button>`:''):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
+const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.source&&x.source!=='builtin'?` <button class="btn btn-ghost" data-act="uninstallX" aria-live="polite" data-kind="${kind}" data-arg="${esc(x.id)}">uninstall</button>`:''):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
 $('pageview').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 async function uninstallX(kind,id,el){if(!el||!el.dataset.armed){if(el){el.dataset.armed='1';el.textContent='sure?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='uninstall'}},8000)}toast('click again to confirm uninstall');return}try{const r=await api('/marketplace/'+encodeURIComponent(id),{method:'DELETE'},0);toast(r.ok?'✓ uninstalled '+id:'✗ '+(r.error||'failed'));showStore()}catch(e){toast('uninstall failed: '+netMsg(e))}}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');try{const r=await api('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})},0);toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}catch(e){toast('install failed: '+netMsg(e))}}
@@ -289,7 +292,7 @@ if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInte
 async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+encodeURIComponent(id))}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}
 if(r.error&&!(r.results||[]).length){status(`<div class="err">${esc(r.error)} <button class="btn btn-primary" data-act="redoId" data-arg="${esc(id)}">re-run now</button></div>`);return}
 if(r.intent)applyIntent(r.intent);
-if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');await poll(id,x=>{LAST=x.results||[];SID=id;render()});return}
+if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');await poll(id,x=>{LAST=x.results||[];SID=id;render();mirrorRefine();status(`<small>${LAST.length} results · subqueries: ${(x.subqueries||[]).length}</small>`);toast(`✓ search done: ${LAST.length} results`)});return}
 LAST=r.results||[];HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;SID=id;PAGE=0;render();tab('search');if(r.snapshot)toast('opened saved snapshot — re-run for fresh results');if(r.reconstructed)toast('rebuilt from saved rows (limited detail) — re-run for full analysis')}
 async function redoSearch(id){let r;try{r=await api('/searches/'+encodeURIComponent(id)+'/redo',{method:'POST'},0)}catch(e){toast('re-run failed: '+netMsg(e));return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
 async function delSearch(id){try{await api('/searches/'+encodeURIComponent(id),{method:'DELETE'})}catch(e){toast('delete failed: '+netMsg(e))}showHistory()}
@@ -316,7 +319,8 @@ $('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" data-act="c
 $('drawer').classList.add('open');window._ci=0;window._lid=l.id;loadHist(l.id)}
 function cgo(d){if(!CAR.length)return;window._ci=(window._ci+d+CAR.length)%CAR.length;$('carimg').src=safeUrl(CAR[window._ci])||'';$('carcnt').textContent=(window._ci+1)+'/'+CAR.length}
 function chg(o,n){const a=+o,b=+n;if(!isFinite(a)||!isFinite(b)||!a)return '';const p=Math.round((b-a)/a*100);if(!p)return '';return ' <b>'+(p<0?'▼':'▲')+Math.abs(p)+'%</b>'}
-function viewSnap(id,ts){ts=+ts;const s=(LAST||[]).find(x=>x.listing.id===id);const base=s?s.listing:FAVMAP[id];
+async function viewSnap(id,ts){ts=+ts;let s=(LAST||[]).find(x=>x.listing.id===id);let base=s?s.listing:FAVMAP[id];
+if(!base){try{const f=await api('/favorites',{},1);FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);base=FAVMAP[id]}catch(e){}}
 if(!base)return toast('snapshot unavailable');
 fetch('/listings/'+encodeURIComponent(id)+'/history').then(r=>r.json()).then(h=>{
 const snap={title:base.title,price:base.price,currency:base.currency||'',description:base.description||'',images:base.images||[]};

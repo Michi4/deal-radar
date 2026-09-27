@@ -226,6 +226,11 @@ class DriverRegistry:
     def get(self, driver_id: str) -> MarketplaceDriver | None:
         return self._drivers.get(driver_id)
 
+    def unregister(self, driver_id: str) -> bool:
+        """Hot-unload a driver from the live registry. In-flight searches already
+        hold their own driver reference and finish safely."""
+        return self._drivers.pop(driver_id, None) is not None
+
     def ids(self) -> list[str]:
         return sorted(self._drivers.keys())
 

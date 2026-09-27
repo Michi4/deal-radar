@@ -16,6 +16,8 @@ await page.fill('#q', 'ThinkPad');
 await page.click('#searchbtn');
 await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0, null, { timeout: 300000 });
 check('search renders', true);
+// wait for the job to actually finish (cards may stream from partials first)
+await page.waitForFunction(() => ACTIVEJOBS.size === 0, null, { timeout: 300000 });
 
 // sort + blacklist-field typing are client-side (no roundtrip); only Search button queries
 let fetches = 0;

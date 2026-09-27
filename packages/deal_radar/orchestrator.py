@@ -42,13 +42,24 @@ class _SearchStopped(Exception):
 
 _STOP: set[str] = set()  # sids requesting cooperative stop (checked in hot loops)
 _PAUSE: set[str] = set()  # sids paused (loop waits until resumed or stopped)
+_PAUSE_SINCE: dict[str, float] = {}
+PAUSE_TTL_S = 6 * 3600  # abandoned pauses auto-release as stopped
 
 
 async def _pause_gate(sid: str | None) -> bool:
-    """True if caller should abort (stopped). Waits while paused."""
+    """True if caller should abort (stopped). Waits while paused, max PAUSE_TTL_S."""
     import asyncio as _aio
+    import time as _t
+    if sid and sid in _PAUSE and sid not in _PAUSE_SINCE:
+        _PAUSE_SINCE[sid] = _t.time()
     while sid and sid in _PAUSE and sid not in _STOP:
+        if _t.time() - _PAUSE_SINCE.get(sid, _t.time()) > PAUSE_TTL_S:
+            _PAUSE.discard(sid)
+            _STOP.add(sid)
+            break
         await _aio.sleep(2)
+    if sid:
+        _PAUSE_SINCE.pop(sid, None)
     return bool(sid and sid in _STOP)
 
 
@@ -389,9 +400,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     from .notify_rules import rules_ok as _rules_ok
                     try:
                         _old, _new = float(c.get("old")), float(c.get("new"))
-                        _pct = (_new - _old) / _old * 100 if _old else 0
                     except (ValueError, TypeError):
-                        _pct = 0
+                        continue
+                    if not _old:
+                        continue  # first price seen, not a rise
+                    _pct = (_new - _old) / _old * 100
                     _kind = "price_drop" if _pct < 0 else "price_rise"
                     if _kind in (intent.get("notify_on", ["new_top", "price_drop"])):
                         try:
