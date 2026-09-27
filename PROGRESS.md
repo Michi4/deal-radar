@@ -47,6 +47,18 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
   Toolbar always visible (sort before search). No-inline-handler count still 0.
 - verify GREEN, coverage 86%, mega 11/11, xss 4/4. Deployed + prod healthy.
 
+## Verified 2026-09-27 (late): sort dropdown, job control, endless pages
+- Sort dropdown (all keys asc+desc via direction toggle) + enrichment-aware disabling
+  (bench/gpu sorts disabled with re-run hint when data missing). Flags shipped per job.
+- Job control: pause/resume/stop endpoints + tile buttons + status stop button; progressive
+  partials render while running; empty panel/empty-state bugs fixed (RUNNING flag).
+- Pagination truly endless: willhaben/kleinanzeigen/vinted walk to exhaustion (no caps).
+  Shpock: URL params verified dead, GraphQL itemSearch needs persisted-query RE (deferred,
+  logged in driver). Ricardo single page (no paging signals found).
+- Saved-product tracking interval adjustable (settings table + Watches UI, default 30).
+- App login OFF on prod (Authelia covers); env toggle documented.
+- verify GREEN, coverage 86%, mega 11/11, xss 4/4. Deployed + healthy.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
