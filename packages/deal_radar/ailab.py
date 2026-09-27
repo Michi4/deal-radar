@@ -1,5 +1,9 @@
 """AI Lab: generate enrichers/drivers from chat, contract-check, hot-load, publish.
 
+Authoring contract lives in docs/DRIVER_AUTHORING.md (coding agents: read it first —
+it defines the driver/enricher interfaces, the category convention, the pagination
+contract with cooperative stop/pause, and the evidence rules).
+
 POST /lab/build {kind: "enricher"|"driver", instruction: "...", publish: false}
 Flow: cloud/local model writes code -> syntax+contract check -> saved to
 enrichers/custom/<id>.py or drivers/community/<id>/ -> hot-loaded without restart.
@@ -21,6 +25,7 @@ LAB_DIR = Path(os.getenv("LAB_DIR", str(ROOT / "enrichers" / "custom")))
 LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(ROOT / "drivers" / "community")))
 
 ENRICHER_PROMPT = """You write a deal-radar enricher plugin (Python, no new dependencies beyond httpx/pydantic).
+(Read docs/DRIVER_AUTHORING.md first if available — it is the contract.)
 Contract (exact — listing is a CanonicalListing OBJECT with attribute access, NOT a dict):
 from deal_radar.enrich import Enricher, register
 from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence
@@ -39,6 +44,7 @@ TASK: {instruction}
 Return ONLY the Python code, no markdown fences."""
 
 DRIVER_PROMPT = """You write a deal-radar marketplace driver (Python, deps: httpx, pydantic only).
+(Read docs/DRIVER_AUTHORING.md first if available — interfaces, categories, pagination + stop/pause contract.)
 Contract (exact):
 from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery
 from deal_radar.contracts import CanonicalListing, Seller

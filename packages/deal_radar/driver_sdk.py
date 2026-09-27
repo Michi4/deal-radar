@@ -34,6 +34,7 @@ class SearchQuery(BaseModel):
     limit: int = 20
     max_pages: int | None = None  # user-configurable page cap; None = driver default (walk to exhaustion)
     sid: str = ""  # search id for cooperative stop/pause (checked every page)
+    cat_map: dict[str, str] = Field(default_factory=dict)  # per-driver category override
 
 
 class HealthStatus(BaseModel):

@@ -54,7 +54,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     min_price=(intent.get("hard") or {}).get("min_price"),
                     limit=int(_lim) if _lim else 1000000,
                     max_pages=int(intent["max_pages"]) if intent.get("max_pages") else None,
-                    sid=intent.get("_sid", ""))
+                    sid=intent.get("_sid", ""),
+                    cat_map=dict(intent.get("cat_map", {}) or {}))
     hard = intent.get("hard", {}) or {}
     if isinstance(hard, list):  # model sometimes returns bare rules list
         hard = {"rules": hard}
@@ -92,7 +93,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     scored: list[ScoredListing] = []
     flagged: list[dict] = []  # kept (not dropped): client can unhide/re-filter post-search
     filtered_out = 0
-    enrich_budget = [int(intent.get("enrich_top_n", 150) or 150)]  # deep OCR/bench for top-N only
+    _etn = intent.get("enrich_top_n", 150)
+    enrich_budget = [10**9 if _etn == 0 else int(_etn or 150)]  # deep OCR/bench for top-N only (0 = all)
     events: list[dict] = []
     _vision_queue: list = []
     _stageb_queue: list = []

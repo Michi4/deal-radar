@@ -4,7 +4,8 @@ function drawLive(){const box=$('livestrip');if(!box)return;const ids=[...ACTIVE
 if(!ids.length){box.style.display='none';box.innerHTML='';return}
 box.style.display='flex';
 box.innerHTML='<span class="eyebrow" style="align-self:center">live</span>'+ids.map(id=>{const a=ACTIVEJOBS.get(id)||{};const lbl=esc((a.label||id).slice(0,40));
-return `<div class="livetile"><b>${lbl}</b><br/><small>${esc(String(a.detail||((a.done||0)+'/'+(a.total||'?'))))}</small><div class="pbar"><i style="width:${a.total&&+a.total?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8}%"></i></div><div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">❚❚</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">▶</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">■</button></div></div>`}).join('')}
+const elaps=a.t0?Math.round((Date.now()-a.t0)/1000):0;const mm=Math.floor(elaps/60),ss=(''+elaps%60).padStart(2,'0');
+return `<div class="livetile"><b>${lbl}</b><br/><small>${esc(String(a.detail||((a.done||0)+'/'+(a.total||'?'))))} · ${mm}:${ss}${a.found?` · <b>${a.found} found</b>`:''}</small><div class="pbar"><i style="width:${a.total&&+a.total?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8}%"></i></div><div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">❚❚</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">▶</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">■</button></div></div>`}).join('')}
 function leave(sid){ACTIVEJOBS.delete(sid);ABORTSET.delete(sid);drawLive();if(FOLLOWED===sid)FOLLOWED=null;for(const [k,t] of ABORTSET)if(Date.now()-t>600000)ABORTSET.delete(k);if(!ACTIVEJOBS.size)RUNNING=false}
 function claim(sid){FOLLOWED=sid}
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
@@ -152,7 +153,7 @@ function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" 
 function histGo(h){if(SMODE==='kw'){$('q').value=h;run()}else{$('nl').value=h;runNL()}}
 function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
 const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
-return{ranking,category:$('catSel').value,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
+return{ranking,category:$('catSel').value,cat_map:($('catAuto')&&$('catAuto').checked)?{}:{kleinanzeigen:$('catKa').value},blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
 async function showApplied(p,subs){if(!p||!p.keywords||!String(p.keywords).trim()){$('applied').style.display='none';return}
 const chip=t=>'<span class="chip">'+esc(t)+'</span>';
 let h='<div class="eyebrow">AI understood</div><div style="font-weight:700">'+esc(p.keywords)+'</div>';
@@ -184,19 +185,19 @@ mirrorRefine();
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 let LASTDUR=0;
-async function poll(sid,onDone,label){const t0=Date.now();RUNNING=true;claim(sid);ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting',label:label||sid});drawLive();let dark=0;for(;;){if(ABORTSET.has(sid)){leave(sid);return}let r;try{r=await api('/searches/'+encodeURIComponent(sid))}catch(e){const msg=String(e.message||e);if(msg.includes('login required')||msg.startsWith('auth session')){leave(sid);return}dark++;const wait=/429/.test(msg)?10000:3000;if(sid===FOLLOWED)status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(sid)}">stop</button></div>`);if(dark>40){if(sid===FOLLOWED)status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);else toast('background search lost contact — reopen it from Searches');leave(sid);return}await new Promise(x=>setTimeout(x,wait));continue}dark=0;
-if(r.status==='running'){const prev=ACTIVEJOBS.get(sid)||{};ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run',label:prev.label||sid});drawLive();if(sid!==FOLLOWED){await new Promise(x=>setTimeout(x,3000));continue}if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
-status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(sid)}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
+async function poll(sid,onDone,label){const t0=Date.now();RUNNING=true;claim(sid);ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting',label:label||sid,t0:Date.now()});drawLive();let dark=0;for(;;){if(ABORTSET.has(sid)){leave(sid);return}let r;try{r=await api('/searches/'+encodeURIComponent(sid))}catch(e){const msg=String(e.message||e);if(msg.includes('login required')||msg.startsWith('auth session')){leave(sid);return}dark++;const wait=/429/.test(msg)?10000:3000;if(sid===FOLLOWED)status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(sid)}">stop</button></div>`);if(dark>40){if(sid===FOLLOWED)status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);else toast('background search lost contact — reopen it from Searches');leave(sid);return}await new Promise(x=>setTimeout(x,wait));continue}dark=0;
+if(r.status==='running'){const prev=ACTIVEJOBS.get(sid)||{};ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run',label:prev.label||sid,t0:prev.t0||Date.now(),found:(r.partial||{}).n_results||0});drawLive();if(sid!==FOLLOWED){await new Promise(x=>setTimeout(x,3000));continue}if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
+await new Promise(x=>setTimeout(x,3000));continue}
 RUNNING=false;const mine=sid===FOLLOWED;const st=r.status,er=r.error;leave(sid);
 if(st==='error'||er){toast(`search failed: ${(er||'error').toString().slice(0,120)}`);if(mine)status(`<div class="err">search failed: ${esc(String(er||'error').slice(0,200))}</div>`);return}
 if(!mine){toast('background search finished');return}SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
 async function run(){const sel=[...SRCS];
-const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
+const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
 const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'contains',value:w.trim()}));
 const mp=+$('maxpages').value||undefined;
-const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:limN,...intent()};
+const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:deepV,limit:limN,...intent()};
 if(mp)body.max_pages=mp;
 $('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
 try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},0);
@@ -204,7 +205,7 @@ pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)},$('q').value);}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
-const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
+const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));
 $('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await api('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})},0);
 pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
@@ -214,11 +215,11 @@ let FAVMAP={};
 async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await api('/favorites',{},1);FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
 $('pageview').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}${h.kind==='price'?chg(h.old,h.new):''}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
-const DEFF={black:'',req:'',min:'',max:'',minMatch:12,catSel:'',fOcr:1,fBench:1,fVision:1,fDet:1,warnT:35,blockT:85,hideRisk:0,fPick:0,fShip:0,wMatch:35,wValue:35,wRisk:20,wComp:10,maxpages:'',limitN:'',deepN:150};
+const DEFF={black:'',req:'',min:'',max:'',minMatch:12,catSel:'',catKa:'',catAuto:1,fOcr:1,fBench:1,fVision:1,fDet:1,warnT:35,blockT:85,hideRisk:0,fPick:0,fShip:0,wMatch:35,wValue:35,wRisk:20,wComp:10,maxpages:'',limitN:'',deepN:150};
 function advState(){const g=id=>{const e=$(id);return e?(e.type==='checkbox'?(e.checked?1:0):e.value):''};
-return {black:g('black'),req:g('req'),min:g('min'),max:g('max'),minMatch:g('minMatch'),fOcr:g('fOcr'),fBench:g('fBench'),fVision:g('fVision'),fDet:g('fDet'),warnT:g('warnT'),blockT:g('blockT'),hideRisk:g('hideRisk'),fPick:g('fPick'),fShip:g('fShip'),wMatch:g('wMatch'),wValue:g('wValue'),wRisk:g('wRisk'),wComp:g('wComp'),maxpages:g('maxpages'),limitN:g('limitN'),deepN:g('deepN'),catSel:g('catSel'),sort:SORT,perpage:PERPAGE,sources:[...SRCS],kinds:{...HIDEKIND}}}
+return {black:g('black'),req:g('req'),min:g('min'),max:g('max'),minMatch:g('minMatch'),fOcr:g('fOcr'),fBench:g('fBench'),fVision:g('fVision'),fDet:g('fDet'),warnT:g('warnT'),blockT:g('blockT'),hideRisk:g('hideRisk'),fPick:g('fPick'),fShip:g('fShip'),wMatch:g('wMatch'),wValue:g('wValue'),wRisk:g('wRisk'),wComp:g('wComp'),maxpages:g('maxpages'),limitN:g('limitN'),deepN:g('deepN'),catSel:g('catSel'),catKa:g('catKa'),catAuto:g('catAuto'),sort:SORT,perpage:PERPAGE,sources:[...SRCS],kinds:{...HIDEKIND}}}
 function applyAdvState(f){if(!f)return;const s=id=>$(id);const put=(id,v)=>{const e=s(id);if(e==null||v==null)return;if(e.type==='checkbox')e.checked=!!+v;else e.value=v};
-for(const k of ['black','req','min','max','minMatch','warnT','blockT','wMatch','wValue','wRisk','wComp','maxpages','deepN','catSel'])put(k,f[k]);
+for(const k of ['black','req','min','max','minMatch','warnT','blockT','wMatch','wValue','wRisk','wComp','maxpages','deepN','catSel','catKa'])put(k,f[k]);for(const k of ['catAuto'])put(k,f[k]);
 for(const k of ['fOcr','fBench','fVision','fDet','hideRisk','fPick','fShip'])put(k,f[k]);
 if(f.limitN!=null){const el=s('limitN');if(el&&![...el.options].some(o=>o.value==String(f.limitN))){const o=document.createElement('option');o.value=o.textContent=String(f.limitN);el.appendChild(o)}put('limitN',f.limitN)}
 if(f.sort)SORT=f.sort;if(f.perpage)PERPAGE=+f.perpage||20;
@@ -235,7 +236,7 @@ const hd=it.hard||{};put('min',hd.min_price);put('max',hd.max_price);
 if(hd.min_match!=null)$('minMatch').value=Math.round(hd.min_match*100);
 if(it.max_pages!=null)put('maxpages',it.max_pages);
 if(it.limit!=null){const el=$('limitN');if(el&&![...el.options].some(o=>o.value==String(it.limit))){const o=document.createElement('option');o.value=o.textContent=String(it.limit);el.appendChild(o)}put('limitN',it.limit)}
-if(it.enrich_top_n!=null)put('deepN',it.enrich_top_n);if(it.category!=null)put('catSel',it.category);
+if(it.enrich_top_n!=null)put('deepN',it.enrich_top_n);if(it.category!=null)put('catSel',it.category);if(it.cat_map&&it.cat_map.kleinanzeigen)put('catKa',it.cat_map.kleinanzeigen);
 if(it.sources&&it.sources.length){SRCS=new Set(it.sources)}
 paintChecks();drawSegs();mirrorRefine()}
 function mirrorRefine(){try{$('rMin').value=$('min').value;$('rMax').value=$('max').value;$('rBlack').value=$('black').value;$('rReq').value=$('req').value}catch(e){}}
@@ -247,7 +248,7 @@ function showPage(search){for(const id of ['searchpanel','status','refinebar','p
 function pv(id,show){const e=$(id);if(e)e.style.display=show?'':'none'}
 function tab(t){markActive(t);LABLIVE=null;if(HISTT){clearInterval(HISTT);HISTT=null}if(t!=='search')hideChrome();showPage(t==='search');if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
 async function showLab(){hideSearchChrome();hideChrome();let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
-$('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px" aria-label="plugin kind"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3" aria-label="build instruction"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
+$('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>Tip: coding agents read <b>docs/DRIVER_AUTHORING.md</b> (interfaces, categories, pagination contract) — just describe what you want.</small><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px" aria-label="plugin kind"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3" aria-label="build instruction"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 const LABSTAGES=['prompting','waiting_model','validating','saving','contract_check','done'];
 function labStageHtml(job){return LABSTAGES.map(s=>{const done=(job.log||[]).some(l=>l.stage===s);const cur=job.stage===s&&job.status==='running';return `<span class="chip ${done?'active':''}">${cur?'⏳ ':''}${s.replace('_',' ')}</span>`}).join(' ')}
 async function followLab(){const jid=$('labjid').value,fw=$('labfu').value.trim();if(!jid||!fw)return toast('write a follow-up first');$('labbtn').disabled=true;
@@ -355,12 +356,14 @@ document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('ope
 let DRVLIST=[];
 function paintSources(){const el=$('sources');if(!el)return;el.innerHTML='<div class="pills">'+DRVLIST.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}
 async function init(){try{const d=await(await fetch('/drivers')).json();
-d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});DRVLIST=d;paintSources()}catch(e){}
+d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});DRVLIST=d;paintSources();
+try{const ka=d.find(x=>x.id==='kleinanzeigen');const sel=$('catKa');if(ka&&ka.categories&&sel){const cur=sel.value;sel.innerHTML='<option value="">auto from generic</option>'+Object.entries(ka.categories).map(([s,l])=>`<option value="${esc(s.replace(/^s-/,''))}">${esc(l)}</option>`).join('');if(cur)sel.value=cur}}catch(e){}}catch(e){}
 drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();loadFilters();authKick();try{const sm=localStorage.getItem('drmode');if(sm)setMode(sm)}catch(e){}
 const _ms=document.querySelector('#modeseg');if(_ms)_ms.addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(b)setMode(b.dataset.mode)});
 const bind=(id,fn)=>{const f=$(id);if(f)f.addEventListener('submit',e=>{e.preventDefault();fn()})};
 bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());const _ss=$('sortsel');if(_ss)_ss.addEventListener('change',()=>setSort(_ss.value));
 for(const id of ['rRisk','rScore']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();FRISK=+$('rRisk').value;FSCORE=+$('rScore').value;PAGE=0;render()})}
+for(const id of ['minMatch','warnT','blockT']) {const el=$(id);if(el)el.addEventListener('change',()=>{el.value=Math.max(0,Math.min(100,+el.value||0))})}
 let _deb=null;for(const id of ['rMin','rMax','rBlack','rReq']) {const el=$(id);if(el)el.addEventListener('input',()=>{clearTimeout(_deb);_deb=setTimeout(()=>{PAGE=0;render()},400)})}
 for(const id of ['wMa','wVa','wRi','wCo']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();readWeights();rerank()})}
 const sh=$('showHidden');if(sh)sh.addEventListener('change',()=>{SHOWHID=sh.checked;render()});

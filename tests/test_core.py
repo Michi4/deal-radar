@@ -694,3 +694,26 @@ def test_secrets_set_clear_never_leaks():
     assert r2["ok"]
     assert os.getenv("EBAY_MARKETPLACE", "") == ""
     assert c.get("/settings/secrets").json()
+
+
+def test_core_driver_disable_reenable_roundtrip():
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    try:
+        r = c.delete("/marketplace/willhaben").json()
+        assert r["ok"] and "disabled" in r.get("note", ""), r
+        assert "willhaben" not in m.registry.ids()
+        ds = {d["id"]: d for d in c.get("/drivers").json()}
+        assert ds["willhaben"].get("disabled") is True
+        r2 = c.post("/marketplace/install", json={"id": "willhaben"}).json()
+        assert r2["ok"] and "re-enabled" in r2.get("note", ""), r2
+        assert "willhaben" in m.registry.ids()
+    finally:
+        try:
+            m.store.setting_set("disabled_drivers", "[]")
+        except Exception:
+            pass
+        m.load_drivers()

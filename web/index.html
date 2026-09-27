@@ -139,8 +139,9 @@ header.sticky{position:sticky;top:0;z-index:60}
 .btn:active{transform:scale(.96)}
 .navlink,.seg button,.pills button,.chip{transition:background-color .15s,color .15s,border-color .15s,transform .1s}
 .navlink:active,.seg button:active,.pills button:active{transform:scale(.95)}
-#livestrip{display:flex;gap:.6rem;overflow-x:auto;padding:.5rem .1rem;margin:.2rem 0}
-.livetile{flex:1 1 300px;min-width:260px;max-width:420px;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:.875rem;padding:.65rem .8rem;font-size:.83rem}
+#livestrip{display:flex;gap:.5rem;overflow-x:auto;padding:.35rem .1rem;margin:.2rem 0;min-height:0}
+#livestrip:empty{display:none}
+.livetile{flex:0 0 auto;width:300px;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:.75rem;padding:.45rem .65rem;font-size:.78rem;line-height:1.35}
 .dark .livetile{background:#0f172a}
 .livetile b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .livetile .row{margin-top:.45rem}
@@ -276,11 +277,15 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="fld"><span>complete</span><input id="wComp" class="inp" type="number" value="10" min="0" max="100" title="Completeness weight"/></label>
 </div></div>
 <div class="fsec"><span class="flabel">category · AI maps per site where supported</span><div class="fgrid2">
-<label class="fld"><span>browse category (empty = keyword search)</span><select id="catSel" class="inp"><option value="">keywords only</option><option value="laptops">laptops</option><option value="phones">phones</option><option value="cars">cars</option><option value="furniture">furniture</option></select></label>
-</div><small style="opacity:.6">kleinanzeigen verified; other sites fall back to keywords. Comma-list for multi-category.</small></div>
+<label class="fld"><span>browse category (empty = keyword search)</span><select id="catSel" class="inp"><option value="">keywords only</option><option value="laptops">laptops</option><option value="phones">phones</option><option value="cars">cars</option><option value="furniture">furniture</option><option value="bikes">bikes</option></select></label>
+<label class="ck"><input type="checkbox" id="catAuto" checked/> automatch other platforms</label>
+</div>
+<div class="fgrid2" style="margin-top:.5rem">
+<label class="fld"><span>kleinanzeigen category (override)</span><select id="catKa" class="inp"><option value="">auto from generic</option></select></label>
+</div><small style="opacity:.6">automatch on: generic maps to each platform automatically. Off: kleinanzeigen uses your override; others fall back to keywords. Comma-list generics for multi-category.</small></div>
 <div class="fsec"><span class="flabel">volume</span><div class="fgrid3">
 <label class="fld"><span>results per search</span><select id="limitN" class="inp"><option value="">unlimited</option><option>50</option><option>200</option><option>500</option><option>2000</option></select></label>
-<label class="fld"><span>deep-check top N · OCR + benchmarks</span><input id="deepN" class="inp" type="number" value="150" min="0" max="1000" title="Expensive AI/OCR/benchmark checks run only for the top N"/></label>
+<label class="fld"><span>deep-check top N · OCR + benchmarks</span><select id="deepN" class="inp" title="Expensive AI/OCR/benchmark checks run only for the top N"><option value="50">50</option><option value="150" selected>150</option><option value="500">500</option><option value="all">all (slow)</option></select></label>
 <label class="fld"><span>max pages per source · empty = all</span><input id="maxpages" class="inp" type="number" min="1" placeholder="all" title="Max pages per source"/></label>
 </div></div>
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>

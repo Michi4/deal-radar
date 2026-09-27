@@ -913,3 +913,40 @@ def test_cooperative_stop_keeps_partials():
     finally:
         O._STOP.discard("s_stopme")
     assert out.get("stopped") is True
+
+
+def test_kleinanzeigen_category_urls():
+    import asyncio
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "drivers"))
+    from unittest.mock import patch
+
+    from kleinanzeigen.driver import KleinanzeigenDriver
+
+    from deal_radar.driver_sdk import SearchQuery, transport_from_config
+    seen = []
+
+    d = KleinanzeigenDriver(transport_from_config(None))
+    async def fake_page(url):
+        seen.append(url)
+        return ([{"id": "1", "url": "https://www.kleinanzeigen.de/x/1", "title": "t",
+                  "price": 5, "images": [], "location": "Berlin", "seller": "s",
+                  "shipping": False, "description": "d"}], None)
+    with patch.object(d, "_fetch_page", new=fake_page):
+        asyncio.run(d.search(SearchQuery(keywords="", category="phones", limit=5, max_pages=1)))
+        assert seen[-1].startswith("https://www.kleinanzeigen.de/s-handys/k0"), seen[-1]
+        asyncio.run(d.search(SearchQuery(keywords="", category="phones", limit=5, max_pages=1,
+                                         cat_map={"kleinanzeigen": "s-iphone"})))
+        assert seen[-1].startswith("https://www.kleinanzeigen.de/s-iphone/k0"), seen[-1]
+        asyncio.run(d.search(SearchQuery(keywords="", category="phones", limit=5, max_pages=1,
+                                         cat_map={"kleinanzeigen": "../../evil"})))
+        assert seen[-1].startswith("https://www.kleinanzeigen.de/s-/k0") or "/s-" in seen[-1]
+        asyncio.run(d.search(SearchQuery(keywords="thinkpad", category="phones", limit=5, max_pages=1)))
+        assert "s-thinkpad" in seen[-1]
+    # map integrity: every slug is URL-safe, every generic resolves
+    import re
+    for slug in d.CATEGORIES:
+        assert re.fullmatch(r"[a-z0-9-]+", slug), slug
+    for g, slug in d.GENERIC.items():
+        assert slug in d.CATEGORIES, (g, slug)

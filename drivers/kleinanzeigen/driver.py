@@ -151,15 +151,35 @@ class KleinanzeigenDriver(MarketplaceDriver):
         r.raise_for_status()
         return parse_cards(r.text, 100), next_page_url(r.text)
 
-    # verified category slugs (live 2026-09-27): browse whole categories, no keywords needed
-    CATEGORIES: ClassVar[dict] = {"laptops": "s-notebooks", "phones": "s-handys",
-                                  "cars": "s-autos", "furniture": "s-moebel-wohnen"}
+    # Category system (every slug verified live 2026-09-27: HTTP 200 + real ads parsed).
+    # Generic taxonomy (stable across drivers) -> primary browsable slug.
+    GENERIC: ClassVar[dict] = {"laptops": "s-notebooks", "phones": "s-handys",
+                               "cars": "s-autos", "furniture": "s-moebel-wohnen",
+                               "bikes": "s-fahrrad"}
+    # Full browsable slug set: slug -> human label (per-platform chooser + automatch targets).
+    CATEGORIES: ClassVar[dict] = {
+        "s-notebooks": "Notebooks", "s-laptop": "Laptops", "s-notebook": "Notebook",
+        "s-gaming-laptop": "Gaming-Laptops", "s-macbook": "MacBooks", "s-thinkpad": "ThinkPads",
+        "s-handys": "Handys", "s-handy": "Handy", "s-iphone": "iPhones",
+        "s-smartphone": "Smartphones",
+        "s-autos": "Autos", "s-auto": "Auto & Teile", "s-kleinwagen": "Kleinwagen",
+        "s-moebel-wohnen": "Möbel & Wohnen", "s-sofa": "Sofas", "s-kleiderschrank": "Kleiderschränke",
+        "s-couchtisch": "Couchtische",
+        "s-fahrrad": "Fahrräder", "s-e-bike": "E-Bikes", "s-roller": "Roller",
+    }
 
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
         import asyncio as _aio
+        import re as _re
         cat = (query.category or "").strip().lower()
-        if cat and not (query.keywords or "").strip() and cat in self.CATEGORIES:
-            url = f"https://www.kleinanzeigen.de/{self.CATEGORIES[cat]}/k0"
+        override = (query.cat_map or {}).get("kleinanzeigen", "").strip().lower()
+        slug = ""
+        if override and _re.fullmatch(r"[a-z0-9-]+", override):
+            slug = "s-" + override if not override.startswith("s-") else override
+        elif cat and not (query.keywords or "").strip() and cat in self.GENERIC:
+            slug = self.GENERIC[cat]
+        if slug:
+            url = f"https://www.kleinanzeigen.de/{slug}/k0"
         else:
             url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
         items: list[dict] = []

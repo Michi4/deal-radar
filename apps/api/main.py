@@ -429,6 +429,7 @@ if static_dir.exists():
 class SearchIntent(BaseModel):
     keywords: str = Field(default="", max_length=500)
     category: str = Field(default="", max_length=100)
+    cat_map: dict[str, str] = Field(default_factory=dict, max_length=10)
     sources: list[str] | None = Field(default=None, max_length=10)
     hard: dict = {}
     blacklist: list[dict] = Field(default=[], max_length=50)
@@ -489,6 +490,12 @@ def drivers():
         reqs = {"ebay": ["EBAY_OAUTH_TOKEN"]}.get(m.id, [])
         d["requires"] = reqs
         d["configured"] = all(os.getenv(r) for r in reqs)
+        try:
+            cats = getattr(registry.get(m.id), "CATEGORIES", None)
+            if cats:
+                d["categories"] = dict(cats)
+        except Exception:
+            pass
         out.append(d)
     for did in sorted(disabled_drivers()):
         out.append({"id": did, "display_name": did, "installed": False, "disabled": True,
