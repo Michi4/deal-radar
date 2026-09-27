@@ -1,5 +1,7 @@
 let RUNNING=false;
-const ACTIVEJOBS=new Map();
+const ACTIVEJOBS=new Map();let FOLLOWED=null;const ABORTSET=new Set();
+function leave(sid){ACTIVEJOBS.delete(sid);ABORTSET.delete(sid);if(!ACTIVEJOBS.size)RUNNING=false}
+function claim(sid){FOLLOWED=sid}
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -9,7 +11,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),resetFilters:()=>resetFilters(),redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await fetch('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')},stopJob:safe(async(a)=>{await api('/searches/'+a+'/stop',{method:'POST'});toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+a+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+a+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),resetFilters:()=>resetFilters(),redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.add(a);try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -22,17 +24,19 @@ let last=null;
 for(let a=0;a<=retries;a++){
 try{
 const res=await fetch(path,opts);
-if(res.status===401&&!path.includes('/login')){location.href='/login';throw new Error('login required')}
+if(res.status===401){const _t=await res.text();if(_t.includes('login required')||!path.includes('/login')){location.href='/login'}throw new Error('login required')}
 const txt=await res.text();
 if(txt.trimStart().startsWith('<')){
-if(!sessionStorage.getItem('dr_reloaded')){sessionStorage.setItem('dr_reloaded','1');toast('session expired — reloading…');setTimeout(()=>location.reload(),1200)}
-throw new Error('auth session expired — log in again')}
+if(res.ok){if(!sessionStorage.getItem('dr_reloaded')){sessionStorage.setItem('dr_reloaded','1');toast('session expired — reloading…');setTimeout(()=>location.reload(),1200)}throw new Error('auth session expired — log in again')}
+throw new Error('server error ' + res.status + ' \u2014 retrying')}
 let data=null;try{data=txt?JSON.parse(txt):null}catch(e){throw new Error(`bad response (not JSON): ${txt.slice(0,80)}`)}
-if(!res.ok)throw new Error(`server ${res.status}${data&&data.error?': '+data.error:''}`);
+if(!res.ok){const err=new Error(`server ${res.status}${data&&data.error?': '+data.error:''}`);err.status=res.status;throw err}
+if(data===null&&(opts.method||'GET')!=='DELETE')throw new Error('empty response from server');
 sessionStorage.removeItem('dr_reloaded');
 return data;
 }catch(e){last=e;if(e.message==='login required'||e.message.startsWith('auth session'))throw e;
-if(a<retries)await new Promise(x=>setTimeout(x,1500*(a+1)));else throw e}}
+const retryable=e instanceof TypeError||(e.status>=500||e.status===429);
+if(retryable&&a<retries)await new Promise(x=>setTimeout(x,1500*(a+1)));else throw e}}
 throw last}
 function netMsg(e){const m=String((e&&e.message)||e);if(m.includes('Failed to fetch')||m.includes('NetworkError')||m.includes('Load failed'))return 'server unreachable (restarting?)';return m}
 function safe(fn){return async(...a)=>{try{return await fn(...a)}catch(e){toast(netMsg(e))}}}
@@ -70,11 +74,11 @@ const inner=`${thumb(l)}<div class="body">${best}<h4>${esc(l.title)||'(no title)
 return VIEW==='grid'?`<div class="card" data-open="${esc(l.id)}">${inner}</div>`
 :`<div class="listrow" data-open="${esc(l.id)}">${(l.images&&l.images[0])?`<img loading="lazy" src="${safeUrl(l.images[0])}" data-rm="1">`:''}<div><b>${esc(l.title)||'(no title)'}</b><br/><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)}</span> <button class="btn btn-ghost" data-fav="${esc(l.id)}">${fav}</button></div></div>`}
 let FAVS=new Set();
-async function loadFavs(){try{const f=await(await fetch('/favorites')).json();FAVS=new Set(f.map(x=>x.listing_id));$('favn').textContent=f.length}catch(e){}$('favn').textContent=FAVS.size}
+async function loadFavs(){try{const f=await api('/favorites',{},1);FAVS=new Set(f.map(x=>x.listing_id));$('favn').textContent=f.length}catch(e){}$('favn').textContent=FAVS.size}
 function isFav(id){return FAVS.has(id)}
-async function favAct(id,close){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});await loadFavs();if(close)closeD();else render()}
+async function favAct(id,close){await api('/favorites/'+encodeURIComponent(id),{method:'POST'},0);await loadFavs();if(close)closeD();else render()}
 async function fav(id){return favAct(id,false)}
-async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});await loadFavs();showFavs()}
+async function unfav(id){await api('/favorites/'+encodeURIComponent(id),{method:'DELETE'},0);await loadFavs();showFavs()}
 const SORTS=[{id:'score',label:'Score',dir:-1},{id:'price',label:'Price',dir:1},{id:'ppe',label:'Perf/€',dir:-1,need:'bench'},{id:'mt',label:'Multithread',dir:-1,need:'bench'},{id:'gpe',label:'GPU/€',dir:-1,need:'gpu'},{id:'tc',label:'Total cost',dir:1}];
 let FLAGS={enrich:true,ocr:true,benchmarks:true,vision:true,details:true};
 function gpuPerEur(x){const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0}
@@ -169,10 +173,10 @@ mirrorRefine();
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 let LASTDUR=0;
-async function poll(sid,onDone){const t0=Date.now();RUNNING=true;ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});let dark=0;for(;;){let r;try{r=await api('/searches/'+sid)}catch(e){if(String(e.message).includes('login required'))return;dark++;status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);if(dark>40){status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);RUNNING=false;return}await new Promise(x=>setTimeout(x,3000));continue}dark=0;
-if(r.status==='running'){ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run'});if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
-status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
-RUNNING=false;ACTIVEJOBS.delete(sid);if(!ACTIVEJOBS.size)RUNNING=false;SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
+async function poll(sid,onDone){const t0=Date.now();RUNNING=true;claim(sid);ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});let dark=0;for(;;){if(ABORTSET.has(sid)){leave(sid);return}let r;try{r=await api('/searches/'+encodeURIComponent(sid))}catch(e){const msg=String(e.message||e);if(msg.includes('login required')||msg.startsWith('auth session')){leave(sid);return}dark++;status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);if(dark>40){if(sid===FOLLOWED)status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);leave(sid);return}await new Promise(x=>setTimeout(x,3000));continue}dark=0;
+if(r.status==='running'){ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run'});if(sid!==FOLLOWED){await new Promise(x=>setTimeout(x,3000));continue}if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
+status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(sid)}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
+RUNNING=false;const mine=sid===FOLLOWED;leave(sid);if(!mine){toast('background search finished');return}SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
 async function run(){const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
@@ -194,7 +198,7 @@ pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${esc(netMsg(e))}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 let FAVMAP={};
-async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await(await fetch('/favorites')).json();FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
+async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await api('/favorites',{},1);FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
 $('pageview').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}${h.kind==='price'?chg(h.old,h.new):''}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 async function unfavWrap(){}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
@@ -235,8 +239,8 @@ $('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI buil
 const LABSTAGES=['prompting','waiting_model','validating','saving','contract_check','done'];
 function labStageHtml(job){return LABSTAGES.map(s=>{const done=(job.log||[]).some(l=>l.stage===s);const cur=job.stage===s&&job.status==='running';return `<span class="chip ${done?'active':''}">${cur?'⏳ ':''}${s.replace('_',' ')}</span>`}).join(' ')}
 async function followLab(){const jid=$('labjid').value,fw=$('labfu').value.trim();if(!jid||!fw)return toast('write a follow-up first');$('labbtn').disabled=true;
-try{const r=await(await fetch('/lab/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jid,followup:fw})})).json();followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
-async function followLabJob(jid){if(!jid){$('labout').innerHTML='<div class="err">build rejected — see server config (LAB_ENABLED?)</div>';$('labbtn').disabled=false;return}for(;;){const r=await(await fetch('/lab/build/'+jid)).json();
+try{const r=await api('/lab/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jid,followup:fw})},0);followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
+async function followLabJob(jid){if(!jid){$('labout').innerHTML='<div class="err">build rejected — see server config (LAB_ENABLED?)</div>';$('labbtn').disabled=false;return}for(;;){let r;try{r=await api('/lab/build/'+encodeURIComponent(jid),{},1)}catch(e){$('labout').innerHTML=`<div class="err">lost contact: ${esc(netMsg(e))}</div>`;$('labbtn').disabled=false;return}
 const log=(r.log||[]).map(l=>`<div><small>${esc(l.stage)} — ${esc(l.msg)}</small></div>`).join('');
 let tail='';
 if(r.status==='done'||r.status==='failed'||r.status==='error'){const ok=r.status==='done';const res=r.result||{};
@@ -248,12 +252,12 @@ if(r.status!=='running'){window.scrollTo(0,document.body.scrollHeight);return}
 await new Promise(x=>setTimeout(x,2000))}}
 async function mkLab(){const q=$('labq').value.trim();if(!q)return toast('describe what to build first');
 try{const st=await(await fetch('/lab/status')).json();if(!st.enabled){$('labout').innerHTML='<div class="err">Lab is disabled on this server (LAB_ENABLED=0). Enable it in the environment to build.</div>';return}}catch(e){}$('labbtn').disabled=true;$('labout').innerHTML='<small>starting…</small>';
-try{const r=await(await fetch('/lab/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:$('labkind').value,instruction:q})})).json();await followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
+try{const r=await api('/lab/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:$('labkind').value,instruction:q})},0);await followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
 async function showWatches(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading watches…</div>';
 $('pageview').innerHTML=ptitle('Watches','auto re-polled · survive restarts · notify on new hits & drops')+`<div class="panel"><form id="wform"><label class="fld"><span>watch query</span><input id="wq" class="inp" placeholder="e.g. ThinkPad X1 under &euro;800"/></label><div class="fgrid4" style="margin-top:.5rem"><label class="fld"><span>max &euro;</span><input id="wmax" class="inp" placeholder="no max" type="number"/></label><label class="fld"><span>drop % &ge;</span><input id="nDrop" class="inp" placeholder="any" type="number" title="only notify drops of at least this %"/></label><label class="fld"><span>risk &le; %</span><input id="nRisk" class="inp" placeholder="any" type="number" title="only notify new matches below this risk %"/></label>
 <label class="fld"><span>re-check every (min)</span><input id="wIntMin" class="inp" type="number" value="30" min="1" title="Poll interval in minutes"/></label><label class="fld"><span>&nbsp;</span><button type="submit" class="btn btn-primary">+ Watch</button></label></div><div class="row mt-2"><label class="ck"><input type="checkbox" id="nNew" checked/> new hits</label><label class="ck"><input type="checkbox" id="nPrice" checked/> price drops</label><label class="ck"><input type="checkbox" id="nDesc"/> desc changes</label><label class="ck"><input type="checkbox" id="nImg"/> image changes</label><small id="wDurHint" style="opacity:.6"></small></div><div class="row mt-2"><label class="fld" style="min-width:200px;flex:0"><span>saved-product tracking every (min)</span><input id="favPoll" class="inp" type="number" min="5" max="1440" value="30"/></label><button class="btn btn-ghost" data-act="saveTrack">save</button></div></form><div id="wlist"></div><div id="nstat"></div></div>`;const wf=$('wform');if(wf)wf.addEventListener('submit',e=>{e.preventDefault();mkWatch()});paintChecks();fetch('/settings/tracking').then(r=>r.json()).then(t=>{const f=$('favPoll');if(f&&t.fav_poll_min)f.value=t.fav_poll_min}).catch(()=>{});if(LASTDUR>0){const el=$('wIntMin');if(el)el.value=Math.max(30,Math.ceil(LASTDUR/60));const dh=$('wDurHint');if(dh)dh.textContent=`last search took ${LASTDUR}s`}refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
-async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
+async function refreshWatches(){let m;try{m=await api('/metrics.json',{},1)}catch(e){return}$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...SRCS];
 if(LASTDUR>0){const el=$('wIntMin');if(el&&(+el.value*60<LASTDUR)){el.value=Math.max(1,Math.ceil(LASTDUR/60));toast(`interval raised to last search duration (${LASTDUR}s)`)}}
 const mins=Math.max(1,+$('wIntMin')?.value||30);
@@ -266,13 +270,13 @@ const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').valu
 try{const r=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},2);
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}catch(e){toast('watch failed: '+netMsg(e))}}
 async function showStore(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading store…</div>';
-try{const r=await(await fetch('/marketplace')).json();
+try{const r=await api('/marketplace',{},1);
 const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.source&&x.source!=='builtin'?` <button class="btn btn-ghost" data-act="uninstallX" data-kind="${kind}" data-arg="${esc(x.id)}">uninstall</button>`:''):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
 $('pageview').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
-async function uninstallX(kind,id,el){if(!el||!el.dataset.armed){if(el){el.dataset.armed='1';el.textContent='sure?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='uninstall'}},8000)}toast('click again to confirm uninstall');return}const r=await(await fetch('/marketplace/'+encodeURIComponent(id),{method:'DELETE'})).json();toast(r.ok?'✓ uninstalled '+id:'✗ '+(r.error||'failed'));showStore()}
-async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
+async function uninstallX(kind,id,el){if(!el||!el.dataset.armed){if(el){el.dataset.armed='1';el.textContent='sure?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='uninstall'}},8000)}toast('click again to confirm uninstall');return}try{const r=await api('/marketplace/'+encodeURIComponent(id),{method:'DELETE'},0);toast(r.ok?'✓ uninstalled '+id:'✗ '+(r.error||'failed'));showStore()}catch(e){toast('uninstall failed: '+netMsg(e))}}
+async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');try{const r=await api('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})},0);toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}catch(e){toast('install failed: '+netMsg(e))}}
 async function showHistory(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading…</div>';
-try{const r=await(await fetch('/searches')).json();
+try{const r=await api('/searches',{},1);
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
 const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading="lazy" src="'+su+'" data-rm="1" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>':''}).join('');
 const jb=s.job||null;
@@ -282,16 +286,16 @@ return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keyword
 const tiles=(r.searches||[]).map(tile).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
-async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+id)}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}
+async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+encodeURIComponent(id))}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}
 if(r.error&&!(r.results||[]).length){status(`<div class="err">${esc(r.error)} <button class="btn btn-primary" data-act="redoId" data-arg="${esc(id)}">re-run now</button></div>`);return}
 if(r.intent)applyIntent(r.intent);
 if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');await poll(id,x=>{LAST=x.results||[];SID=id;render()});return}
 LAST=r.results||[];HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;SID=id;PAGE=0;render();tab('search');if(r.snapshot)toast('opened saved snapshot — re-run for fresh results');if(r.reconstructed)toast('rebuilt from saved rows (limited detail) — re-run for full analysis')}
-async function redoSearch(id){let r;try{r=await api('/searches/'+id+'/redo',{method:'POST'},2)}catch(e){toast('re-run failed: '+netMsg(e));return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
-async function delSearch(id){try{await fetch('/searches/'+id,{method:'DELETE'})}catch(e){toast('delete failed (network)')}showHistory()}
-async function watchTile(id){let r;try{r=await(await fetch('/searches/'+id+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json()}catch(e){toast('watch failed (network)');return}toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
+async function redoSearch(id){let r;try{r=await api('/searches/'+encodeURIComponent(id)+'/redo',{method:'POST'},0)}catch(e){toast('re-run failed: '+netMsg(e));return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
+async function delSearch(id){try{await api('/searches/'+encodeURIComponent(id),{method:'DELETE'})}catch(e){toast('delete failed: '+netMsg(e))}showHistory()}
+async function watchTile(id){let r;try{r=await api('/searches/'+encodeURIComponent(id)+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})},0)}catch(e){toast('watch failed: '+netMsg(e));return}toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
 async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){showPage(false);return cmpSel()}if(!SID){showPage(false);$('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><b>How comparing works</b><br/><small>1. Run any search.<br/>2. Tick <b>compare</b> on 2–4 listings (cards or list rows).<br/>3. Open this tab — you get them side by side: price, source, risk, score, CPU + benchmark.</small><br/><br/><button class="btn btn-primary" data-act="tab" data-arg="search">go search</button></div>';return}showPage(false);status('Comparing…');
-const r=await(await fetch('/searches/'+SID+'/compare')).json();
+const r=await api('/searches/'+encodeURIComponent(SID)+'/compare',{},1);
 $('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
 let CAR=[];
 function openD(id){const s=LAST.find(x=>x.listing.id===id);if(!s)return toast('result expired — re-run search');const l=s.listing;CAR=l.images||[];let ci=0;
@@ -328,9 +332,9 @@ $('sheet').innerHTML=`<div class="panel" style="border-color:var(--acc)"><div cl
 +(snap.images[0]?`<div class="car" style="margin:10px 0"><img src="${safeUrl(snap.images[0])}"/></div>`:'')
 +`<p style="white-space:pre-wrap;font-size:14px">${esc((snap.description||'no description').slice(0,3000))}</p>`;
 window.scrollTo(0,0)}).catch(e=>toast('snapshot failed'))}
-async function setCpu(){const v=$('cpuin').value.trim();if(!v)return;const s=LAST.find(x=>x.listing.id===window._lid);if(!s)return toast('re-run search first');
-await fetch('/listings/'+encodeURIComponent(s.listing.id)+'/facts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({field:'cpu',value:v})});toast('CPU set — re-running search to AI-check it');run()}
-async function loadHist(id){try{const h=await(await fetch('/listings/'+encodeURIComponent(id)+'/history')).json();$('vhist').innerHTML=(h.history||[]).map(x=>'<div class="hist"><b>'+esc(x.kind)+'</b> · '+new Date(x.ts*1000).toLocaleString()+' <button class="btn btn-ghost" data-snap="'+esc(id)+'|'+x.ts+'">view</button><br/><small>'+esc((x.old||'').slice(0,120))+' → '+esc((x.new||'').slice(0,120))+(x.kind==='price'?chg(x.old,x.new):'')+'</small></div>').join('')||'<small>no changes tracked yet</small>'}catch(e){$('vhist').innerHTML='<small>history unavailable</small>'}}
+async function setCpu(){const v=$('cpuin').value.trim();if(!v)return;try{const s=LAST.find(x=>x.listing.id===window._lid);if(!s)return toast('re-run search first');
+await api('/listings/'+encodeURIComponent(s.listing.id)+'/facts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({field:'cpu',value:v})},0);toast('CPU set — re-running search to AI-check it');run()}catch(e){toast('set CPU failed: '+netMsg(e))}}
+async function loadHist(id){try{const h=await api('/listings/'+encodeURIComponent(id)+'/history',{},1);$('vhist').innerHTML=(h.history||[]).map(x=>'<div class="hist"><b>'+esc(x.kind)+'</b> · '+new Date(x.ts*1000).toLocaleString()+' <button class="btn btn-ghost" data-snap="'+esc(id)+'|'+x.ts+'">view</button><br/><small>'+esc((x.old||'').slice(0,120))+' → '+esc((x.new||'').slice(0,120))+(x.kind==='price'?chg(x.old,x.new):'')+'</small></div>').join('')||'<small>no changes tracked yet</small>'}catch(e){$('vhist').innerHTML='<small>history unavailable</small>'}}
 function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});

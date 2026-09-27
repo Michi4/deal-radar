@@ -147,6 +147,21 @@ shows only fixture substrings (sk-cache etc.), no keys.
 - Infra: clean with notes (non-root, healthcheck, env parity, CI=verify.sh, no docker daemon locally).
 - Tests: 89 passed, mega 11/11, xss 4/4, coverage 86%.
 
+## Pass 4 (2026-09-27) — resilience + parallelism + follow-semantics
+Subagents worked this round (2 reporters) + self-verified everything.
+- HIGH fixed: POST retries could duplicate background jobs → retries=0 on all mutating
+  POSTs; GETs keep bounded retries; 4xx fail fast (5xx/network only retried).
+- Followed-search semantics: parallel polls no longer fight over LAST/SID/render —
+  latest-claimed job drives the view, others toast quietly (ACTIVEJOBS registry).
+- Local abort: stop button kills the retry loop even with server unreachable.
+- Poll exits cleaned (leave() on all paths), session-expiry recognized, 502-HTML no
+  longer misreported as auth expiry, sid escaping/encoding, empty-response error text.
+- Migration sweep: del/watch/fav/store/install/history/compare/loadHist/setCpu/lab/
+  uninstall through api()/safe()/netMsg. Zero raw .json() on user paths; zero
+  confirm/alert; zero inline handlers (re-grepped).
+- parallel.mjs: proves 2 concurrent searches (n=2 active) both complete — green.
+- Full suite green (89 passed, 86%), mega 11/11, xss 4/4.
+
 ## Verdict: CONDITIONAL GO
 Ship with Authelia + app login on (prod default today: login OFF, Authelia on — acceptable per
 operator choice). Conditions: keep LAB_ENABLED gated, watch disk (snapshots), rotate nothing
