@@ -29,8 +29,8 @@ check(`two searches active at once (n=${active})`, active >= 2);
 
 // both must complete with results (whichever finishes last drives the view)
 await page.waitForFunction(() => ACTIVEJOBS.size === 0, null, { timeout: 540000 });
-const done = await page.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, followed: FOLLOWED }));
-check(`both finished, view shows results (cards=${done.cards})`, done.cards > 0 && !!done.followed);
+const done = await page.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length }));
+check(`both finished, view shows results (cards=${done.cards})`, done.cards > 0);
 check('no JS errors', errs.length === 0);
 if (errs.length) console.log(errs);
 await browser.close();

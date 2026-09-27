@@ -106,7 +106,7 @@ function toggleLane(l){HIDELANES.has(l)?HIDELANES.delete(l):HIDELANES.add(l);ren
 function toggleKind(k){HIDEKIND[k]=!HIDEKIND[k];drawSegs();render()}
 function drawKinds(){const map={want:'Gesuche',parts:'parts',acc:'accessories'};const el=document.querySelector('#kindpills');if(!el)return;
 el.innerHTML=Object.entries(map).map(([k,l])=>`<button class="${HIDEKIND[k]?'active':''}" data-act="toggleKind" data-arg="${k}">${l}</button>`).join('')}
-function drawSegs(){drawKinds();const sg=$('sortsel');if(sg){const av=sortAvail();
+function drawSegs(){drawKinds();paintSources();const sg=$('sortsel');if(sg){const av=sortAvail();
 if(!SORTS.some(o=>o.id===SORT&&(!o.need||av[o.need])))SORT='score';
 sg.innerHTML=SORTS.map(o=>{const off=o.need&&!av[o.need];return `<option value="${o.id}" ${o.id===SORT?'selected':''} ${off?'disabled':''}>${o.label}${off?' (re-run with '+(o.need==='gpu'?'GPU benchmarks':'benchmarks')+')':''}</option>`}).join('');
 const dd=$('sortdir');if(dd)dd.textContent=(SORTS.find(o=>o.id===SORT).dir*PDIR===1)?'↑':'↓';}
@@ -347,9 +347,10 @@ async function loadHist(id){try{const h=await api('/listings/'+encodeURIComponen
 function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
+let DRVLIST=[];
+function paintSources(){const el=$('sources');if(!el)return;el.innerHTML='<div class="pills">'+DRVLIST.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}
 async function init(){try{const d=await(await fetch('/drivers')).json();
-d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});
-$('sources').innerHTML='<div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
+d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});DRVLIST=d;paintSources()}catch(e){}
 drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();loadFilters();authKick();
 const bind=(id,fn)=>{const f=$(id);if(f)f.addEventListener('submit',e=>{e.preventDefault();fn()})};
 bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());const _ss=$('sortsel');if(_ss)_ss.addEventListener('change',()=>setSort(_ss.value));

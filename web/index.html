@@ -109,7 +109,34 @@ header.sticky{position:sticky;top:0;z-index:60}
  #bottomnav{display:block;position:fixed;bottom:0;left:0;right:0;z-index:50;border-top:1px solid rgb(226 232 240);background:rgba(255,255,255,.9);backdrop-filter:blur(16px)}
  .dark #bottomnav{background:rgba(2,6,23,.88);border-color:#1e293b}
  .row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+#bottomnav .row{display:flex;justify-content:space-around;max-width:32rem;margin:0 auto;height:4rem;align-items:stretch}
+ #bottomnav a,#bottomnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;cursor:pointer;min-width:56px;text-decoration:none}
+ .dark #bottomnav a,.dark #bottomnav button{color:#64748b}
+ #bottomnav .active{color:var(--acc-d,#047857)}.dark #bottomnav .active{color:#34d399}
+ body{padding-bottom:4rem}
+}
 #results{scroll-margin-top:4.5rem}
+@media (min-width: 1100px){
+#searchpanel{max-width:76rem !important}
+.searchgrid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:1rem;align-items:start}
+#sidecol{position:sticky;top:4.2rem;max-height:calc(100vh - 5rem);overflow-y:auto;padding-bottom:.5rem}
+#sidecol .fgrid4{grid-template-columns:repeat(2,1fr)}
+#sidecol .fgrid2{grid-template-columns:1fr}
+#sidecol .fgrid3{grid-template-columns:1fr 1fr}
+}
+#sidecol .panel{margin:.625rem 0}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+#results .card{animation:rise .3s ease both}
+#results .card:nth-child(2){animation-delay:.03s}#results .card:nth-child(3){animation-delay:.06s}
+#results .card:nth-child(4){animation-delay:.09s}#results .card:nth-child(5){animation-delay:.12s}
+#results .card:nth-child(n+6){animation-delay:.15s}
+#pageview{animation:fadeIn .18s ease}
+.panel{animation:fadeIn .2s ease}
+.btn{transition:background-color .15s,transform .1s,box-shadow .15s}
+.btn:active{transform:scale(.96)}
+.navlink,.seg button,.pills button,.chip{transition:background-color .15s,color .15s,border-color .15s,transform .1s}
+.navlink:active,.seg button:active,.pills button:active{transform:scale(.95)}
 #livestrip{display:flex;gap:.5rem;overflow-x:auto;padding:.4rem 0}
 .livetile{flex:0 0 auto;min-width:220px;max-width:280px;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:.75rem;padding:.5rem .6rem;font-size:.8rem}
 .dark .livetile{background:#0f172a}
@@ -119,12 +146,6 @@ header.sticky{position:sticky;top:0;z-index:60}
 #cmptray{position:fixed;left:50%;transform:translateX(-50%);bottom:1rem;z-index:55;display:flex;gap:.5rem;align-items:center;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:99px;padding:.4rem .4rem .4rem 1rem;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:.85rem;font-weight:700}
 .dark #cmptray{background:#0f172a}
 @media (max-width: 767px){#cmptray{bottom:4.75rem}}
-#bottomnav .row{display:flex;justify-content:space-around;max-width:32rem;margin:0 auto;height:4rem;align-items:stretch}
- #bottomnav a,#bottomnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;cursor:pointer;min-width:56px;text-decoration:none}
- .dark #bottomnav a,.dark #bottomnav button{color:#64748b}
- #bottomnav .active{color:var(--acc-d,#047857)}.dark #bottomnav .active{color:#34d399}
- body{padding-bottom:4rem}
-}
 @media (max-width: 600px){
  #searchpanel .nlrow{flex-wrap:wrap}
  #searchpanel .nlrow .inp{flex:1 1 100%;min-width:0}
@@ -237,15 +258,26 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
 <div class="row mt-2"><button type="button" class="btn btn-ghost" data-act="resetFilters">reset filters to defaults</button></div>
 </details>
-<div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar">
-<select id="sortsel" class="inp" style="max-width:190px" aria-label="sort results"></select>
-<button id="sortdir" class="btn btn-ghost" data-act="toggleDir" aria-label="toggle sort direction" title="ascending / descending">↓</button>
-<div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
-<div class="seg" role="group" aria-label="view"><button id="vgrid" data-act="setView" data-arg="grid" aria-label="grid view" title="Grid view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button id="vlist" data-act="setView" data-arg="list" aria-label="list view" title="List view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button></div>
-<span id="lanes" class="pills"></span></div>
+
+
 </div>
-<div id="status" role="status" aria-live="polite"></div>
+
+
+
+
+
+
+<div id="livestrip" style="display:none"></div>
+
+
+
+
+
+
+</div>
 <div class="panel" id="applied" style="display:none"></div>
+<div class="searchgrid">
+<aside id="sidecol">
 <div class="panel" id="refinebar" style="display:none"><div class="eyebrow">Filter loaded results · no re-search · everything re-adjustable</div>
 <form id="refineform"><div class="fgrid4">
 <label class="fld"><span>min €</span><input id="rMin" class="inp" type="number" placeholder="no min" title="Minimum price"/></label>
@@ -261,10 +293,19 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 </div>
 <div class="row mt-2"><button type="submit" class="btn btn-primary">apply</button><button type="button" class="btn btn-ghost" data-act="clearRefine">clear</button>
 <label class="ck" style="margin-left:auto"><input type="checkbox" id="showHidden"/> show hidden (<span id="hidN">0</span>)</label></div></form></div>
-<div id="livestrip" style="display:none"></div>
+</aside>
+<div id="rescol">
+<div id="status" role="status" aria-live="polite"></div>
+<div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar">
+<select id="sortsel" class="inp" style="max-width:190px" aria-label="sort results"></select>
+<button id="sortdir" class="btn btn-ghost" data-act="toggleDir" aria-label="toggle sort direction" title="ascending / descending">↓</button>
+<div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
+<div class="seg" role="group" aria-label="view"><button id="vgrid" data-act="setView" data-arg="grid" aria-label="grid view" title="Grid view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button id="vlist" data-act="setView" data-arg="list" aria-label="list view" title="List view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button></div>
+<span id="lanes" class="pills"></span></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pagertop" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfotop" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button><input id="goto" class="inp" placeholder="page #" type="number" style="max-width:80px"/><button class="btn btn-ghost" data-act="gotoPage">go</button></div>
 <div id="results"></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pager" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfo" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button></div>
+</div>
 </div>
 <div id="pageview" class="mx-auto w-full" style="display:none;max-width:46rem"></div>
 </main>

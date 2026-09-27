@@ -1179,6 +1179,12 @@ def lab_status():
             "drivers": installed()}
 
 
+@app.delete("/events")
+def clear_events():
+    EVENT_LOG.clear()
+    return {"ok": True}
+
+
 @app.get("/marketplace")
 def marketplace():
     """Public plugin/driver marketplace index (remote versioned JSON, PR-contributed)."""

@@ -65,9 +65,21 @@ async function tick() {
     document.getElementById('metrics').innerHTML = '<table>' +
       Object.entries(m2.counters || {}).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('') +
       Object.entries(m2.latency_avg_ms || {}).map(([k, v]) => `<tr><td>latency ${esc(k)}</td><td>${esc(v)} ms</td></tr>`).join('') + '</table>';
-    document.getElementById('searches').innerHTML = '<table><tr><th>keywords</th><th>results</th><th>sources</th></tr>' +
-      (m.watchlist || []).map(s => `<tr><td>${esc(s.keywords)}</td><td>${s.results ?? '?'}</td><td>${esc((s.sources || []).join(','))}</td></tr>`).join('') + '</table>';
+    document.getElementById('searches').innerHTML = '<table><tr><th>keywords</th><th>results</th><th>sources</th><th></th></tr>' +
+      (m.watchlist || []).map(s => `<tr><td>${esc(s.keywords)}</td><td>${s.results ?? '?'}</td><td>${esc((s.sources || []).join(','))}</td><td><button class="btn btn-ghost" data-act="rerun" data-id="${esc(s.id)}">re-run</button> <button class="btn btn-ghost" data-act="watchit" data-id="${esc(s.id)}">watch</button> <button class="btn btn-ghost" data-act="del" data-id="${esc(s.id)}">delete</button></td></tr>`).join('') + '</table>';
+    document.querySelectorAll('#searches [data-act]').forEach(b => b.addEventListener('click', async () => {
+      const id = b.dataset.id, act = b.dataset.act;
+      try {
+        if (act === 'del') await api('/searches/' + encodeURIComponent(id), { method: 'DELETE' });
+        else if (act === 'watchit') await api('/searches/' + encodeURIComponent(id) + '/watch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        else await api('/searches/' + encodeURIComponent(id) + '/redo', { method: 'POST' });
+        tick();
+      } catch (e) { showMsg(String(e.message || e)); }
+    }));
     document.getElementById('nsearch').textContent = (m.watchlist || []).length;
+    document.getElementById('evclear').innerHTML = `<button class="btn btn-ghost" id="evclearbtn">clear events</button>`;
+    const _eb = document.getElementById('evclearbtn');
+    if (_eb) _eb.addEventListener('click', async () => { try { await api('/events', { method: 'DELETE' }); tick(); } catch (e) { showMsg(String(e.message || e)); } });
     document.getElementById('events').innerHTML = (m.events_tail || []).slice().reverse()
       .map(e => `<div class="ev">${esc(e.kind || '?')}: ${esc((e.title || e.listing_id || '').slice(0, 100))}</div>`).join('') || 'none yet';
     document.getElementById('nev').textContent = m.events || 0;
