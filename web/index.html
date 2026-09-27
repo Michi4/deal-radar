@@ -1,6 +1,7 @@
 <!doctype html><html lang="en" class="dark"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="color-scheme" content="dark light"/><title>deal-radar</title>
+<meta name="color-scheme" content="dark light"/><meta name="description" content="deal-radar — AI-driven used-product finder across marketplaces"/><meta name="theme-color" content="#059669"/><title>deal-radar — used-product finder</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.5' fill='none' stroke='%2334d399' stroke-width='2.5'/%3E%3Cpath d='M16 16V3.5A12.5 12.5 0 0 1 28.5 16H16Z' fill='%2334d399' fill-opacity='.35'/%3E%3Cpath d='M16 16L25 7' stroke='%2334d399' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%2334d399'/%3E%3C/svg%3E"/>
+<link rel="apple-touch-icon" href="/static/favicon.svg"/>
 <link rel="stylesheet" href="/static/tailwind.css"/>
 <style>
 :root{--acc:#059669;--acc-d:#047857;--acc-soft:rgba(5,150,105,.12)}
@@ -18,11 +19,11 @@ html{scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#9db8a5 transp
 .dark .card{background:#0f172a;border-color:#1e293b}
 .card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.18);border-color:var(--acc)}
 .card img.thumb{width:100%;height:10rem;object-fit:cover;background:#0a0d15}
-.card .body{padding:.625rem}.card h4{margin:0 0 .375rem;font-size:.875rem;line-height:1.3;font-weight:600}
+.card .body{padding:.75rem}.card h4{margin:0 0 .375rem;font-size:.925rem;line-height:1.35;font-weight:650}
 .listrow{display:flex;gap:.625rem;background:#fff;border:1px solid rgb(226 232 240);border-radius:.75rem;padding:.5rem;margin:.5rem 0;cursor:pointer;align-items:center}
 .dark .listrow{background:#0f172a;border-color:#1e293b}
 .listrow img{width:5.625rem;height:4.375rem;object-fit:cover;border-radius:.5rem;background:#0a0d15}
-.price{font-weight:700;font-size:1rem}.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;color:#fff}
+.price{font-weight:800;font-size:1.05rem;color:var(--acc-d,#047857)}.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;color:#fff}
 .risk-low{background:#047857}.risk-medium{background:#b45309}.risk-high{background:#b91c1c}
 .lane{font-size:11px;opacity:.65}
 .panel{background:#fff;border:1px solid rgb(226 232 240);border-radius:1rem;padding:.75rem;margin:.625rem 0}
@@ -73,7 +74,7 @@ table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.
 .btn-primary{background:var(--acc);border-color:var(--acc);color:#fff;min-height:44px}.btn-primary:hover{filter:brightness(1.12)}.btn-primary:active{transform:scale(.97)}
 .btn-ghost{background:transparent;border-color:var(--acc);color:var(--acc)}.btn-ghost:hover{background:var(--acc-soft)}
 input[type=checkbox]{accent-color:var(--acc);width:1.1rem;height:1.1rem}
-.navlink{display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .6rem;border-radius:.6rem;font-size:.8rem;font-weight:600;color:#64748b;background:transparent;border:none;cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;text-decoration:none;min-height:44px}
+.navlink{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .8rem;border-radius:.7rem;font-size:.875rem;font-weight:600;color:#64748b;background:transparent;border:none;cursor:pointer;transition:color .15s,background .15s;white-space:nowrap;text-decoration:none;min-height:44px}
 .dark .navlink{color:#94a3b8}.navlink:hover{color:inherit;background:rgba(100,116,139,.12)}
 .navlink.active{color:var(--acc-d,#047857);background:var(--acc-soft)}
 .dark .navlink.active{color:#34d399}
@@ -83,8 +84,12 @@ input[type=checkbox]{accent-color:var(--acc);width:1.1rem;height:1.1rem}
 @media (max-width: 639px){.logo-full{display:none}.logo-short{display:inline}}
 .navlabel{display:none}
 @media (min-width: 1024px){.navlabel{display:inline}}
+#topnav{height:3.5rem}
+@media (min-width: 768px){#topnav{height:4rem}}
 #topnav-center{display:none}
 @media (min-width: 768px){#topnav-center{display:flex}}
+.brandname{font-size:1.2rem;font-weight:800;letter-spacing:-.01em}
+@media (min-width: 768px){.brandname{font-size:1.35rem}}
 .safe-top{padding-top:env(safe-area-inset-top,0px)}.safe-bottom{padding-bottom:env(safe-area-inset-bottom,0px)}
 .touch-target{min-width:44px;min-height:44px}
 #bottomnav{display:none}
@@ -110,23 +115,21 @@ select.inp{max-width:100%}
 </style>
 </head><body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
 <header class="sticky top-0 z-50 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 safe-top">
-<div class="max-w-5xl mx-auto px-4 h-12 grid items-center gap-2" style="grid-template-columns:1fr auto 1fr" id="topnav">
-<a href="#" onclick="tab('search');return false" class="flex items-center gap-2 font-bold text-lg justify-self-start min-w-0" aria-label="deal-radar home">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" opacity=".35"/><circle cx="12" cy="12" r="4.5" opacity=".6"/><circle cx="12" cy="12" r="1.2" fill="#059669"/><path d="M12 12l5-5"/></svg>
+<div class="max-w-6xl mx-auto px-3 grid items-center gap-2" style="grid-template-columns:1fr auto 1fr" id="topnav">
+<a href="#" onclick="tab('search');return false" class="flex items-center gap-2 justify-self-start min-w-0 brandname" aria-label="deal-radar home">
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="drg" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop stop-color="#34d399"/><stop offset="1" stop-color="#a7f3d0"/></linearGradient></defs><circle cx="16" cy="16" r="12.5" stroke="url(#drg)" stroke-width="2" opacity=".5"/><circle cx="16" cy="16" r="7.5" stroke="url(#drg)" stroke-width="2" opacity=".8"/><path d="M16 16V3.5A12.5 12.5 0 0 1 28.5 16H16Z" fill="url(#drg)" opacity=".28"/><path d="M16 16L25 7" stroke="#34d399" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="16" r="2.1" fill="#34d399"/><circle cx="23.5" cy="19.5" r="1.4" fill="#6ee7b7"/></svg>
 <span class="logograd logo-full">deal-radar</span><span class="logograd logo-short">dr</span></a>
 <nav class="items-center gap-0.5 justify-self-center" id="topnav-center" aria-label="primary">
-<button class="navlink active" data-tab="search" onclick="tab('search')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg><span class="navlabel">Search</span></button>
-<button class="navlink" data-tab="favs" onclick="showFavs()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="navlabel">Saved</span><span class="cnt" id="favn">0</span></button>
-<button class="navlink" data-tab="watches" onclick="tab('watches')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 003.4 0"/></svg><span class="navlabel">Watches</span></button>
-<button class="navlink" data-tab="compare" onclick="cmp()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><span class="navlabel">Compare</span></button>
-<button class="navlink" data-tab="store" onclick="tab('store')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="navlabel">Store</span></button>
-<button class="navlink" data-tab="lab" onclick="tab('lab')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 006.2 21h11.6a2 2 0 001.7-2.5L14 9V3"/></svg><span class="navlabel">Lab</span></button>
-<button class="navlink" data-tab="history" onclick="tab('history')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="navlabel">Searches</span></button>
+<button class="navlink active" data-tab="search" onclick="tab('search')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg><span class="navlabel">Search</span></button>
+<button class="navlink" data-tab="favs" onclick="showFavs()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="navlabel">Saved</span><span class="cnt" id="favn">0</span></button>
+<button class="navlink" data-tab="watches" onclick="tab('watches')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 003.4 0"/></svg><span class="navlabel">Watches</span></button>
+<button class="navlink" data-tab="compare" onclick="cmp()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><span class="navlabel">Compare</span></button>
+<button class="navlink" data-tab="store" onclick="tab('store')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="navlabel">Store</span></button>
+<button class="navlink" data-tab="lab" onclick="tab('lab')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 006.2 21h11.6a2 2 0 001.7-2.5L14 9V3"/></svg><span class="navlabel">Lab</span></button>
+<button class="navlink" data-tab="history" onclick="tab('history')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="navlabel">Searches</span></button>
 </nav>
 <div class="flex items-center gap-1 justify-self-end shrink-0">
 <button class="navlink touch-target" onclick="theme()" title="Light / dark mode" aria-label="toggle theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z"/></svg></button>
-<button class="navlink touch-target" id="vgrid" onclick="setView('grid')" aria-label="grid view" title="Grid view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
-<button class="navlink touch-target" id="vlist" onclick="setView('list')" aria-label="list view" title="List view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button>
 <a href="/admin" class="navlink touch-target text-sm">admin</a>
 </div>
 </div></header>
@@ -144,7 +147,7 @@ select.inp{max-width:100%}
 <div class="flex gap-2 flex-wrap items-center mt-2 nlrow">
 <input id="nl" class="inp" style="flex:3;min-width:200px" aria-label="natural language search" placeholder="Describe what you want…"/>
 <button id="askbtn" class="btn btn-primary nlgo" onclick="runNL()">Ask</button></div></div>
-<div class="panel"><div class="eyebrow">Search</div>
+<div style="margin:.625rem 0"><div class="eyebrow">Search</div>
 <div class="grid gap-2 mt-2 kwgrid" style="grid-template-columns:1fr auto">
 <input id="q" class="inp" aria-label="keyword search" placeholder="Search…"/>
 <button id="searchbtn" class="btn btn-primary" onclick="run()">Search</button></div>
@@ -185,11 +188,12 @@ select.inp{max-width:100%}
 <div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar" style="display:none">
 <div class="seg" role="group" aria-label="sort order" id="sortseg"></div>
 <div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
+<div class="seg" role="group" aria-label="view"><button id="vgrid" onclick="setView('grid')" aria-label="grid view" title="Grid view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button id="vlist" onclick="setView('list')" aria-label="list view" title="List view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button></div>
 <span id="lanes" class="pills"></span></div>
 </div>
 <div id="status"></div>
 <div class="panel" id="applied" style="display:none"></div>
-<div class="panel" id="refinebar" style="display:none"><b>Refine loaded results</b> <small>(no re-search)</small>
+<div class="panel" id="refinebar" style="display:none"><div class="eyebrow">Refine loaded results · no re-search</div>
 <div class="flex gap-2 flex-wrap items-center mt-2">
 <input id="rMin" class="inp" style="max-width:100px" type="number" placeholder="min €" title="Refine: minimum price"/>
 <input id="rMax" class="inp" style="max-width:100px" type="number" placeholder="max €" title="Refine: maximum price"/>
@@ -205,12 +209,12 @@ select.inp{max-width:100%}
 <div id="toasts"></div>
 <script>
 
-let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
+let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
 const $=id=>document.getElementById(id);
-function setView(v){VIEW=v;localStorage.setItem('drv',v);render()}
+function setView(v){VIEW=v;localStorage.setItem('drv',v);const g=$('vgrid'),l=$('vlist');if(g)g.classList.toggle('active',v==='grid');if(l)l.classList.toggle('active',v==='list');render()}
 function theme(){const r=document.documentElement;const t=r.classList.contains('dark')?'':'dark';r.classList.toggle('dark',t==='dark');localStorage.setItem('drt',t||'light')}
 (function(){const t=localStorage.getItem('drt');document.documentElement.classList.toggle('dark',t!=='light')})();
-function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('toasts').prepend(d);setTimeout(()=>d.remove(),9000)}
+function toast(t){const box=$('toasts');while(box.children.length>2)box.lastChild.remove();const d=document.createElement('div');d.className='toast';d.textContent=t;box.prepend(d);setTimeout(()=>d.remove(),9000)}
 function benchOf(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark')||(s.enrichments||[]).find(e=>e.field==='gpu_benchmark');return b?b.value:0}
 function perfEur(s){const b=benchOf(s);return (b&&s.listing.price)?b/s.listing.price:0}
 function thumb(l,idx){const imgs=l.images||[];if(!imgs.length)return '';const i=idx||0;
@@ -218,7 +222,7 @@ return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${imgs[i%i
 function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listing.images||[]).length)return;const n=s.listing.images.length;let i=((+btn.parentElement.dataset.i||0)+d+n)%n;btn.parentElement.dataset.i=i;btn.parentElement.querySelector('img').src=s.listing.images[i]}
 let CMP=new Set();
 function cmpTgl(id){CMP.has(id)?CMP.delete(id):CMP.add(id);if(CMP.size>2)CMP.delete([...CMP][0]);render()}
-function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+l.title+'</b><br/>'+(l.price??'?')+' '+l.currency+'<br/>'+l.source+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+s.final_score+'<br/>cpu '+(en.cpu||'—')+'<br/>bench '+(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('results').innerHTML='<div class="panel"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
+function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+l.title+'</b><br/>'+(l.price??'?')+' '+l.currency+'<br/>'+l.source+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+s.final_score+'<br/>cpu '+(en.cpu||'—')+'<br/>bench '+(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('results').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
 function card(s,idx){const l=s.listing;const best=(idx===0&&(SORT==='ppe'||SORT==='gpe'))?'<span class="best-badge">best value</span><br/>':'';const fav=isFav(l.id)?'★':'☆';const ck=CMP.has(l.id)?'checked':'';
 const inner=`${thumb(l)}<div class="body">${best}<h4>${l.title||'(no title)'}</h4>
 <div><span class="price">${l.price??'?'} ${l.currency||''}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
@@ -266,7 +270,7 @@ if(bl.some(w=>t.includes(w)))return false;if(rq.length&&!rq.every(w=>t.includes(
 function render(){const active=($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value||$('hideRisk').checked||HIDEKIND.want||HIDEKIND.parts||HIDEKIND.acc)?1:0;
 const fd=$('fdot');if(fd)fd.style.display=active?'inline-block':'none';
 const arr=refined(filtered());
-$('refinebar').style.display=LAST.length?'':'none';const tb=$('toolbar');if(tb)tb.style.display=LAST.length?'flex':'none';const pp=PERPAGE;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
+$('refinebar').style.display=SEARCHED?'':'none';const tb=$('toolbar');if(tb)tb.style.display=SEARCHED?'flex':'none';const pp=PERPAGE;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
 drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
 $('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
@@ -310,7 +314,7 @@ if(p.hard&&p.hard.min_price&&!$('min').value)$('min').value=p.hard.min_price;
 }
 async function poll(sid,onDone){for(;;){const r=await(await fetch('/searches/'+sid)).json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
-onDone(r);return}}
+SEARCHED=true;onDone(r);return}}
 async function run(){const sel=[...SRCS];
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
@@ -329,19 +333,22 @@ try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Ty
 pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
-async function showFavs(){markActive('favs');status('★ favorites');try{const f=await(await fetch('/favorites')).json();
-$('results').innerHTML=f.map(x=>`<div class="card" style="padding:10px"><b>${x.title||x.listing_id}</b><br/><span class="price">${x.price??'?'}</span> · <a href="${x.url||'#'}" target="_blank">open</a> <button class="btn btn-ghost" onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${h.kind}: ${h.old} → ${h.new}</div>`).join('')||'no changes tracked yet'}</div></div>`).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();status('');try{const f=await(await fetch('/favorites')).json();
+$('results').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>`<div class="card" style="padding:10px"><b>${x.title||x.listing_id}</b><br/><span class="price">${x.price??'?'}</span> · <a href="${x.url||'#'}" target="_blank">open</a> <button class="btn btn-ghost" onclick="unfav('${x.listing_id}')">✕</button>${x.note?`<br/><small>note: ${x.note}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${h.kind}: ${h.old} → ${h.new}</div>`).join('')||'no changes tracked yet'}</div></div>`).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function unfavWrap(){}
+const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
+function hideSearchChrome(){for(const id of ['toolbar','refinebar','pagertop','pager']){const e=$(id);if(e)e.style.display='none'}}
 function markActive(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t))}
-function tab(t){markActive(t);if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
-async function showLab(){let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
-$('results').innerHTML=`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" class="btn btn-primary" onclick="mkLab()">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
+function hideChrome(){['toolbar','refinebar','pagertop','pager'].forEach(id=>{const e=$(id);if(e)e.style.display='none'})}
+function tab(t){markActive(t);if(t!=='search')hideChrome();if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
+async function showLab(){hideSearchChrome();hideChrome();let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
+$('results').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" class="btn btn-primary" onclick="mkLab()">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 async function mkLab(){$('labbtn').disabled=true;$('labout').innerHTML='<small>AI is writing + testing code… (1-3 min)</small>';
 try{const r=await(await fetch('/lab/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:$('labkind').value,instruction:$('labq').value})})).json();
 $('labout').innerHTML=r.ok?`<div>✅ <b>${r.id}</b> built, checked, hot-loaded.<br/><small>${JSON.stringify(r.checks).slice(0,300)}</small></div>`:`<div class="err">failed: ${r.error}<br/><small>${(r.code||'').slice(0,500)}</small></div>`}catch(e){$('labout').innerHTML=`<div class="err">${e}</div>`}
 $('labbtn').disabled=false}
-async function showWatches(){status('Watches — re-polled automatically, survive restarts');$('results').innerHTML='<div class="empty">loading watches…</div>';
-$('results').innerHTML=`<div class="panel"><div class="row"><input id="wq" class="inp" placeholder="watch query" style="flex:2"/><input id="wmax" class="inp" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><input id="nDrop" class="inp" placeholder="drop % ≥" type="number" style="max-width:90px" title="only notify drops of at least this %"/><input id="nRisk" class="inp" placeholder="risk ≤ %" type="number" style="max-width:90px" title="only notify new matches below this risk %"/><button class="btn btn-primary" onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
+async function showWatches(){hideSearchChrome();hideChrome();status('');$('results').innerHTML='<div class="empty">loading watches…</div>';
+$('results').innerHTML=ptitle('Watches','auto re-polled · survive restarts · notify on new hits & drops')+`<div class="panel"><div class="row"><input id="wq" class="inp" placeholder="watch query" style="flex:2"/><input id="wmax" class="inp" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><input id="nDrop" class="inp" placeholder="drop % ≥" type="number" style="max-width:90px" title="only notify drops of at least this %"/><input id="nRisk" class="inp" placeholder="risk ≤ %" type="number" style="max-width:90px" title="only notify new matches below this risk %"/><button class="btn btn-primary" onclick="mkWatch()">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...SRCS];
@@ -352,22 +359,22 @@ if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
-async function showStore(){status('Plugin marketplace — drivers & enrichers, one-click install');$('results').innerHTML='<div class="empty">loading store…</div>';
+async function showStore(){hideSearchChrome();hideChrome();status('');$('results').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await(await fetch('/marketplace')).json();
 const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button class="btn btn-primary" onclick="installX('${kind}','${x.id}')">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
-$('results').innerHTML='<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+$('results').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
-async function showHistory(){status('Searches — jump back in anytime, delete or re-run');$('results').innerHTML='<div class="empty">loading…</div>';
+async function showHistory(){hideSearchChrome();hideChrome();status('');$('results').innerHTML='<div class="empty">loading…</div>';
 try{const r=await(await fetch('/searches')).json();
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
 const thumbs=(s.thumbs||[]).map(u=>'<img loading="lazy" src="'+u+'" onerror="this.remove()" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>').join('');
 return '<div class="card" style="padding:10px;cursor:default"><b>'+(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+'<br/><small>'+when+' · '+(s.sources||[]).join('+')+' · '+s.results+' results</small><div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" onclick="openSearch(\''+s.id+'\')">open</button><button class="btn btn-ghost" onclick="redoSearch(\''+s.id+'\')">re-run</button><button class="btn btn-ghost" onclick="delSearch(\''+s.id+'\')">delete</button></div></div>'};
-$('results').innerHTML='<div class="rgrid">'+r.searches.map(tile).join('')+'</div>'||'<div class="empty">No searches yet.</div>';$('pager').style.display='none'}catch(e){status('<div class="err">'+e+'</div>')}}
+$('results').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+'<div class="rgrid">'+r.searches.map(tile).join('')+'</div>'||'<div class="empty">No searches yet.</div>';$('pager').style.display='none'}catch(e){status('<div class="err">'+e+'</div>')}}
 async function openSearch(id){const r=await(await fetch('/searches/'+id)).json();
 if(r.status==='running'){toast('still running…');return}LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
 async function redoSearch(id){const r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json();toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
 async function delSearch(id){await fetch('/searches/'+id,{method:'DELETE'});showHistory()}
-async function cmp(){markActive('compare');if(CMP.size>=2){return cmpSel()}if(!SID)return toast('run a search first');status('Comparing…');
+async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){return cmpSel()}if(!SID)return toast('run a search first');status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
 $('results').innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
 let CAR=[];

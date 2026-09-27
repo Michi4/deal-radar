@@ -1,22 +1,53 @@
 <!doctype html><html lang="en" class="dark"><head><meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="color-scheme" content="dark light"/><title>deal-radar admin</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="color-scheme" content="dark light"/>
+<meta name="theme-color" content="#059669"/><title>deal-radar admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.5' fill='none' stroke='%2334d399' stroke-width='2.5'/%3E%3Cpath d='M16 16V3.5A12.5 12.5 0 0 1 28.5 16H16Z' fill='%2334d399' fill-opacity='.35'/%3E%3Cpath d='M16 16L25 7' stroke='%2334d399' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%2334d399'/%3E%3C/svg%3E"/>
+<link rel="apple-touch-icon" href="/static/favicon.svg"/>
 <link rel="stylesheet" href="/static/tailwind.css"/>
-<style>.card{background:#fff;border:1px solid rgb(226 232 240);border-radius:.75rem;padding:.75rem;margin:.625rem 0}
+<style>
+:root{--acc:#059669;--acc-d:#047857;--acc-soft:rgba(5,150,105,.12)}
+.dark{--acc:#34d399;--acc-d:#6ee7b7;--acc-soft:rgba(52,211,153,.12)}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.card{background:#fff;border:1px solid rgb(226 232 240);border-radius:.875rem;padding:.875rem;margin:.75rem 0}
 .dark .card{background:#0f172a;border-color:#1e293b}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid rgb(203 213 225);padding:6px 8px;text-align:left;font-size:13px}
-.dark td,.dark th{border-color:#1e293b}small{opacity:.7}</style>
+.card h3{margin:0 0 .5rem;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:34rem}
+td,th{border:1px solid rgb(226 232 240);padding:6px 10px;text-align:left;font-size:13px}
+.dark td,.dark th{border-color:#1e293b}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}
+.logograd{background:linear-gradient(90deg,#34d399,#6ee7b7);-webkit-background-clip:text;background-clip:text;color:transparent}
+.navlink{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .8rem;border-radius:.7rem;font-size:.875rem;font-weight:600;color:#64748b;background:transparent;border:none;cursor:pointer;text-decoration:none;min-height:44px}
+.dark .navlink{color:#94a3b8}.navlink:hover{background:rgba(100,116,139,.12)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:6px}
+.dot.bad{background:#ef4444}
+.ev{padding:.3rem 0;border-bottom:1px dashed rgb(226 232 240);font-size:13px}
+.dark .ev{border-color:#1e293b}
+</style>
 </head><body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
-<main class="max-w-5xl mx-auto p-4"><div class="flex items-center gap-3"><h2 class="text-xl font-bold">deal-radar admin</h2>
-<button class="text-sm underline" onclick="(function(){const r=document.documentElement;const t=r.classList.contains('dark')?'':'dark';r.classList.toggle('dark',t==='dark');localStorage.setItem('drt',t||'light')})()">◐ theme</button></div>
-<p class="text-sm"><a href="/" class="text-blue-500">← search</a> · auto-refreshes every 15s</p>
-<script>document.documentElement.classList.toggle('dark',(localStorage.getItem('drt')||'dark')!=='light')</script>
-<div class="card"><h3>Drivers</h3><div id="drivers"></div></div>
-<div class="card"><h3>Pipeline metrics</h3><div id="metrics"></div></div>
-<div class="card"><h3>Searches (<span id="nsearch">0</span>)</h3><div id="searches"></div></div>
+<header class="sticky top-0 z-50 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85">
+<div class="max-w-6xl mx-auto px-3 flex items-center gap-2" style="height:3.5rem">
+<a href="/" class="flex items-center gap-2 min-w-0" style="font-size:1.2rem;font-weight:800" aria-label="back to search">
+<svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="12.5" stroke="#34d399" stroke-width="2.5" opacity=".55"/><path d="M16 16V3.5A12.5 12.5 0 0 1 28.5 16H16Z" fill="#34d399" fill-opacity=".35"/><path d="M16 16L25 7" stroke="#34d399" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="16" r="2.4" fill="#34d399"/></svg>
+<span class="logograd">deal-radar</span><span style="opacity:.5;font-weight:600;font-size:.9rem">admin</span></a>
+<span style="flex:1"></span>
+<span class="text-sm" style="opacity:.7"><span class="dot" id="livedot"></span><span id="livetxt">connecting…</span></span>
+<button class="navlink" id="themebtn" aria-label="toggle theme" style="font-size:1rem">◐</button>
+</div></header>
+<main class="max-w-6xl mx-auto px-3 py-3">
+<p class="text-sm" style="opacity:.65">auto-refreshes every 15s · <span id="updated"></span></p>
+<div class="card"><h3>Drivers</h3><div class="tscroll" id="drivers"></div></div>
+<div class="card"><h3>Pipeline metrics</h3><div class="tscroll" id="metrics"></div></div>
+<div class="card"><h3>Searches (<span id="nsearch">0</span>)</h3><div class="tscroll" id="searches"></div></div>
 <div class="card"><h3>Live events (<span id="nev">0</span>)</h3><div id="events"></div></div>
 </main><script>
+document.documentElement.classList.toggle('dark',(localStorage.getItem('drt')||'dark')!=='light');
+document.getElementById('themebtn').onclick=()=>{const r=document.documentElement;const dark=!r.classList.contains('dark');r.classList.toggle('dark',dark);localStorage.setItem('drt',dark?'dark':'light')};
 async function tick(){try{
 const m=await(await fetch('/metrics.json')).json();
+document.getElementById('livedot').className='dot';
+document.getElementById('livetxt').textContent='live';
+document.getElementById('updated').textContent='updated '+new Date().toLocaleTimeString();
 document.getElementById('drivers').innerHTML='<table><tr><th>driver</th><th>ok</th><th>degraded</th><th>failures</th><th>last error</th></tr>'+
 Object.entries(m.drivers).map(([k,v])=>`<tr><td>${k}</td><td>${v.ok}</td><td>${v.degraded}</td><td>${v.consecutive_failures}</td><td>${(v.last_error||'').slice(0,120)}</td></tr>`).join('')+'</table>';
 const m2=m.metrics;
@@ -26,8 +57,8 @@ Object.entries(m2.latency_avg_ms).map(([k,v])=>`<tr><td>latency ${k}</td><td>${v
 document.getElementById('searches').innerHTML='<table><tr><th>id</th><th>keywords</th><th>watch</th><th>sources</th></tr>'+
 (m.watchlist||[]).map(s=>`<tr><td>${s.id}</td><td>${s.keywords}</td><td>${s.watch}</td><td>${(s.sources||[]).join(',')}</td></tr>`).join('')+'</table>';
 document.getElementById('nsearch').textContent=(m.watchlist||[]).length;
-document.getElementById('events').innerHTML=(m.events_tail||[]).slice().reverse().map(e=>`<div>${e.kind||'?'}: ${(e.title||e.listing_id||'').slice(0,100)}</div>`).join('')||'none yet';
+document.getElementById('events').innerHTML=(m.events_tail||[]).slice().reverse().map(e=>`<div class="ev">${e.kind||'?'}: ${(e.title||e.listing_id||'').slice(0,100)}</div>`).join('')||'none yet';
 document.getElementById('nev').textContent=m.events||0;
-}catch(e){}}
+}catch(e){document.getElementById('livedot').className='dot bad';document.getElementById('livetxt').textContent='unreachable';}}
 setInterval(tick,15000);tick();
 </script></body></html>
