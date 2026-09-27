@@ -88,6 +88,14 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Tile actions wrapped in try/catch (no more uncaught promise deaths).
 - verify GREEN, 88 passed, mega 11/11, xss 4/4. Deployed + healthy.
 
+## Verified 2026-09-27 (audit pass 3)
+- Full re-audit (subagents rate-limited, self-run per rule 6): recon + frontend + backend +
+  security + data/infra + journeys + suite. Report + scorecard in AUDIT_REPORT.md.
+- New fixes: inline-onerror purge (CSP), snapshot-open, coop stop/pause in hot loops,
+  bounded sessions/lab-jobs, two-tap uninstall, tab-first-click. pip-audit clean.
+- Verdict: CONDITIONAL GO (conditions + named blockers in report).
+- verify GREEN, 89 passed, 86%, mega 11/11, xss 4/4. Deployed + healthy.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
