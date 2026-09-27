@@ -59,6 +59,14 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - App login OFF on prod (Authelia covers); env toggle documented.
 - verify GREEN, coverage 86%, mega 11/11, xss 4/4. Deployed + healthy.
 
+## Verified 2026-09-27 (parallel/stacking batch)
+- Parallel keyword + NL searches (buttons no longer block; ACTIVEJOBS registry; RUNNING
+  refcounted). Running searches adoptable from Searches tiles (open follows live partials).
+- Job progress detail surfaced (per-sub-search keywords in status + stop button inline).
+- Navbar stacking fixed for real: tailwind z-50 was never compiled → explicit
+  header:60/drawer:70/toasts:60/bottomnav:50. Screenshot-proven while scrolling.
+- Empty-state backtick artifact removed.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
