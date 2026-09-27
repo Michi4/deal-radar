@@ -31,6 +31,22 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Job persistence: jobs table, progress updates, stale→interrupted on boot, adopt-on-poll.
 - Login live on prod (password handed over). Forms submit on Enter everywhere. Tile gaps fixed.
 
+## Verified 2026-09-27 (night): unlimited + filters + tracking + categories
+- Unlimited default (null limit, driver caps raised, flagged to 5000). Prod proof earlier:
+  2000 results + 201 flagged in one job.
+- Tab-first-click bug fixed (Saved/Compare bypassed tab()).
+- Filters: per-search restore on open, localStorage latest, reset-to-defaults button,
+  AI applied-filters always overwrite advanced + mirror to refine.
+- Risk honesty: 100% impossible; fallback now suggests accessory exclusions for
+  model-specific queries (visible chips, removable).
+- Watches: 30min default, duration floor, desc/image triggers, watch-from-history-tile.
+- Tracking: favorites auto re-fetch + title versioning + drawer time-travel snapshots.
+- Categories: kleinanzeigen verified (4), AI detection in fallback, manual override,
+  multi-category fan-out (cap 4). willhaben/vinted need deeper research (logged).
+- Store uninstall (community only, protected builtins). Pager scrolls to listings.
+  Toolbar always visible (sort before search). No-inline-handler count still 0.
+- verify GREEN, coverage 86%, mega 11/11, xss 4/4. Deployed + prod healthy.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,

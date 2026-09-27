@@ -20,3 +20,17 @@
 
 - Proxy live test used 1 request via the homelab's own webshare pool (pricematters env, never committed); justified as de-minimis infra validation.
 - Plugin/driver registry index stays PUBLIC: it lists scraper drivers, which lowers the bar for scraping at scale. Accepted because (a) every driver carries its ToS/personal-use notice, (b) drivers are polite by construction (≤1 req/s, cached), (c) the techniques are already public knowledge. Revisit if a source complains.
+
+## 2026-09-27 (volume/pages/tracking batch)
+- Unlimited = default (limit null). Caps only via UI select. enrich_top_n (150) bounds expensive
+  work; flagged cap 5000. Perf stance: fetch is cheap, depth is bounded.
+- Categories v1: only kleinanzeigen slugs verified live (notebooks/handys/autos/moebel-wohnen).
+  willhaben /computer slug serves generic mix (subpaths 404) — deferred, needs real research.
+  vinted 2050 = clothing, unmapped. Others: keyword fallback, documented in UI.
+- Filter state: per-search intent restore on open + localStorage latest + reset-to-defaults.
+  AI filters always overwrite advanced (visible application).
+- Watches: 30min default, floor = max(60s, last search duration) with toast; new triggers
+  desc/image/title/seller via orchestrator events; watch-from-tile endpoint.
+- Product tracking Snoty-style: favorites re-fetched via fetch_detail (ebay/kleinanzeigen/
+  willhaben only), title now versioned, snapshot time-travel in drawer. Others: no detail API.
+- Lab/code-exec + SSRF + metrics-vs-SQLite still queued (unchanged).
