@@ -818,3 +818,64 @@ def test_store_jobs_lifecycle():
     assert st.job_interrupt_stale() == 1
     assert st.list_searches()[0]["job"]["status"] == "interrupted"
     st.close()
+
+
+LAB_ENRICHER_CODE = '''
+from deal_radar.enrich import Enricher, register
+from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence
+class WarrantyEnricher(Enricher):
+    id = "warranty"
+    version = "0.1.0"
+    def supports(self, listing):
+        return True
+    def enrich(self, listing, ctx):
+        t = (listing.title or "") + " " + (listing.description or "")
+        if "garantie" in t.lower():
+            return [EnrichmentFact(field="warranty", value="mentioned", confidence=0.8,
+                                   status=FactStatus.EXTERNAL,
+                                   sources=[Evidence(type="external", detail="test")])]
+        return []
+register(WarrantyEnricher())
+'''.strip()
+
+
+def test_lab_generate_e2e_mocked_model():
+    """Full Lab loop with a stubbed model: prompt -> code -> gate -> save -> hot-load ->
+    contract fire-check, then a follow-up iteration on top of the previous code."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import AsyncMock, patch
+
+    from deal_radar import ailab
+    tmp = Path(tempfile.mkdtemp())
+    stages = []
+    with patch.object(ailab, "LAB_DIR", tmp), \
+         patch("deal_radar.decision.cloud_code", new=AsyncMock(return_value=LAB_ENRICHER_CODE)):
+        out = asyncio.run(ailab.generate("enricher", "flag listings mentioning warranty",
+                                         progress=lambda s, m: stages.append(s)))
+        assert out["ok"], out
+        assert (tmp / (out["id"] + ".py")).exists()
+        assert "waiting_model" in stages and "contract_check" in stages
+        # follow-up iteration builds on the previous code
+        seen = {}
+
+        async def fake_code(sys, task):
+            seen["task"] = task
+            assert "warranty test" in task or "flag listings" in task
+            assert "WarrantyEnricher" in task  # previous code included
+            return LAB_ENRICHER_CODE.replace('"warranty"', '"warranty2"').replace(
+                "id = \"warranty\"", "id = \"warranty2\"")
+
+        with patch("deal_radar.decision.cloud_code", new=fake_code):
+            out2 = asyncio.run(ailab.generate("enricher", "warranty test",
+                                              followup="also catch Gewehrleistung typo",
+                                              prior_code=(tmp / (out["id"] + ".py")).read_text(),
+                                              prior_error=""))
+            assert out2["ok"], out2
+            assert out2["id"] != out["id"]
+        # gated junk never executes
+        bad = asyncio.run(ailab.generate("x", "y", prior_code="", prior_error=""))
+        assert bad["ok"] is False  # no model output path needs no model; validated below
+    assert ailab.validate_python("import os\nx=1") is not None
+    assert ailab.validate_python("import httpx\nx=1") is None

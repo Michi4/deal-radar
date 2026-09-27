@@ -530,8 +530,11 @@ def _merge_outs(outs: list[dict], limit: int | None) -> dict:
     events: list[dict] = []
     errors: dict = {}
     filt = 0
+    fetched: dict[str, int] = {}
     for o in outs:
         filt += o.get("filtered_out", 0)
+        for src, n in (o.get("driver_fetched") or {}).items():
+            fetched[src] = fetched.get(src, 0) + n
         events.extend(o.get("events", []))
         errors.update(o.get("driver_errors", {}))
         for r in o.get("results", []):
@@ -549,6 +552,7 @@ def _merge_outs(outs: list[dict], limit: int | None) -> dict:
         merged = merged[:limit]
     _mp = sorted(r["listing"]["price"] for r in merged if r["listing"].get("price") is not None)
     return {"results": merged, "filtered": flagged, "events": events, "driver_errors": errors,
+            "driver_fetched": fetched,
             "filtered_out": filt, "median": _st.median(_mp) if len(_mp) >= 3 else None}
 
 
@@ -841,6 +845,27 @@ class LabRequest(BaseModel):
     publish: bool = False
 
 
+LAB_JOBS: dict[str, dict] = {}
+
+
+async def _lab_run(jid: str, kind: str, instruction: str, followup: str,
+                   prior_code: str, prior_error: str, publish: bool) -> None:
+    from deal_radar import ailab
+    job = LAB_JOBS[jid]
+    def prog(stage: str, msg: str):
+        job["stage"] = stage
+        job["log"].append({"ts": time.time(), "stage": stage, "msg": msg})
+    try:
+        out = await ailab.generate(kind, instruction, followup, prior_code, prior_error, prog)
+        job["result"] = out
+        if out.get("ok") and publish:
+            out["pr"] = await lab_publish(out)
+        job["status"] = "done" if out.get("ok") else "failed"
+    except Exception as e:
+        job["status"] = "error"
+        job["result"] = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+
 class FactOverride(BaseModel):
     field: str = Field(default="cpu", pattern="^[a-z][a-z0-9_]{0,29}$")
     value: str = Field(default="", max_length=200)
@@ -957,15 +982,52 @@ def notifications_status():
     return {"channels": chans, "extra": extra}
 
 
+class LabFollow(BaseModel):
+    job_id: str = ""
+    followup: str = Field(default="", max_length=4000)
+    publish: bool = False
+
+
+def _lab_start(kind: str, instruction: str, followup: str = "", prior_code: str = "",
+               prior_error: str = "", publish: bool = False) -> dict:
+    jid = f"lab_{int(time.time() * 1000)}"
+    LAB_JOBS[jid] = {"status": "running", "stage": "queued", "log": [],
+                     "kind": kind, "instruction": instruction}
+    asyncio.create_task(_lab_run(jid, kind, instruction, followup, prior_code,
+                                 prior_error, publish))
+    return {"id": jid, "status": "running"}
+
+
 @app.post("/lab/build")
 async def lab_build(req: LabRequest):
     if not os.getenv("LAB_ENABLED"):
         return JSONResponse({"ok": False, "error": "LAB_ENABLED=0 (code-writing disabled)"}, status_code=400)
-    from deal_radar import ailab
-    out = await ailab.generate(req.kind, req.instruction)
-    if out.get("ok") and req.publish:
-        out["pr"] = await lab_publish(out)
-    return out
+    return _lab_start(req.kind, req.instruction, publish=req.publish)
+
+
+@app.get("/lab/build/{jid}")
+def lab_job(jid: str):
+    job = LAB_JOBS.get(jid)
+    if not job:
+        return JSONResponse({"error": "unknown lab job"}, status_code=404)
+    return job
+
+
+@app.post("/lab/follow")
+async def lab_follow(req: LabFollow):
+    """User steps in: new instruction applied on top of the previous attempt's code."""
+    if not os.getenv("LAB_ENABLED"):
+        return JSONResponse({"ok": False, "error": "LAB_ENABLED=0 (code-writing disabled)"}, status_code=400)
+    prev = LAB_JOBS.get(req.job_id, {})
+    res = prev.get("result", {}) if isinstance(prev, dict) else {}
+    code = res.get("code", "")
+    if not code and res.get("path"):
+        try:
+            code = (await asyncio.to_thread(Path(res["path"]).read_text))[:6000]
+        except Exception:
+            code = ""
+    return _lab_start(prev.get("kind", "enricher"), prev.get("instruction", ""),
+                      req.followup, code, res.get("error", ""), req.publish)
 
 
 async def lab_publish(build: dict) -> dict:

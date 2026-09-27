@@ -592,3 +592,50 @@ def test_tracking_settings_roundtrip():
     assert c.get("/settings/tracking").json()["fav_poll_min"] == 45
     assert c.put("/settings/tracking", json={"fav_poll_min": 1}).status_code == 422
     assert c.put("/settings/tracking", json={"fav_poll_min": 30}).json()["ok"]
+
+
+def test_lab_job_flow_staged():
+    import sys
+    import tempfile
+    import time
+    sys.path.insert(0, "apps")
+    import os
+    os.environ["LAB_ENABLED"] = "1"
+    import importlib
+    from pathlib import Path
+    from unittest.mock import AsyncMock, patch
+
+    import api.main as m
+    try:
+        importlib.reload(m)
+        from deal_radar import ailab
+        tmp = Path(tempfile.mkdtemp())
+        from fastapi.testclient import TestClient
+        c = TestClient(m.app)
+        with patch.object(ailab, "LAB_DIR", tmp), \
+                patch("deal_radar.decision.cloud_code",
+                      new=AsyncMock(return_value="not python {{{\nimport os\n")):
+            r = c.post("/lab/build", json={"kind": "enricher", "instruction": "x"}).json()
+            jid = r["id"]
+            for _ in range(50):
+                job = c.get(f"/lab/build/{jid}").json()
+                if job["status"] in ("done", "failed", "error"):
+                    break
+                time.sleep(0.2)
+            assert job["status"] == "failed", job
+            assert any(l["stage"] == "validating" for l in job["log"])
+            assert "syntax" in job["result"]["error"] or "import" in job["result"]["error"]
+            # follow-up with fixed code succeeds
+            from tests.test_units3 import LAB_ENRICHER_CODE
+            with patch("deal_radar.decision.cloud_code",
+                       new=AsyncMock(return_value=LAB_ENRICHER_CODE)):
+                f = c.post("/lab/follow", json={"job_id": jid, "followup": "fix it"}).json()
+                for _ in range(50):
+                    job2 = c.get(f"/lab/build/{f['id']}").json()
+                    if job2["status"] in ("done", "failed", "error"):
+                        break
+                    time.sleep(0.2)
+                assert job2["status"] == "done", job2
+    finally:
+        del os.environ["LAB_ENABLED"]
+        importlib.reload(m)

@@ -13,6 +13,7 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 # Lab outputs live on the persisted volume (/data) so they survive rebuilds.
@@ -57,33 +58,69 @@ def _slug(text: str) -> str:
     return s[:32] or f"custom-{int(time.time()) % 10000}"
 
 
-async def generate(kind: str, instruction: str) -> dict:
+REFINE_TMPL = """You previously wrote this code for the task below. The user has follow-up
+instructions and/or the last version failed its checks with the error shown.
+Return the FULL corrected Python file (raw code only, no markdown fences).
+
+ORIGINAL TASK: {instruction}
+PREVIOUS CODE:
+```
+{code}
+```
+LAST RESULT: {error}
+FOLLOW-UP: {followup}"""
+
+STAGES = ["prompting", "waiting_model", "validating", "saving", "contract_check", "done"]
+
+
+async def generate(kind: str, instruction: str, followup: str = "",
+                   prior_code: str = "", prior_error: str = "",
+                   progress=None) -> dict:
+    """Staged build with user follow-ups. progress(stage, msg) called throughout."""
     from deal_radar.decision import cloud_code
     if kind not in ("enricher", "driver"):
         return {"ok": False, "error": "kind must be enricher|driver"}
     prompt = ENRICHER_PROMPT if kind == "enricher" else DRIVER_PROMPT
-    code = await cloud_code("You output raw Python code only. No markdown, no explanation.",
-                            prompt.format(instruction=instruction))
+    if prior_code or followup:
+        task = REFINE_TMPL.format(instruction=instruction, code=prior_code[:6000],
+                                  error=prior_error[:1000] or "n/a",
+                                  followup=followup or instruction)
+    else:
+        task = prompt.format(instruction=instruction)
+    if progress:
+        progress("prompting", f"task packaged ({len(task)} chars)")
+        progress("waiting_model", "asking model for code…")
+    code = await cloud_code("You output raw Python code only. No markdown, no explanation.", task)
     if not code:
         return {"ok": False, "error": "no model available (local + cloud unreachable)"}
     import re as _re
     m = _re.search(r"```(?:python)?\s*(.*?)```", code, _re.DOTALL)
     code = (m.group(1) if m else code).strip()
+    if progress:
+        progress("validating", f"syntax + import gate on {len(code)} chars…")
     err = validate_python(code)
     if err:
         return {"ok": False, "error": err, "code": code[:2000]}
-    eid = _slug(instruction[:40])
+    eid = _slug((followup or instruction)[:40])
+    if progress:
+        progress("saving", f"saving {kind} {eid}…")
     path = save_enricher(code, eid) if kind == "enricher" else save_driver(code, eid)
+    if progress:
+        progress("contract_check", "hot-loading + firing on samples…")
     checks: dict = {}
     if kind == "enricher":
         checks = hotload_enricher(path)
     else:
         from deal_radar.registry import check as _check
         checks = _check(path.parent.name)
-    result = {"ok": bool(checks.get("ok")), "kind": kind, "id": path.parent.name if kind == "driver" else path.stem,
-              "path": str(path), "checks": checks}
+    result: dict[str, Any] = {"ok": bool(checks.get("ok")), "kind": kind,
+                                 "id": path.parent.name if kind == "driver" else path.stem,
+                                 "path": str(path), "checks": checks}
     if not result["ok"]:
+        result["error"] = checks.get("error", "contract check failed")
         result["code"] = code[:3000]
+    if progress:
+        progress("done", "ok — live" if result["ok"] else f"failed: {result.get('error', '')[:120]}")
     return result
 
 

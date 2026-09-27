@@ -68,6 +68,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         return source, res, err
 
     results = await asyncio.gather(*(one(src) for src in sources))
+    driver_fetched = {src: len(ls) for src, ls, _ in results}
     all_listings = [l for _, ls, _ in results for l in ls]
     driver_errors = {src: e for src, _, e in results if e}
     metrics.inc("listings_fetched", len(all_listings))
@@ -350,15 +351,23 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             for c in ch:
                 ev = {"listing_id": l.id, "url": l.url, "title": l.title, **c}
                 events.append(ev)
-                if notifier and c["kind"] == "price" and "price_drop" in (intent.get("notify_on", ["new_top", "price_drop"])):
+                if notifier and c["kind"] == "price":
                     from .notify_rules import rules_ok as _rules_ok
                     try:
-                        _ok = _rules_ok(intent.get("notify_rules", []), "price_drop", ev=ev)
-                    except Exception:
-                        _ok = True
-                    if _ok:
-                        await notifier.send(f"Price change: {l.title[:60]}",
-                                            f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
+                        _old, _new = float(c.get("old")), float(c.get("new"))
+                        _pct = (_new - _old) / _old * 100 if _old else 0
+                    except (ValueError, TypeError):
+                        _pct = 0
+                    _kind = "price_drop" if _pct < 0 else "price_rise"
+                    if _kind in (intent.get("notify_on", ["new_top", "price_drop"])):
+                        try:
+                            _ok = _rules_ok(intent.get("notify_rules", []), _kind, ev=ev)
+                        except Exception:
+                            _ok = True
+                        if _ok:
+                            _arrow = "▼" if _pct < 0 else "▲"
+                            await notifier.send(f"Price {_kind.split('_')[1]} {_arrow}{abs(_pct):.0f}%: {l.title[:60]}",
+                                                f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
     # Stage B concurrent pass (cap: most uncertain first; sem bounds slow-model load)
@@ -560,6 +569,6 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     metrics.observe_latency("search", time.time() - t0)
     metrics.set_gauge("last_search_results", len(scored))
     return {"results": [s.model_dump() for s in scored], "filtered": flagged,
-            "events": events,
+            "events": events, "driver_fetched": driver_fetched,
             "driver_errors": driver_errors, "filtered_out": filtered_out,
             "median": median, "sources": sources}
