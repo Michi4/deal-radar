@@ -18,6 +18,19 @@ toolbar persists after search (SEARCHED flag), drawer enrichment formatting.
 server-start+test chains lose output → step-by-step; stale :8099 squatters cause false e2e
 fails → killsrv first; USER app needs chown -R app:app /data on legacy root volume (done prod).
 
+## Verified 2026-09-27 (evening): volume + pages + jobs + login
+- iphone-17 zero-results root-caused LIVE (ScoredListing total_cost=None crash) + fixed + regression-tested.
+- Prod proofs (inside prod container, authed): ThinkPad limit-10 → 10 results + tile; ThinkPad
+  limit-2000 → **2000 results + 201 flagged** in one background job. Thousands delivered.
+- Volume: limits to 5000 (UI 50/200/500/2000), deep-enrich top-N (default 150), driver page caps
+  up (willhaben 25, kleinanzeigen/vinted 40; shpock/ricardo single-page by site design).
+- Kept-not-dropped filters: server ships flagged[] (reasons) + client Hidden section, risk/slider
+  gates, live weight re-rank, refine mirror, showHidden toggle. min_match floor now unhideable.
+- Real pages: search chrome hides on tabs, #pageview dedicated (fixed missing searchpanel close
+  + verify.sh HTML-balance guard). Searches tiles: exact totals + job pills + progress + 5s refresh.
+- Job persistence: jobs table, progress updates, stale→interrupted on boot, adopt-on-poll.
+- Login live on prod (password handed over). Forms submit on Enter everywhere. Tile gaps fixed.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
