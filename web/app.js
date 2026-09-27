@@ -9,7 +9,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),resetFilters:()=>resetFilters(),redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await fetch('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')},stopJob:async(a)=>{await fetch('/searches/'+a+'/stop',{method:'POST'});toast('stopping…')},pauseJob:async(a)=>{await fetch('/searches/'+a+'/pause',{method:'POST'});toast('paused')},resumeJob:async(a)=>{await fetch('/searches/'+a+'/resume',{method:'POST'});toast('resumed')},uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),resetFilters:()=>resetFilters(),redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await fetch('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')},stopJob:safe(async(a)=>{await api('/searches/'+a+'/stop',{method:'POST'});toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+a+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+a+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -17,6 +17,25 @@ function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rS
 for(const [id,lab,fn] of pairs){const el=$(id);if(!el)continue;const lb=$(lab);if(lb)lb.textContent=el.value;if(fn)fn(el.value)}}
 function readWeights(){WW={match:+$('wMa').value/100,value:+$('wVa').value/100,risk:+$('wRi').value/100,comp:+$('wCo').value/100}}
 function paintChecks(){document.querySelectorAll('.ck>input').forEach(c=>c.closest('.ck').classList.toggle('on',c.checked))}
+async function api(path,opts={},retries=0){
+let last=null;
+for(let a=0;a<=retries;a++){
+try{
+const res=await fetch(path,opts);
+if(res.status===401&&!path.includes('/login')){location.href='/login';throw new Error('login required')}
+const txt=await res.text();
+if(txt.trimStart().startsWith('<')){
+if(!sessionStorage.getItem('dr_reloaded')){sessionStorage.setItem('dr_reloaded','1');toast('session expired — reloading…');setTimeout(()=>location.reload(),1200)}
+throw new Error('auth session expired — log in again')}
+let data=null;try{data=txt?JSON.parse(txt):null}catch(e){throw new Error(`bad response (not JSON): ${txt.slice(0,80)}`)}
+if(!res.ok)throw new Error(`server ${res.status}${data&&data.error?': '+data.error:''}`);
+sessionStorage.removeItem('dr_reloaded');
+return data;
+}catch(e){last=e;if(e.message==='login required'||e.message.startsWith('auth session'))throw e;
+if(a<retries)await new Promise(x=>setTimeout(x,1500*(a+1)));else throw e}}
+throw last}
+function netMsg(e){const m=String((e&&e.message)||e);if(m.includes('Failed to fetch')||m.includes('NetworkError')||m.includes('Load failed'))return 'server unreachable (restarting?)';return m}
+function safe(fn){return async(...a)=>{try{return await fn(...a)}catch(e){toast(netMsg(e))}}}
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.hasAttribute('data-rm'))t.remove()},true);
 document.addEventListener('click',e=>{
 const da=e.target.closest('[data-act]');if(da){if(da.tagName==='A')e.preventDefault();const f=ACT[da.dataset.act];if(f){f(da.dataset.arg,da)}return}
@@ -150,7 +169,7 @@ mirrorRefine();
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 let LASTDUR=0;
-async function poll(sid,onDone){const t0=Date.now();RUNNING=true;ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
+async function poll(sid,onDone){const t0=Date.now();RUNNING=true;ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});let dark=0;for(;;){let r;try{r=await api('/searches/'+sid)}catch(e){if(String(e.message).includes('login required'))return;dark++;status(`<div class="row"><small>connection lost (${dark}) — retrying…</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);if(dark>40){status(`<div class="err">server unreachable for 2 min — it may be restarting. Your search continues in background; reopen it from Searches.</div>`);RUNNING=false;return}await new Promise(x=>setTimeout(x,3000));continue}dark=0;
 if(r.status==='running'){ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run'});if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
 status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
 RUNNING=false;ACTIVEJOBS.delete(sid);if(!ACTIVEJOBS.size)RUNNING=false;SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
@@ -163,16 +182,16 @@ const mp=+$('maxpages').value||undefined;
 const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:limN,...intent()};
 if(mp)body.max_pages=mp;
 $('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
-try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},3);
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
-status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
+status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 $('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
-try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})})).json();
+try{const j=await api('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})},3);
 pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
-const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
+const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${esc(netMsg(e))}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 let FAVMAP={};
 async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await(await fetch('/favorites')).json();FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
@@ -244,8 +263,8 @@ const rules=[];const dp=+$('nDrop')?.value||0,rk=+$('nRisk')?.value||0;
 if($('nPrice')?.checked&&dp>0)rules.push({kind:'price_drop',min_drop_pct:dp});
 if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:mins*60,notify_on:no,notify_rules:rules};
-const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
-toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
+try{const r=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},2);
+toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}catch(e){toast('watch failed: '+netMsg(e))}}
 async function showStore(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await(await fetch('/marketplace')).json();
 const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.source&&x.source!=='builtin'?` <button class="btn btn-ghost" data-act="uninstallX" data-kind="${kind}" data-arg="${esc(x.id)}">uninstall</button>`:''):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
@@ -263,12 +282,12 @@ return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keyword
 const tiles=(r.searches||[]).map(tile).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
-async function openSearch(id){tab('search');let r;try{r=await(await fetch('/searches/'+id)).json()}catch(e){status(`<div class="err">open failed (network): ${esc(String(e))}</div>`);return}
+async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+id)}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}
 if(r.error&&!(r.results||[]).length){status(`<div class="err">${esc(r.error)} <button class="btn btn-primary" data-act="redoId" data-arg="${esc(id)}">re-run now</button></div>`);return}
 if(r.intent)applyIntent(r.intent);
 if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');await poll(id,x=>{LAST=x.results||[];SID=id;render()});return}
 LAST=r.results||[];HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;SID=id;PAGE=0;render();tab('search');if(r.snapshot)toast('opened saved snapshot — re-run for fresh results');if(r.reconstructed)toast('rebuilt from saved rows (limited detail) — re-run for full analysis')}
-async function redoSearch(id){let r;try{r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json()}catch(e){toast('re-run failed (network)');return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
+async function redoSearch(id){let r;try{r=await api('/searches/'+id+'/redo',{method:'POST'},2)}catch(e){toast('re-run failed: '+netMsg(e));return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
 async function delSearch(id){try{await fetch('/searches/'+id,{method:'DELETE'})}catch(e){toast('delete failed (network)')}showHistory()}
 async function watchTile(id){let r;try{r=await(await fetch('/searches/'+id+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json()}catch(e){toast('watch failed (network)');return}toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
 async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){showPage(false);return cmpSel()}if(!SID){showPage(false);$('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><b>How comparing works</b><br/><small>1. Run any search.<br/>2. Tick <b>compare</b> on 2–4 listings (cards or list rows).<br/>3. Open this tab — you get them side by side: price, source, risk, score, CPU + benchmark.</small><br/><br/><button class="btn btn-primary" data-act="tab" data-arg="search">go search</button></div>';return}showPage(false);status('Comparing…');
