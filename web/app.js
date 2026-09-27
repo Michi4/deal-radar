@@ -4,11 +4,16 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const safeUrl=u=>{try{const p=new URL(String(u||''),location.href);return (p.protocol==='http:'||p.protocol==='https:')?p.href:''}catch(e){return ''}};
 const ACT={tab:a=>tab(a),showFavs:()=>showFavs(),cmp:()=>cmp(),page:a=>page(+a),
 gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
-applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';render()},
+applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
+FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
 closeD:()=>closeD(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
+function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
+['wMa','wMaV',null],['wVa','wVaV',null],['wRi','wRiV',null],['wCo','wCoV',null]];
+for(const [id,lab,fn] of pairs){const el=$(id);if(!el)continue;const lb=$(lab);if(lb)lb.textContent=el.value;if(fn)fn(el.value)}}
+function readWeights(){WW={match:+$('wMa').value/100,value:+$('wVa').value/100,risk:+$('wRi').value/100,comp:+$('wCo').value/100}}
 function paintChecks(){document.querySelectorAll('.ck>input').forEach(c=>c.closest('.ck').classList.toggle('on',c.checked))}
 document.addEventListener('click',e=>{
 const da=e.target.closest('[data-act]');if(da){if(da.tagName==='A')e.preventDefault();const f=ACT[da.dataset.act];if(f){f(da.dataset.arg,da)}return}
@@ -32,7 +37,7 @@ return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${safeUrl(
 function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listing.images||[]).length)return;const n=s.listing.images.length;let i=((+btn.parentElement.dataset.i||0)+d+n)%n;btn.parentElement.dataset.i=i;btn.parentElement.querySelector('img').src=s.listing.images[i]}
 let CMP=new Set();
 function cmpTgl(id){CMP.has(id)?CMP.delete(id):CMP.add(id);if(CMP.size>2)CMP.delete([...CMP][0]);render()}
-function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+esc(l.title)+'</b><br/>'+esc(l.price??'?')+' '+esc(l.currency||'')+'<br/>'+esc(l.source)+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+esc(s.final_score)+'<br/>cpu '+esc(en.cpu||'—')+'<br/>bench '+esc(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('results').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
+function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+esc(l.title)+'</b><br/>'+esc(l.price??'?')+' '+esc(l.currency||'')+'<br/>'+esc(l.source)+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+esc(s.final_score)+'<br/>cpu '+esc(en.cpu||'—')+'<br/>bench '+esc(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
 function card(s,idx){const l=s.listing;const best=(idx===0&&(SORT==='ppe'||SORT==='gpe'))?'<span class="best-badge">best value</span><br/>':'';const fav=isFav(l.id)?'★':'☆';const ck=CMP.has(l.id)?'checked':'';
 const inner=`${thumb(l)}<div class="body">${best}<h4>${esc(l.title)||'(no title)'}</h4>
 <div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
@@ -48,6 +53,11 @@ async function fav(id){return favAct(id,false)}
 async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});await loadFavs();showFavs()}
 const SORTS=[{id:'score',label:'Score'},{id:'price',label:'Price'},{id:'ppe',label:'Perf/€'},{id:'mt',label:'Multithread'},{id:'gpe',label:'GPU/€'},{id:'tc',label:'Total'}];
 let SORT='score',PDIR=1,PERPAGE=20,SRCS=new Set(),HIDELANES=new Set(),HIDEKIND={want:true,parts:true,acc:true};
+let HIDDEN=[],FRISK=100,FSCORE=0,SHOWHID=false,WW={match:.35,value:.35,risk:.2,comp:.1};
+function rerank(){const t=WW.match+WW.value+WW.risk+WW.comp||1;
+for(const s of LAST){const d=s.deal_dna||{};const rk=(s.risk||{}).score??0;
+s.final_score=Math.round(((WW.match*(d.match??0)+WW.value*(d.value??0)-WW.risk*rk+WW.comp*(d.completeness??0))/t)*1000)/1000}
+PAGE=0;render()}
 function setSort(id){if(id==='price'&&SORT==='price')PDIR*=-1;else{SORT=id;PDIR=1}PAGE=0;drawSegs();render()}
 function setPP(n){PERPAGE=n;PAGE=0;drawSegs();render()}
 function toggleSrc(id){SRCS.has(id)?SRCS.delete(id):SRCS.add(id);drawSegs()}
@@ -64,6 +74,7 @@ if(HIDEKIND.want)arr=arr.filter(s=>!JSON.stringify(s.why).match(/buy-request/));
 if(HIDEKIND.parts)arr=arr.filter(s=>!JSON.stringify(s.why).match(/parts\/repair/));
 if(HIDEKIND.acc)arr=arr.filter(s=>!JSON.stringify(s.why).match(/accessory\/box/));
 arr=arr.filter(s=>!HIDELANES.has(s.lane));
+arr=arr.filter(s=>(((s.risk||{}).score??0)*100)<=FRISK&&(s.final_score??0)*100>=FSCORE);
 const m=SORT;
 if(m==='price')arr.sort((a,b)=>PDIR*((a.listing.price??1e18)-(b.listing.price??1e18)));
 else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));
@@ -86,7 +97,10 @@ drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
 $('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
 $('results').innerHTML+=arr.length?'':`<div class="empty">No results. Try fewer filters or another query.</div>`;
-$('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`}
+$('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`;
+const hn=$('hidN');if(hn)hn.textContent=HIDDEN.length;
+if(SHOWHID&&HIDDEN.length){const hc=HIDDEN.slice(0,100).map(s=>{const l=s.listing;return `<div class="card hid" data-open="${esc(l.id)}"><div class="body"><h4>${esc(l.title)||'(no title)'}</h4><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span></div><div class="lane">hidden · match ${((s.match_score??0)*100).toFixed(0)}% · ${esc(l.source)}</div><div class="hidreason">${esc((s.why||[]).join('; ').slice(0,160))}</div></div></div>`}).join('');
+$('results').innerHTML+=`<div class="ptitle" style="margin-top:1rem"><h2>Hidden by filters</h2><small>unhide by loosening filters above · showing ${Math.min(100,HIDDEN.length)} of ${HIDDEN.length}</small></div><div class="rgrid">${hc}</div>`}}
 function page(d){PAGE+=d;render();window.scrollTo(0,0)}
 function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${'<div class="skel"></div>'.repeat(n)}</div>`:'<div class="skel"></div>'.repeat(3)}
 function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
@@ -126,42 +140,47 @@ if(p.hard&&p.hard.min_price&&!$('min').value)$('min').value=p.hard.min_price;
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 async function poll(sid,onDone){for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
-SEARCHED=true;onDone(r);return}}
-async function run(){const sel=[...SRCS];
+SEARCHED=true;HIDDEN=r.filtered||[];onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
+async function run(){if($('searchbtn').disabled)return;const sel=[...SRCS];
+const limN=+$('limitN').value||200,deepV=+$('deepN').value;
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
 const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'contains',value:w.trim()}));
 const mp=+$('maxpages').value||undefined;
-const body={keywords:$('q').value,sources:sel,hard,required:req,...intent()};
+const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:Math.max(1,Math.min(5000,limN)),...intent()};
 if(mp)body.max_pages=mp;
 $('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);status('Search started in background …');PAGE=0;
 try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 pushHist($('q').value);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
-async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
+async function runNL(){if($('askbtn').disabled)return;const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
+const limN=+$('limitN').value||200,deepV=+$('deepN').value;
 $('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
-try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:30})})).json();
+try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:Math.max(1,Math.min(5000,limN)),enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})})).json();
 pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();status('');try{const f=await(await fetch('/favorites')).json();
-$('results').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+$('pageview').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 async function unfavWrap(){}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
 function mirrorRefine(){try{$('rMin').value=$('min').value;$('rMax').value=$('max').value;$('rBlack').value=$('black').value;$('rReq').value=$('req').value}catch(e){}}
 function hideSearchChrome(){for(const id of ['toolbar','refinebar','pagertop','pager']){const e=$(id);if(e)e.style.display='none'}}
 function markActive(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t))}
 function hideChrome(){['toolbar','refinebar','pagertop','pager'].forEach(id=>{const e=$(id);if(e)e.style.display='none'})}
-function tab(t){markActive(t);if(t!=='search')hideChrome();if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
+let HISTT=null;
+function showPage(search){for(const id of ['searchpanel','status','applied','refinebar','pagertop','results','pager'])pv(id,search);pv('pageview',!search)}
+function pv(id,show){const e=$(id);if(e)e.style.display=show?'':'none'}
+function tab(t){markActive(t);if(HISTT){clearInterval(HISTT);HISTT=null}if(t!=='search')hideChrome();showPage(t==='search');if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
 async function showLab(){hideSearchChrome();hideChrome();let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
-$('results').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
+$('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 async function mkLab(){$('labbtn').disabled=true;$('labout').innerHTML='<small>AI is writing + testing code… (1-3 min)</small>';
 try{const r=await(await fetch('/lab/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:$('labkind').value,instruction:$('labq').value})})).json();
 $('labout').innerHTML=r.ok?`<div>✅ <b>${r.id}</b> built, checked, hot-loaded.<br/><small>${JSON.stringify(r.checks).slice(0,300)}</small></div>`:`<div class="err">failed: ${r.error}<br/><small>${(r.code||'').slice(0,500)}</small></div>`}catch(e){$('labout').innerHTML=`<div class="err">${e}</div>`}
 $('labbtn').disabled=false}
-async function showWatches(){hideSearchChrome();hideChrome();status('');$('results').innerHTML='<div class="empty">loading watches…</div>';
-$('results').innerHTML=ptitle('Watches','auto re-polled · survive restarts · notify on new hits & drops')+`<div class="panel"><div class="row"><input id="wq" class="inp" placeholder="watch query" style="flex:2"/><input id="wmax" class="inp" placeholder="max €" type="number" style="width:90px"/><label><input type="checkbox" id="nNew" checked/> new hits</label><label><input type="checkbox" id="nPrice" checked/> price drops</label><input id="nDrop" class="inp" placeholder="drop % ≥" type="number" style="max-width:90px" title="only notify drops of at least this %"/><input id="nRisk" class="inp" placeholder="risk ≤ %" type="number" style="max-width:90px" title="only notify new matches below this risk %"/><button class="btn btn-primary" data-act="mkWatch">+ Watch (5 min)</button></div><div id="wlist"></div><div id="nstat"></div></div>`;refreshWatches();
+async function showWatches(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading watches…</div>';
+$('pageview').innerHTML=ptitle('Watches','auto re-polled · survive restarts · notify on new hits & drops')+`<div class="panel"><form id="wform"><label class="fld"><span>watch query</span><input id="wq" class="inp" placeholder="e.g. ThinkPad X1 under &euro;800"/></label><div class="fgrid4" style="margin-top:.5rem"><label class="fld"><span>max &euro;</span><input id="wmax" class="inp" placeholder="no max" type="number"/></label><label class="fld"><span>drop % &ge;</span><input id="nDrop" class="inp" placeholder="any" type="number" title="only notify drops of at least this %"/></label><label class="fld"><span>risk &le; %</span><input id="nRisk" class="inp" placeholder="any" type="number" title="only notify new matches below this risk %"/></label><label class="fld"><span>&nbsp;</span><button type="submit" class="btn btn-primary">+ Watch (5 min)</button></label></div><div class="row mt-2"><label class="ck"><input type="checkbox" id="nNew" checked/> new hits</label><label class="ck"><input type="checkbox" id="nPrice" checked/> price drops</label></div></form><div id="wlist"></div><div id="nstat"></div></div>`;const wf=$('wform');if(wf)wf.addEventListener('submit',e=>{e.preventDefault();mkWatch()});paintChecks();refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...SRCS];
@@ -172,24 +191,29 @@ if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
 const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
-async function showStore(){hideSearchChrome();hideChrome();status('');$('results').innerHTML='<div class="empty">loading store…</div>';
+async function showStore(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await(await fetch('/marketplace')).json();
 const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
-$('results').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
+$('pageview').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
-async function showHistory(){hideSearchChrome();hideChrome();status('');$('results').innerHTML='<div class="empty">loading…</div>';
+async function showHistory(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading…</div>';
 try{const r=await(await fetch('/searches')).json();
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
 const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading="lazy" src="'+su+'" onerror="this.remove()" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>':''}).join('');
-return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small><div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button></div></div>'};
-$('results').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+'<div class="rgrid">'+r.searches.map(tile).join('')+'</div>'||'<div class="empty">No searches yet.</div>';$('pager').style.display='none'}catch(e){status('<div class="err">'+e+'</div>')}}
+const jb=s.job||null;
+const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':'<span class="jobpill">done</span>'):'';
+const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
+return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button></div></div>'};
+const tiles=(r.searches||[]).map(tile).join('');
+$('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
+if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
 async function openSearch(id){const r=await(await fetch('/searches/'+id)).json();
 if(r.status==='running'){toast('still running…');return}LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
 async function redoSearch(id){const r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json();toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
 async function delSearch(id){await fetch('/searches/'+id,{method:'DELETE'});showHistory()}
-async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){return cmpSel()}if(!SID)return toast('run a search first');status('Comparing…');
+async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){showPage(false);return cmpSel()}if(!SID){showPage(false);$('pageview').innerHTML=ptitle('Compare','run a search first, then tick 2+ listings');return}showPage(false);status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
-$('results').innerHTML=Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
+$('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
 let CAR=[];
 function openD(id){const s=LAST.find(x=>x.listing.id===id);if(!s)return toast('result expired — re-run search');const l=s.listing;CAR=l.images||[];let ci=0;
 const dna=Object.entries(s.deal_dna||{}).map(([k,v])=>`${esc(k)}<div class="bar"><i style="width:${(v*100).toFixed(0)}%"></i></div>`).join('');
@@ -217,6 +241,11 @@ document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('ope
 async function init(){try{const d=await(await fetch('/drivers')).json();
 d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});
 $('sources').innerHTML='<div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
-drawHist();loadFavs();setView(VIEW);paintChecks();authKick();
+drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();authKick();
+const bind=(id,fn)=>{const f=$(id);if(f)f.addEventListener('submit',e=>{e.preventDefault();fn()})};
+bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());
+for(const id of ['rRisk','rScore']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();FRISK=+$('rRisk').value;FSCORE=+$('rScore').value;PAGE=0;render()})}
+for(const id of ['wMa','wVa','wRi','wCo']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();readWeights();rerank()})}
+const sh=$('showHidden');if(sh)sh.addEventListener('change',()=>{SHOWHID=sh.checked;render()});
 try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.kind!=='new_match'&&m.kind!=='search_done'&&m.kind!=='price')return;toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){}};es.onerror=()=>{toast('live feed reconnecting…')}}catch(e){}}
 init();

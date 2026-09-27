@@ -207,6 +207,12 @@ async def _watcher() -> None:
 
 @app.on_event("startup")
 async def _start_watcher():
+    try:
+        n = store.job_interrupt_stale()
+        if n:
+            print(f"[startup] marked {n} stale running job(s) interrupted")
+    except Exception:
+        pass
     asyncio.create_task(_watcher())
 
 
@@ -262,7 +268,8 @@ class SearchIntent(BaseModel):
     risk: dict = {}
     ranking: dict | None = None
     enrich: bool = True
-    limit: int = Field(default=20, ge=1, le=200)
+    enrich_top_n: int = Field(default=150, ge=0, le=1000)  # deep OCR/bench for top-N only
+    limit: int = Field(default=200, ge=1, le=5000)
     max_pages: int | None = Field(default=None, ge=1, le=50)  # per-source page cap; empty = walk to exhaustion
     watch: bool = False
     poll_interval_s: int = Field(default=300, ge=45, le=86400)
@@ -389,10 +396,11 @@ def logout(request: Request):
 
 class NLQuery(BaseModel):
     text: str = Field(max_length=2000)
+    enrich_top_n: int = Field(default=150, ge=0, le=1000)
     sources: list[str] | None = Field(default=None, max_length=10)
     watch: bool = False
     poll_interval_s: int = Field(default=300, ge=45, le=86400)
-    limit: int = Field(default=20, ge=1, le=200)
+    limit: int = Field(default=200, ge=1, le=5000)
     max_pages: int | None = Field(default=None, ge=1, le=50)
     ocr: bool = True
     benchmarks: bool = True
@@ -415,7 +423,7 @@ async def create_nl_search(q: NLQuery):
                         "ranking": None, "attributes": parsed.get("attributes", {}),
                         "models": parsed.get("models", []) or [],
                         "required": parsed.get("required", []),
-                        "enrich": True, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
+                        "enrich": True, "enrich_top_n": q.enrich_top_n, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
                         "vision": q.vision, "details": q.details,
                         "limit": max(6, q.limit // max(1, len(queries))),
                         "watch": False, "poll_interval_s": q.poll_interval_s,
@@ -426,7 +434,7 @@ async def create_nl_search(q: NLQuery):
             "ranking": None, "attributes": parsed.get("attributes", {}),
             "models": parsed.get("models", []) or [],
             "required": parsed.get("required", []),
-            "enrich": True, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
+            "enrich": True, "enrich_top_n": q.enrich_top_n, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
             "vision": q.vision, "details": q.details,
             "limit": q.limit, "watch": q.watch,
             "poll_interval_s": q.poll_interval_s, "notify_on": ["new_top", "price_drop"]}
@@ -438,6 +446,7 @@ def _merge_outs(outs: list[dict], limit: int) -> dict:
     import statistics as _st
     seen: set[str] = set()
     merged: list[dict] = []
+    flagged: list[dict] = []
     events: list[dict] = []
     errors: dict = {}
     filt = 0
@@ -450,10 +459,15 @@ def _merge_outs(outs: list[dict], limit: int) -> dict:
             if lid not in seen:
                 seen.add(lid)
                 merged.append(r)
+        for r in o.get("filtered", []):
+            lid = r["listing"]["id"]
+            if lid not in seen and len(flagged) < 1000:
+                seen.add(lid)
+                flagged.append(r)
     merged.sort(key=lambda r: r.get("final_score", 0), reverse=True)
     merged = merged[:limit]
     _mp = sorted(r["listing"]["price"] for r in merged if r["listing"].get("price") is not None)
-    return {"results": merged, "events": events, "driver_errors": errors,
+    return {"results": merged, "filtered": flagged, "events": events, "driver_errors": errors,
             "filtered_out": filt, "median": _st.median(_mp) if len(_mp) >= 3 else None}
 
 
@@ -462,9 +476,14 @@ JOBS: dict[str, dict] = {}
 
 async def _start_job(intents: list[dict], meta: dict) -> dict:
     sid = f"s_{int(time.time() * 1000)}"
+    base = meta.get("base", intents[0] if intents else {})
     JOBS[sid] = {"status": "running", "done": 0, "total": len(intents),
-                 "intent": meta.get("base", intents[0] if intents else {}),
+                 "intent": base,
                  "parsed": meta.get("parsed"), "subqueries": meta.get("subqueries", [])}
+    try:
+        store.job_upsert(sid, "running", 0, len(intents), base)
+    except Exception:
+        pass
     asyncio.create_task(_run_job(sid, intents, meta))
     return {"id": sid, "status": "running", "total": len(intents)}
 
@@ -474,15 +493,24 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
         outs = []
         for i, data in enumerate(intents):
             JOBS[sid]["done"] = i
+            try:
+                store.job_upsert(sid, "running", i, len(intents))
+            except Exception:
+                pass
             outs.append(await _run_cached(data, force=True))
         JOBS[sid]["done"] = len(intents)
         merged = _merge_outs(outs, meta.get("limit", 20))
         base = meta.get("base", intents[0] if intents else {})
         SEARCHES[sid] = base
-        store.save_search(sid, base)
+        store.save_search(sid, base, len(merged["results"]))
         LAST_RUN[sid] = time.time()
         SEEN_IDS[sid] = {r["listing"]["id"] for r in merged["results"]}
         store.save_results(sid, merged["results"])
+        try:
+            store.job_upsert(sid, "done", len(intents), len(intents),
+                             summary=f"{len(merged['results'])} results")
+        except Exception:
+            pass
         EVENT_LOG.extend(merged["events"])
         EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
                           "title": f"search finished: {len(merged['results'])} results"})
@@ -493,6 +521,11 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
                                 f"{merged['filtered_out']} filtered", {"url": "/?sid=" + sid})
     except Exception as e:
         JOBS[sid].update({"status": "error", "error": f"{type(e).__name__}: {e}"})
+        try:
+            store.job_upsert(sid, "error", JOBS[sid].get("done", 0),
+                             len(intents), summary=f"{type(e).__name__}: {e}"[:200])
+        except Exception:
+            pass
 
 
 @app.post("/searches")
@@ -553,6 +586,13 @@ async def get_search(sid: str):
         out = job.get("result", {})
         return {"id": sid, "status": "done", "parsed": job.get("parsed"),
                 "subqueries": job.get("subqueries", []), **out}
+    try:
+        row = store.db.execute("SELECT status, intent FROM jobs WHERE id=?", (sid,)).fetchone()
+    except Exception:
+        row = None
+    if row and row[0] == "running":
+        return {"id": sid, "status": "running", "adopted": True,
+                "done": 0, "total": 1, "note": "still running (or interrupted by restart)"}
     intent = SEARCHES.get(sid)  # persisted from earlier session: re-run cached
     if not intent:
         return JSONResponse({"error": "unknown search id"}, status_code=404)

@@ -57,7 +57,16 @@ table.cmp{border-collapse:collapse;width:100%;font-size:13px}table.cmp td,table.
 .pills button.active{background:var(--acc);border-color:var(--acc);color:#fff}
 .pills button.dim{opacity:.45}
 .fdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--acc);margin-left:4px}
-.fsec{margin-bottom:.6rem}.flabel{display:block;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:.35rem}
+.fsec{margin-bottom:.6rem}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.flabel{display:block;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:.35rem}
+.hid{opacity:.78;border-style:dashed}
+.hidreason{font-size:11px;opacity:.7;margin-top:4px}
+.jobpill{display:inline-block;font-size:11px;font-weight:800;border-radius:99px;padding:2px 10px;background:var(--acc-soft);color:var(--acc-d,#047857)}
+.dark .jobpill{color:#34d399}
+.jobrun{background:#fef3c7;color:#92400e}.dark .jobrun{background:#453304;color:#fcd34d}
+.joberr{background:#fee2e2;color:#b91c1c}.dark .joberr{background:#3f1d1d;color:#fca5a5}
+.pbar{height:6px;border-radius:99px;background:rgba(100,116,139,.25);overflow:hidden;margin-top:6px}
+.pbar>i{display:block;height:100%;background:var(--acc);border-radius:99px}
 .best-badge{display:inline-block;background:var(--acc);color:#fff;font-size:11px;font-weight:800;border-radius:99px;padding:2px 10px;margin-bottom:6px}
 .chip{font-size:12px;border:1px solid rgb(203 213 225);border-radius:99px;padding:4px 10px;cursor:pointer;background:transparent}
 .dark .chip{border-color:#334155;color:#e2e8f0}.chip:hover{border-color:var(--acc)}
@@ -98,7 +107,8 @@ input[type=checkbox]{accent-color:var(--acc);width:1.1rem;height:1.1rem}
  #topnav-center{display:none}
  #bottomnav{display:block;position:fixed;bottom:0;left:0;right:0;z-index:50;border-top:1px solid rgb(226 232 240);background:rgba(255,255,255,.9);backdrop-filter:blur(16px)}
  .dark #bottomnav{background:rgba(2,6,23,.88);border-color:#1e293b}
- #bottomnav .row{display:flex;justify-content:space-around;max-width:32rem;margin:0 auto;height:4rem;align-items:stretch}
+ .row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+#bottomnav .row{display:flex;justify-content:space-around;max-width:32rem;margin:0 auto;height:4rem;align-items:stretch}
  #bottomnav a,#bottomnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;cursor:pointer;min-width:56px;text-decoration:none}
  .dark #bottomnav a,.dark #bottomnav button{color:#64748b}
  #bottomnav .active{color:var(--acc-d,#047857)}.dark #bottomnav .active{color:#34d399}
@@ -158,13 +168,15 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <main class="max-w-6xl mx-auto px-3 py-3">
 <div class="mx-auto w-full" style="max-width:46rem" id="searchpanel">
 <div class="panel" style="border:none;background:transparent;padding:.25rem 0;box-shadow:none"><div class="eyebrow">Natural language search</div>
-<div class="flex gap-2 flex-wrap items-center mt-2 nlrow">
-<input id="nl" class="inp" style="flex:3;min-width:200px" aria-label="natural language search" placeholder="Describe what you want…"/>
-<button id="askbtn" class="btn btn-primary nlgo" data-act="runNL">Ask</button></div></div>
+<form class="flex gap-2 flex-wrap items-center mt-2 nlrow" id="nlform">
+<label class="sr-only" for="nl">Natural language search</label>
+<input id="nl" name="nl" class="inp" style="flex:3;min-width:200px" placeholder="Describe what you want…"/>
+<button id="askbtn" type="submit" class="btn btn-primary nlgo">Ask</button></form></div>
 <div style="margin:.625rem 0"><div class="eyebrow">Search</div>
-<div class="grid gap-2 mt-2 kwgrid" style="grid-template-columns:1fr auto">
-<input id="q" class="inp" aria-label="keyword search" placeholder="Search…"/>
-<button id="searchbtn" class="btn btn-primary" data-act="run">Search</button></div>
+<form class="grid gap-2 mt-2 kwgrid" style="grid-template-columns:1fr auto" id="qform">
+<label class="sr-only" for="q">Keyword search</label>
+<input id="q" name="q" class="inp" placeholder="Search…"/>
+<button id="searchbtn" type="submit" class="btn btn-primary">Search</button></form>
 
 <details class="mt-2 rounded-lg border border-slate-200 dark:border-slate-800 p-2"><summary class="cursor-pointer text-sm opacity-70">advanced<span id="fdot" class="fdot" style="display:none"></span></summary>
 <div class="fsec"><span class="flabel">sources</span><div class="flex gap-2 flex-wrap items-center mt-2 text-sm" id="sources"></div></div>
@@ -180,7 +192,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <button class="active" title="Hide buy-request ads (Ankauf/Suche/Tausch)" data-act="toggleKind" data-arg="want">Gesuche</button>
 <button class="active" title="Hide parts/repair/defective listings" data-act="toggleKind" data-arg="parts">parts</button>
 <button class="active" title="Hide accessories: cases, boxes, cables, chargers, contracts" data-act="toggleKind" data-arg="acc">accessories</button>
-</div>
+</div></div>
 <div class="fsec"><span class="flabel">AI checks</span><div class="flex gap-2 flex-wrap items-center">
 <label class="ck"><input type="checkbox" id="fOcr" checked/> OCR photos</label>
 <label class="ck"><input type="checkbox" id="fBench" checked/> CPU benchmarks</label>
@@ -203,7 +215,9 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="fld"><span>risk</span><input id="wRisk" class="inp" type="number" value="20" min="0" max="100" title="Risk weight"/></label>
 <label class="fld"><span>complete</span><input id="wComp" class="inp" type="number" value="10" min="0" max="100" title="Completeness weight"/></label>
 </div></div>
-<div class="fsec"><span class="flabel">paging</span><div class="fgrid2">
+<div class="fsec"><span class="flabel">volume</span><div class="fgrid3">
+<label class="fld"><span>results per search</span><select id="limitN" class="inp"><option>50</option><option selected>200</option><option>500</option><option>2000</option></select></label>
+<label class="fld"><span>deep-check top N · OCR + benchmarks</span><input id="deepN" class="inp" type="number" value="150" min="0" max="1000" title="Expensive AI/OCR/benchmark checks run only for the top N"/></label>
 <label class="fld"><span>max pages per source · empty = all</span><input id="maxpages" class="inp" type="number" min="1" placeholder="all" title="Max pages per source"/></label>
 </div></div>
 <div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
@@ -216,17 +230,26 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 </div>
 <div id="status"></div>
 <div class="panel" id="applied" style="display:none"></div>
-<div class="panel" id="refinebar" style="display:none"><div class="eyebrow">Refine loaded results · no re-search</div>
-<div class="flex gap-2 flex-wrap items-center mt-2">
-<input id="rMin" class="inp" style="max-width:100px" type="number" placeholder="min €" title="Refine: minimum price"/>
-<input id="rMax" class="inp" style="max-width:100px" type="number" placeholder="max €" title="Refine: maximum price"/>
-<input id="rBlack" class="inp" style="flex:1;min-width:140px" placeholder="+ blacklist words" title="Refine: hide listings containing these (comma separated)"/>
-<input id="rReq" class="inp" style="flex:1;min-width:140px" placeholder="+ must contain" title="Refine: keep only listings containing these (comma separated)"/>
-<button class="btn btn-primary" data-act="applyRefine">apply</button><button class="btn btn-ghost" data-act="clearRefine">clear</button>
-</div></div>
+<div class="panel" id="refinebar" style="display:none"><div class="eyebrow">Filter loaded results · no re-search · everything re-adjustable</div>
+<form id="refineform"><div class="fgrid4">
+<label class="fld"><span>min €</span><input id="rMin" class="inp" type="number" placeholder="no min" title="Minimum price"/></label>
+<label class="fld"><span>max €</span><input id="rMax" class="inp" type="number" placeholder="no max" title="Maximum price"/></label>
+<label class="fld"><span>hide if contains</span><input id="rBlack" class="inp" placeholder="+ blacklist words" title="Hide listings containing these (comma separated)"/></label>
+<label class="fld"><span>must contain</span><input id="rReq" class="inp" placeholder="+ must contain" title="Keep only listings containing these (comma separated)"/></label>
+<label class="fld"><span>max risk % <b id="rRiskV">100</b></span><input id="rRisk" class="inp" type="range" min="0" max="100" value="100" title="Hide listings above this risk %"/></label>
+<label class="fld"><span>min score % <b id="rScoreV">0</b></span><input id="rScore" class="inp" type="range" min="0" max="100" value="0" title="Hide listings below this score %"/></label>
+<label class="fld"><span>weight: match <b id="wMaV">35</b></span><input id="wMa" class="inp" type="range" min="0" max="100" value="35" title="Re-rank: match weight"/></label>
+<label class="fld"><span>weight: value <b id="wVaV">35</b></span><input id="wVa" class="inp" type="range" min="0" max="100" value="35" title="Re-rank: value weight"/></label>
+<label class="fld"><span>weight: risk <b id="wRiV">20</b></span><input id="wRi" class="inp" type="range" min="0" max="100" value="20" title="Re-rank: risk weight"/></label>
+<label class="fld"><span>weight: complete <b id="wCoV">10</b></span><input id="wCo" class="inp" type="range" min="0" max="100" value="10" title="Re-rank: completeness weight"/></label>
+</div>
+<div class="row mt-2"><button type="submit" class="btn btn-primary">apply</button><button type="button" class="btn btn-ghost" data-act="clearRefine">clear</button>
+<label class="ck" style="margin-left:auto"><input type="checkbox" id="showHidden"/> show hidden (<span id="hidN">0</span>)</label></div></form></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pagertop" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfotop" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button><input id="goto" class="inp" placeholder="page #" type="number" style="max-width:80px"/><button class="btn btn-ghost" data-act="gotoPage">go</button></div>
 <div id="results"></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pager" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfo" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button></div>
+</div>
+<div id="pageview" class="mx-auto w-full" style="display:none;max-width:46rem"></div>
 </main>
 <div id="drawer"><div class="scrim" data-act="closeD"></div><div class="sheet" id="sheet"></div></div>
 <div id="toasts"></div>

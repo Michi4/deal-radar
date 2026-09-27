@@ -79,7 +79,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
     seen: set[str] = set()
     scored: list[ScoredListing] = []
+    flagged: list[dict] = []  # kept (not dropped): client can unhide/re-filter post-search
     filtered_out = 0
+    enrich_budget = [int(intent.get("enrich_top_n", 150) or 150)]  # deep OCR/bench for top-N only
     events: list[dict] = []
     _vision_queue: list = []
     _stageb_queue: list = []
@@ -95,11 +97,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             continue
         seen.add(key)
 
+        freasons: list[str] = []
         fr = apply_filters(l, hard, blacklist, whitelist, intent.get("required", []))
         if not fr.passed:
-            filtered_out += 1
+            freasons.extend(fr.reasons or ["filtered"])
             metrics.inc("listings_filtered")
-            continue
 
         # product-model gate (NL product intel): listing must match one resolved model
         want_models: list[str] = intent.get("models", []) or []
@@ -107,16 +109,35 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             import re as _re
             norm = _re.sub(r"[^a-z0-9]+", "", l.title.lower())
             if not any(_re.sub(r"[^a-z0-9]+", "", m.lower()) in norm for m in want_models):
-                filtered_out += 1
+                freasons.append(f"model gate: no match in {[(m or '')[:40] for m in want_models][:4]}")
                 metrics.inc("listings_filtered_model")
-                continue
 
         h = heuristic_decide(l.title, l.description, l.price, q.keywords)
         metrics.inc("stage_a_total")
-        min_match = float(hard.get("min_match", 0) or 0) or 0.12  # relevance floor ALWAYS on
+        min_match = float(hard.get("min_match", 0) or 0) or 0.12  # relevance floor (client can unhide)
         if h["match"] < min_match:
-            filtered_out += 1
+            freasons.append(f"relevance {h['match']:.2f} < {min_match:.2f}")
             metrics.inc("listings_filtered_match")
+        if freasons:
+            # kept, not dropped: cheap risk only, no OCR/bench/network. Client unhides post-search.
+            filtered_out += 1
+            r0 = assess_risk(l, median)
+            _tc0 = total_cost(l.price, l.shipping_cost, l.distance_km,
+                              float(intent.get("cost_per_km", 0) or 0))
+            if len(flagged) < 1000:
+                flagged.append(ScoredListing(
+                    listing=l, match_score=h["match"],
+                    deal_dna={"match": h["match"], "value": 0.5,
+                              "risk": r0.score if r0.score is not None else 0.0,
+                              "completeness": 0.0, "condition": 0.5,
+                              "confidence": r0.confidence if r0.confidence is not None else 0.0,
+                              "total_cost": _tc0 if _tc0 is not None else 0.0},
+                    risk=r0, enrichments=[], value_score=0.5,
+                    final_score=h["match"], lane="hidden",
+                    why=["hidden: " + "; ".join(freasons[:3])]).model_dump())
+            if store is not None:
+                for c in store.upsert(l):
+                    events.append({"listing_id": l.id, "url": l.url, "title": l.title, **c})
             continue
         want_ad_note = {"want": "buy-request ad (Ankauf/Suche), demoted",
                         "parts": "parts/repair ad, demoted",
@@ -135,9 +156,12 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     h["match"] = max(0.0, h["match"] - 0.1)
 
         r = assess_risk(l, median)
+        deep = bool(intent.get("enrich", True)) and enrich_budget[0] > 0 and (h["match"] or 0) >= 0.25
+        if deep:
+            enrich_budget[0] -= 1
         enrich = enrich_cpu(l) if intent.get("enrich", True) else []
         # OCR listing photos (best-effort, cached) so spec stickers/BIOS screens become searchable text
-        if intent.get("ocr", True) and l.images and not l.ocr_texts:
+        if deep and intent.get("ocr", True) and l.images and not l.ocr_texts:
             try:
                 from .vision import ocr_listing_images
                 l.ocr_texts = await asyncio.to_thread(ocr_listing_images, l.images, 1)
@@ -162,7 +186,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 bn_why.append(f"CPU manually set to {override} (AI-checking against PassMark)")
             # model-family resolution: "hp 835 g8" -> candidate CPUs -> disambiguate from text/photos
             # also upgrades vague direct mentions ("ryzen 5 pro" -> exact 5650U/5850U)
-            if want_models and (not cpu_fact or cpu_fact.confidence < 0.7):
+            if deep and want_models and (not cpu_fact or cpu_fact.confidence < 0.7):
                 try:
                     from .scoring import resolve_cpu_candidates
                     blob = f"{l.title}\n{l.description}\n{' '.join(l.ocr_texts)}".lower()
@@ -225,7 +249,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 except Exception:
                     pass
         # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
-        if intent.get("benchmarks", True) and cpu_fact:
+        if deep and intent.get("benchmarks", True) and cpu_fact:
             import re as _re2
             if not _re2.search(r"\d{3,}", str(cpu_fact.value)):
                 bn_why.append(f"CPU '{cpu_fact.value}' too vague for benchmark lookup (no model number)")
@@ -266,7 +290,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 except Exception:
                     pass
         # GPU path: extract -> videocardbenchmark G3D (same title-verified honesty as CPU)
-        if intent.get("benchmarks", True):
+        if deep and intent.get("benchmarks", True):
             try:
                 from .benchmarks import lookup_gpu
                 from .scoring import enrich_gpu
@@ -534,6 +558,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     metrics.inc("search_runs")
     metrics.observe_latency("search", time.time() - t0)
     metrics.set_gauge("last_search_results", len(scored))
-    return {"results": [s.model_dump() for s in scored], "events": events,
+    return {"results": [s.model_dump() for s in scored], "filtered": flagged,
+            "events": events,
             "driver_errors": driver_errors, "filtered_out": filtered_out,
             "median": median, "sources": sources}

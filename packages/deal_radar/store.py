@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS observations(id INTEGER PRIMARY KEY AUTOINCREMENT, li
   ts REAL, kind TEXT, old_value TEXT, new_value TEXT);
 CREATE TABLE IF NOT EXISTS favorites(listing_id TEXT PRIMARY KEY, ts REAL, note TEXT);
 CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
+CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, ts REAL, status TEXT, done INTEGER,
+  total INTEGER, intent TEXT, summary TEXT);
 CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_id TEXT, title TEXT,
   price REAL, currency TEXT, source TEXT, url TEXT, image TEXT, score REAL,
   PRIMARY KEY (search_id, listing_id));
@@ -43,6 +45,10 @@ class Store:
         self.db.execute("PRAGMA wal_autocheckpoint=1000")
         with self._lock:
             self.db.executescript(SCHEMA)
+            try:
+                self.db.execute("ALTER TABLE searches ADD COLUMN total INTEGER DEFAULT 0")
+            except Exception:
+                pass
 
     def upsert(self, l: CanonicalListing) -> list[dict]:
         """Returns change events (price/desc/image/seller)."""
@@ -99,11 +105,11 @@ class Store:
     def is_favorite(self, listing_id: str) -> bool:
         return self.db.execute("SELECT 1 FROM favorites WHERE listing_id=?", (listing_id,)).fetchone() is not None
 
-    def save_search(self, sid: str, intent: dict) -> None:
+    def save_search(self, sid: str, intent: dict, total: int = 0) -> None:
         import time as _t
         with self._lock:
-            self.db.execute("INSERT OR REPLACE INTO searches VALUES(?,?,?)",
-                            (sid, _t.time(), json.dumps(intent)))
+            self.db.execute("INSERT OR REPLACE INTO searches VALUES(?,?,?,?)",
+                            (sid, _t.time(), json.dumps(intent), total))
             self.db.commit()
 
     def load_searches(self) -> dict[str, dict]:
@@ -121,7 +127,7 @@ class Store:
             self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
             self.db.commit()
 
-    def save_results(self, sid: str, results: list[dict], limit: int = 12) -> None:
+    def save_results(self, sid: str, results: list[dict], limit: int = 500) -> None:
         try:
             from deal_radar import metrics as _m
             with self._lock:
@@ -143,11 +149,32 @@ class Store:
                                  imgs[0] if imgs else None, r.get("final_score")))
             self.db.commit()
 
+    def job_upsert(self, sid: str, status: str, done: int, total: int,
+                   intent: dict | None = None, summary: str = "") -> None:
+        import time as _t
+        with self._lock:
+            if intent is None:
+                self.db.execute("UPDATE jobs SET status=?, done=?, total=?, summary=? WHERE id=?",
+                                (status, done, total, summary, sid))
+            else:
+                self.db.execute("INSERT OR REPLACE INTO jobs VALUES(?,?,?,?,?,?,?)",
+                                (sid, _t.time(), status, done, total, json.dumps(intent), summary))
+            self.db.commit()
+
+    def job_interrupt_stale(self) -> int:
+        """Mark running jobs from a previous process as interrupted. Returns count."""
+        with self._lock:
+            cur = self.db.execute("UPDATE jobs SET status='interrupted' WHERE status='running'")
+            self.db.commit()
+            return cur.rowcount if cur else 0
+
     def list_searches(self) -> list[dict]:
         out = []
         try:
             rows = self.db.execute(
-                "SELECT id, ts, intent FROM searches ORDER BY ts DESC LIMIT 60").fetchall()
+                "SELECT s.id, s.ts, s.intent, COALESCE(s.total, 0), "
+                "j.status, j.done, j.total FROM searches s LEFT JOIN jobs j ON j.id=s.id "
+                "ORDER BY s.ts DESC LIMIT 60").fetchall()
             sids = [r[0] for r in rows]
             counts: dict[str, int] = {}
             thumbs: dict[str, list] = {}
@@ -162,7 +189,7 @@ class Store:
                         f"AND image IS NOT NULL ORDER BY search_id, rank", sids).fetchall():
                     if len(thumbs.setdefault(sid, [])) < 4:
                         thumbs[sid].append(img)
-            for sid, ts, intent in rows:
+            for sid, ts, intent, total, st, dn, tt in rows:
                 try:
                     import json as _j
                     intent = _j.loads(intent)
@@ -170,7 +197,9 @@ class Store:
                     intent = {}
                 out.append({"id": sid, "ts": ts, "keywords": intent.get("keywords", ""),
                             "watch": bool(intent.get("watch")), "sources": intent.get("sources", []),
-                            "results": counts.get(sid, 0), "thumbs": thumbs.get(sid, [])})
+                            "results": total or counts.get(sid, 0), "thumbs": thumbs.get(sid, []),
+                            "job": {"status": st or "done", "done": dn or 0,
+                                    "total": tt or 0} if st else None})
         except Exception:
             pass
         return out

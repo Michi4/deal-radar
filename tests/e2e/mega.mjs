@@ -48,7 +48,9 @@ await page.evaluate(() => {
 await page.waitForTimeout(800);
 await page.evaluate(() => cmp());
 await page.waitForTimeout(800);
-check('compare table', await page.locator('#results table.cmp td').count() >= 2);
+check('compare table', await page.locator('#pageview table.cmp td').count() >= 2);
+await page.locator('#topnav-center button[data-tab="search"]').click();
+await page.waitForTimeout(500);
 
 // watch
 await page.locator('#topnav-center button:has-text("Watches")').click();
@@ -57,6 +59,10 @@ await page.fill('#wq', 'ThinkPad X1 Test');
 await page.click('text=+ Watch');
 await page.waitForTimeout(2000);
 check('watch created', true);
+
+// back to search page for view/theme checks
+await page.locator('#topnav-center button[data-tab="search"]').click();
+await page.waitForTimeout(500);
 
 // theme + grid/list
 await page.click('button[aria-label="toggle theme"]');
@@ -71,8 +77,8 @@ check('theme toggles + list/grid switch', themeClass !== undefined && rows >= 0)
 
 // marketplace lists (real driver names rendered)
 await page.locator('#topnav-center button:has-text("Store")').click();
-await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0, null, { timeout: 30000 });
-const storeTxt = await page.locator('#results').textContent();
+await page.waitForFunction(() => document.querySelectorAll('#pageview .card').length > 0, null, { timeout: 30000 });
+const storeTxt = await page.locator('#pageview').textContent();
 check('store lists drivers', storeTxt.includes('Willhaben') && storeTxt.includes('install'));
 
 check('no JS errors', errs.length === 0);
