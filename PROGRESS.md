@@ -118,6 +118,18 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Core uninstall roundtrip tested live (disable -> gone -> enable).
 - verify GREEN (92 passed), mega/xss green, screenshots clean. Deployed + healthy.
 
+## Verified 2026-09-27 (geo/categories/secrets batch)
+- kleinanzeigen geo verified (?locationStr postcode+city &radius=km, all-Berlin proof).
+  willhaben areaId map extracted from __NEXT_DATA__ (9 Bundesländer), Wien proof.
+- Location UI (input+radius+geolocate via cached Nominatim) + NL location hints.
+- Categories: kleinanzeigen 20 verified slugs + SDK convention + per-source UI +
+  automatch + fan-out + Lab docs. willhaben/vinted/shpock/ricardo researched honestly,
+  keyword fallback, gaps logged (willhaben needs session API, vinted 403, shpock GQL).
+- Secrets manager + rebuilt admin live + tested (no-leak proof). Core uninstall live.
+- Snapshot-row fallback with one-click re-run (crash-era tiles open again).
+- Price rises everywhere. Tracking interval adjustable. Login env-toggled, off on prod.
+- verify GREEN (93 passed), mega/xss/parallel green, screenshots clean. Deployed healthy.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
