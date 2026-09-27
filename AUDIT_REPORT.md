@@ -84,6 +84,74 @@ docker-compose.yml (restart, healthcheck, full env parity with samples).
 README Deploy section de-homelabbed (IPs live in docs/DEPLOYMENT.md only), auth matrix line
 (API_KEY gates all but /health; no CORS by design), stale uvicorn docstring in main.py corrected.
 
+## Pass 3 (2026-09-27) — full re-audit after volume/pages/login/tracking/categories
+Subagents rate-limited at kickoff; worked all phases directly per rule 6.
+Baseline: verify.sh GREEN, 89 passed, coverage 86%.
+
+### Phase 0 — recon delta
+Stack unchanged (FastAPI + vanilla JS + SQLite). New since pass 1: 9 endpoints
+(stop/pause/resume, watch-clone, tracking settings, lab job+follow, uninstall, login/logout,
+auth/status), 3 tables (jobs, settings, fact_overrides), snapshot BLOB, flags + driver_fetched
+per job, price_rise triggers, fav auto-tracking, category fan-out. verify.sh now also guards
+HTML tag balance (added after a real unclosed-div incident hid all tab pages).
+
+### [HIGH] Inline handlers reintroduced twice, caught by screenshot discipline — FIXED
+**Where:** web/app.js thumb/listrow/tiles (`onerror="this.remove()"`), caught via user console log
+**Evidence:** ~40 script-src-attr violations at app.js:263; fixed with capture-phase delegated
+remover + data-rm markers; current grep count for onclick/onerror/onsubmit/javascript: = 0.
+**Fix:** done + verified (CSP console clean). Lesson: CSP errors need a dedicated e2e assertion.
+
+### [HIGH] Opening history re-ran the full pipeline inline — FIXED
+**Where:** apps/api/main.py get_search cached branch (old), user report "cannot open any history"
+**Evidence:** old code awaited _run_cached (minutes) inside GET; on prod this hung then died as
+NetworkError. Now: zlib snapshots persisted per job, served instantly, never re-run; legacy
+rows reconstructed from search_results (500 cap) with explicit re-run affordance.
+**Verify:** test_open_old_search_serves_snapshot_instantly (pipeline mocked to raise if touched).
+
+### [HIGH] Stop/pause were decorative mid-search — FIXED
+**Where:** _run_job checked control only between intents; enrich phase unstoppable
+**Evidence:** browser journey: stop during enrich → kept running. Now: cooperative _STOP/_PAUSE
+sets checked every 16 listings + before each deep enrich; pause waits in-loop; get_search
+reports "paused — resume to continue"; partials preserved with stopped=True.
+**Verify:** test_cooperative_stop_keeps_partials + live pause/detail/stop journey.
+
+### [MEDIUM] SESSIONS/LAB_JOBS unbounded — FIXED
+**Where:** apps/api/main.py (no eviction)
+**Evidence:** code read. Now: expiry sweep + caps (200/50) on login.
+**Fix:** done.
+
+### [MEDIUM] confirm() for destructive uninstall — FIXED
+**Where:** web/app.js uninstallX. Now two-tap arm/disarm. Zero confirm/alert left.
+
+### [MEDIUM] Tab-first-click dead (Saved/Compare bypassed tab()) — FIXED
+**Where:** web/app.js showFavs (repro: fresh load → Saved showed content in hidden tree)
+**Evidence:** browser repro. One-line showPage(false) fix.
+
+### [LOW] pip-audit clean
+**Evidence:** `pip-audit`: No known vulnerabilities found. No tracked .env; git history sweep
+shows only fixture substrings (sk-cache etc.), no keys.
+
+### [LOW] Secrets: none found (same method as pass 1).
+
+### Open (unchanged, human decisions needed)
+- Auth topology: simple password login shipped + live; per-user isolation still future work.
+- Lab sandbox (AST gate only), SSRF egress allowlist, metrics-from-SQLite, off-host backup+restore.
+- Shpock deep pagination (GraphQL persisted-query RE — endpoint mapped, op not captured).
+- willhaben category slugs (no verified mapping; keyword fallback).
+
+## Scorecard (pass 3)
+- Frontend: clean (0 inline handlers, CSP-strict, responsive verified, a11y labels present).
+- Backend/API: clean (bounds, 404/400 shapes, rate limits incl. /login bucket, timeouts on externals).
+- Security: conditional Go (headers+CSP+XSS-closed+audited deps; sandbox/SSRF queued).
+- Data: clean (indexes, no N+1, locks, WAL assert, snapshots versioned reads).
+- Infra: clean with notes (non-root, healthcheck, env parity, CI=verify.sh, no docker daemon locally).
+- Tests: 89 passed, mega 11/11, xss 4/4, coverage 86%.
+
+## Verdict: CONDITIONAL GO
+Ship with Authelia + app login on (prod default today: login OFF, Authelia on — acceptable per
+operator choice). Conditions: keep LAB_ENABLED gated, watch disk (snapshots), rotate nothing
+(no leaks found). Blockers by name: lab-sandbox, ssrf-egress, shpock-deep-pages, offhost-backup.
+
 ## Pass 2 (same session)
 - CSP `default-src 'self'` initially **broke the app** (inline `<script>` blocked, dead UI,
 caught by manual browser check — SRCS undefined, no request sent). Fixed properly:

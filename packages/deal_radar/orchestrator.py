@@ -36,6 +36,22 @@ def dedupe_key(title: str, images: list[str]) -> str:
     return f"{norm}|{img}"
 
 
+class _SearchStopped(Exception):
+    pass
+
+
+_STOP: set[str] = set()  # sids requesting cooperative stop (checked in hot loops)
+_PAUSE: set[str] = set()  # sids paused (loop waits until resumed or stopped)
+
+
+async def _pause_gate(sid: str | None) -> bool:
+    """True if caller should abort (stopped). Waits while paused."""
+    import asyncio as _aio
+    while sid and sid in _PAUSE and sid not in _STOP:
+        await _aio.sleep(2)
+    return bool(sid and sid in _STOP)
+
+
 async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                      store=None, notifier=None) -> dict[str, Any]:
     t0 = time.time()
@@ -92,7 +108,16 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     use_stage_b = bool(os.getenv("JEV_API_KEY") or os.getenv("KEV_URL") or os.getenv("CLOUD_API_KEY"))
     want_attrs: dict = intent.get("attributes", {}) or {}
 
-    for l in all_listings:
+    _sid = intent.get("_sid")
+    stopped = False
+    for _li, l in enumerate(all_listings):
+        if _sid and (_sid in _STOP or _sid in _PAUSE) and _li % 16 == 0:
+            if await _pause_gate(_sid):
+                stopped = True
+                break
+            if _sid in _STOP:
+                stopped = True
+                break
         key = dedupe_key(l.title, l.images)
         if key in seen:
             metrics.inc("duplicates")
@@ -160,7 +185,16 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         r = assess_risk(l, median)
         deep = bool(intent.get("enrich", True)) and enrich_budget[0] > 0 and (h["match"] or 0) >= 0.25
         if deep:
-            enrich_budget[0] -= 1
+            if _sid and (_sid in _STOP or _sid in _PAUSE):
+                if await _pause_gate(_sid):
+                    stopped = True
+                    break
+                if _sid in _STOP:
+                    stopped = True
+                    break
+                deep = False
+            else:
+                enrich_budget[0] -= 1
         enrich = enrich_cpu(l) if intent.get("enrich", True) else []
         # OCR listing photos (best-effort, cached) so spec stickers/BIOS screens become searchable text
         if deep and intent.get("ocr", True) and l.images and not l.ocr_texts:
@@ -571,4 +605,5 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     return {"results": [s.model_dump() for s in scored], "filtered": flagged,
             "events": events, "driver_fetched": driver_fetched,
             "driver_errors": driver_errors, "filtered_out": filtered_out,
+            "stopped": stopped,
             "median": median, "sources": sources}

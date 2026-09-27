@@ -879,3 +879,37 @@ def test_lab_generate_e2e_mocked_model():
         assert bad["ok"] is False  # no model output path needs no model; validated below
     assert ailab.validate_python("import os\nx=1") is not None
     assert ailab.validate_python("import httpx\nx=1") is None
+
+
+def test_cooperative_stop_keeps_partials():
+    import asyncio
+
+    from deal_radar import orchestrator as O
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [CanonicalListing(id=f"t:{i}", source="t", native_id=str(i),
+                                     url="https://t/x", title=f"ThinkPad {i}",
+                                     description="good laptop", price=100 + i,
+                                     images=[], seller=Seller(name="s")) for i in range(40)]
+
+    reg = DriverRegistry()
+    reg.register(F())
+    O._STOP.add("s_stopme")
+    try:
+        out = asyncio.run(O.run_search(
+            {"keywords": "thinkpad", "sources": ["t"], "limit": 100, "_sid": "s_stopme",
+             "risk": {}, "enrich": False, "ocr": False, "benchmarks": False,
+             "vision": False, "details": False}, reg, None, None))
+    finally:
+        O._STOP.discard("s_stopme")
+    assert out.get("stopped") is True

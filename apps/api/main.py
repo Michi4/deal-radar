@@ -49,6 +49,16 @@ SESSION_TTL = 30 * 24 * 3600
 RATE_PER_MIN = int(os.getenv("RATE_PER_MIN", "120"))
 
 
+def _prune_sessions() -> None:
+    now = _t.time()
+    for tok in [t for t, exp in SESSIONS.items() if exp <= now]:
+        SESSIONS.pop(tok, None)
+    while len(SESSIONS) > 200:
+        SESSIONS.pop(next(iter(SESSIONS)), None)
+    while len(LAB_JOBS) > 50:
+        LAB_JOBS.pop(next(iter(LAB_JOBS)), None)
+
+
 def _logged_in(request: Request) -> bool:
     if not LOGIN_PASSWORD:
         return True
@@ -451,6 +461,7 @@ async def login(request: Request):
             return JSONResponse({"ok": False, "error": "wrong password"}, status_code=401)
         return _login_page("wrong password")
     import secrets as _sec
+    _prune_sessions()
     tok = _sec.token_urlsafe(32)
     SESSIONS[tok] = now + SESSION_TTL
     if wants_json:
@@ -547,12 +558,13 @@ def _merge_outs(outs: list[dict], limit: int | None) -> dict:
             if lid not in seen and len(flagged) < 5000:
                 seen.add(lid)
                 flagged.append(r)
+    stopped = any(o.get("stopped") for o in outs)
     merged.sort(key=lambda r: r.get("final_score", 0), reverse=True)
     if limit:
         merged = merged[:limit]
     _mp = sorted(r["listing"]["price"] for r in merged if r["listing"].get("price") is not None)
     return {"results": merged, "filtered": flagged, "events": events, "driver_errors": errors,
-            "driver_fetched": fetched,
+            "driver_fetched": fetched, "stopped": stopped,
             "filtered_out": filt, "median": _st.median(_mp) if len(_mp) >= 3 else None}
 
 
@@ -604,6 +616,7 @@ async def _notify_watch_changes(intent: dict, merged: dict) -> None:
 async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
     try:
         outs = []
+        from deal_radar import orchestrator as _orc
         for i, data in enumerate(intents):
             while JOBS[sid].get("control") == "pause":
                 JOBS[sid]["detail"] = f"paused at sub-search {i + 1}/{len(intents)}"
@@ -627,7 +640,12 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
                 store.job_upsert(sid, "running", i, len(intents))
             except Exception:
                 pass
-            outs.append(await _run_cached(data, force=True))
+            data["_sid"] = sid
+            try:
+                outs.append(await _run_cached(data, force=True))
+            finally:
+                data.pop("_sid", None)
+                _orc._STOP.discard(sid)
             # progressive partials: UI renders these while the job continues
             try:
                 part = _merge_outs(outs, meta.get("limit", None))
@@ -638,7 +656,15 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             except Exception:
                 pass
         JOBS[sid]["done"] = len(intents)
+        try:
+            from deal_radar import orchestrator as _orc2
+            _orc2._STOP.discard(sid)
+            _orc2._PAUSE.discard(sid)
+        except Exception:
+            pass
         merged = _merge_outs(outs, meta.get("limit", None))
+        if any(o.get("stopped") for o in outs):
+            merged["stopped"] = True
         base = meta.get("base", intents[0] if intents else {})
         SEARCHES[sid] = base
         store.save_search(sid, base, len(merged["results"]))
@@ -762,8 +788,11 @@ async def get_search(sid: str):
     job = JOBS.get(sid)
     if job is not None:
         if job["status"] == "running":
+            from deal_radar import orchestrator as _orc
+            _paused = sid in _orc._PAUSE
             out = {"id": sid, "status": "running", "done": job["done"], "total": job["total"],
-                   "detail": job.get("detail", ""), "control": job.get("control", "run")}
+                   "detail": "paused — resume to continue" if _paused else job.get("detail", ""),
+                   "paused": _paused, "control": job.get("control", "run")}
             if job.get("partial"):
                 out["partial"] = job["partial"]
             return out
@@ -787,6 +816,30 @@ async def get_search(sid: str):
         return JSONResponse({"error": "unknown search id"}, status_code=404)
     snap = store.load_snapshot(sid)
     if not snap:
+        # legacy rows (pre-snapshot era): reconstruct viewable cards from saved rows
+        recs: list[dict] = []
+        try:
+            rows = store.db.execute(
+                "SELECT listing_id, title, price, currency, source, url, image, score "
+                "FROM search_results WHERE search_id=? ORDER BY rank LIMIT 500", (sid,)).fetchall()
+            for lid, title, price, cur, src, url, img, score in rows:
+                recs.append({"listing": {"id": lid, "source": src, "url": url, "title": title,
+                                         "price": price, "currency": cur,
+                                         "images": [img] if img else []},
+                             "match_score": 0.5,
+                             "deal_dna": {"match": 0.5, "value": 0.5, "risk": 0.0,
+                                          "completeness": 0.5, "condition": 0.5,
+                                          "confidence": 0.0, "total_cost": price or 0.0},
+                             "risk": {"score": 0.0, "confidence": 0.0, "severity": "low",
+                                      "reasons": [], "counter_evidence": []},
+                             "enrichments": [], "value_score": 0.5, "final_score": score or 0.5,
+                             "lane": "top",
+                             "why": ["reconstructed from saved rows (pre-snapshot search) — re-run for full analysis"]})
+        except Exception:
+            recs = []
+        if recs:
+            return {"id": sid, "status": "done", "cached": True, "reconstructed": True,
+                    "intent": intent, "results": recs, "filtered": []}
         return {"id": sid, "status": "empty",
                 "error": "no saved snapshot for this search — press re-run for fresh results",
                 "intent": intent, "results": [], "filtered": []}
@@ -817,6 +870,12 @@ def stop_search(sid: str):
     if job is None:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
     job["control"] = "stop"
+    try:
+        from deal_radar import orchestrator as _orc
+        _orc._STOP.add(sid)
+        _orc._PAUSE.discard(sid)
+    except Exception:
+        pass
     return {"ok": True, "id": sid}
 
 
@@ -826,6 +885,11 @@ def pause_search(sid: str):
     if job is None:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
     job["control"] = "pause"
+    try:
+        from deal_radar import orchestrator as _orc
+        _orc._PAUSE.add(sid)
+    except Exception:
+        pass
     return {"ok": True, "id": sid}
 
 
@@ -835,6 +899,11 @@ def resume_search(sid: str):
     if job is None:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
     job["control"] = "run"
+    try:
+        from deal_radar import orchestrator as _orc
+        _orc._PAUSE.discard(sid)
+    except Exception:
+        pass
     return {"ok": True, "id": sid}
 
 
