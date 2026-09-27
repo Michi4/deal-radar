@@ -41,13 +41,13 @@
 - [x] 5 audit passes, reports + scorecards (Conditional Go, named conditions)
 
 ## Open (this batch)
-- [ ] Stopped/interrupted pill (shows done) + halt animations on stop
-- [ ] Tile hidden counts (persist filtered_out, show "30 + 245 hidden")
-- [ ] Footer with GitHub link (index + admin)
-- [ ] Admin live-dot removal
-- [ ] Distance calc for ALL core drivers + radius slider 1km→unlimited
-- [ ] Running searches as in-grid product-like tiles (animated, no page resize)
-- [ ] Margin/spacing deep pass (toolbar/pager/cards/sidebar rhythm)
-- [ ] willhaben full categories (session-API bootstrap attempt, time-boxed)
+- [x] Stopped/interrupted pill (shows stopped, never done) + animations halt (tiles clear, skels replaced on render)
+- [x] Tile hidden counts (filtered_out column, tiles show "N results · M hidden")
+- [x] Footer with GitHub link (index + admin)
+- [x] Admin live-dot removal
+- [x] Distance calc (geocode engine + per-driver geo verified) + radius slider + dist sort; max_distance enforced post-fill
+- [x] Running searches as in-grid tiles (jobart shimmer, grid+list variants, per-job controls)
+- [x] Margin pass (toolbar panel surface, pager scroll, sidebar reflow, balance guard in verify)
+- [x] willhaben categories researched honestly (slugs serve generic mix, verticals need session API/parses — logged, keyword fallback)
 - [ ] Fresh-profile proof (searches survive new browser)
 - [ ] Shutdown laptop (only at the very end, confirm first)
