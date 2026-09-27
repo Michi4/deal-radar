@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS favorites(listing_id TEXT PRIMARY KEY, ts REAL, note 
 CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
 CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, ts REAL, status TEXT, done INTEGER,
   total INTEGER, intent TEXT, summary TEXT);
+CREATE TABLE IF NOT EXISTS geocache(place TEXT PRIMARY KEY, lat REAL, lon REAL, ts REAL);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_id TEXT, title TEXT,
   price REAL, currency TEXT, source TEXT, url TEXT, image TEXT, score REAL,
@@ -47,7 +48,8 @@ class Store:
         with self._lock:
             self.db.executescript(SCHEMA)
             for ddl in ("ALTER TABLE searches ADD COLUMN total INTEGER DEFAULT 0",
-                        "ALTER TABLE searches ADD COLUMN snapshot BLOB"):
+                        "ALTER TABLE searches ADD COLUMN snapshot BLOB",
+                        "ALTER TABLE searches ADD COLUMN filtered_out INTEGER DEFAULT 0"):
                 try:
                     self.db.execute(ddl)
                 except Exception:
@@ -110,11 +112,15 @@ class Store:
     def is_favorite(self, listing_id: str) -> bool:
         return self.db.execute("SELECT 1 FROM favorites WHERE listing_id=?", (listing_id,)).fetchone() is not None
 
-    def save_search(self, sid: str, intent: dict, total: int = 0) -> None:
+    def save_search(self, sid: str, intent: dict, total: int = 0, filtered_out: int = 0) -> None:
         import time as _t
         with self._lock:
-            self.db.execute("INSERT OR REPLACE INTO searches(id, ts, intent, total) VALUES(?,?,?,?)",
-                            (sid, _t.time(), json.dumps(intent), total))
+            try:
+                self.db.execute("INSERT OR REPLACE INTO searches(id, ts, intent, total, filtered_out) VALUES(?,?,?,?,?)",
+                                (sid, _t.time(), json.dumps(intent), total, filtered_out))
+            except Exception:
+                self.db.execute("INSERT OR REPLACE INTO searches(id, ts, intent, total) VALUES(?,?,?,?)",
+                                (sid, _t.time(), json.dumps(intent), total))
             self.db.commit()
 
     def save_snapshot(self, sid: str, payload: dict) -> None:
@@ -228,7 +234,7 @@ class Store:
         out = []
         try:
             rows = self.db.execute(
-                "SELECT s.id, s.ts, s.intent, COALESCE(s.total, 0), "
+                "SELECT s.id, s.ts, s.intent, COALESCE(s.total, 0), COALESCE(s.filtered_out, 0), "
                 "j.status, j.done, j.total FROM searches s LEFT JOIN jobs j ON j.id=s.id "
                 "ORDER BY s.ts DESC LIMIT 60").fetchall()
             sids = [r[0] for r in rows]
@@ -245,7 +251,7 @@ class Store:
                         f"AND image IS NOT NULL ORDER BY search_id, rank", sids).fetchall():
                     if len(thumbs.setdefault(sid, [])) < 4:
                         thumbs[sid].append(img)
-            for sid, ts, intent, total, st, dn, tt in rows:
+            for sid, ts, intent, total, fout, st, dn, tt in rows:
                 try:
                     import json as _j
                     intent = _j.loads(intent)
@@ -253,7 +259,7 @@ class Store:
                     intent = {}
                 out.append({"id": sid, "ts": ts, "keywords": intent.get("keywords", ""),
                             "watch": bool(intent.get("watch")), "sources": intent.get("sources") or [],
-                            "results": total or counts.get(sid, 0), "thumbs": thumbs.get(sid, []),
+                            "results": total or counts.get(sid, 0), "filtered_out": fout or 0, "thumbs": thumbs.get(sid, []),
                             "job": {"status": st or "done", "done": dn or 0,
                                     "total": tt or 0} if st else None})
         except Exception:

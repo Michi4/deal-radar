@@ -139,8 +139,10 @@ header.sticky{position:sticky;top:0;z-index:60}
 .btn:active{transform:scale(.96)}
 .navlink,.seg button,.pills button,.chip{transition:background-color .15s,color .15s,border-color .15s,transform .1s}
 .navlink:active,.seg button:active,.pills button:active{transform:scale(.95)}
-#livestrip{display:flex;gap:.5rem;overflow-x:auto;padding:.35rem .1rem;margin:.2rem 0;min-height:0}
-#livestrip:empty{display:none}
+@keyframes slide{from{background-position:200% 0}to{background-position:-200% 0}}
+.jobart{height:9rem;background:linear-gradient(90deg,var(--acc-soft) 25%,rgba(128,128,128,.25) 50%,var(--acc-soft) 75%);background-size:200% 100%;animation:slide 1.6s linear infinite}
+.listrow.jobtile{align-items:center}
+.jobtile .row{margin-top:.4rem}
 .livetile{flex:0 0 auto;width:300px;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:.75rem;padding:.45rem .65rem;font-size:.78rem;line-height:1.35}
 .dark .livetile{background:#0f172a}
 .livetile b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -228,7 +230,6 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 
 
 
-<div id="livestrip" style="display:none"></div>
 
 
 
@@ -310,6 +311,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="fld"><span>weight: value <b id="wVaV">35</b></span><input id="wVa" class="inp" type="range" min="0" max="100" value="35" title="Re-rank: value weight"/></label>
 <label class="fld"><span>weight: risk <b id="wRiV">20</b></span><input id="wRi" class="inp" type="range" min="0" max="100" value="20" title="Re-rank: risk weight"/></label>
 <label class="fld"><span>weight: complete <b id="wCoV">10</b></span><input id="wCo" class="inp" type="range" min="0" max="100" value="10" title="Re-rank: completeness weight"/></label>
+<label class="fld"><span>max distance <b id="rDistV">any</b></span><select id="rDist" class="inp" title="Only listings within this distance (needs location set)"><option value="">any</option><option>5</option><option>10</option><option>25</option><option>50</option><option>100</option><option>250</option><option>500</option></select></label>
 </div>
 <div class="row mt-2"><button type="submit" class="btn btn-primary">apply</button><button type="button" class="btn btn-ghost" data-act="clearRefine">clear</button>
 <label class="ck" style="margin-left:auto"><input type="checkbox" id="showHidden"/> show hidden (<span id="hidN">0</span>)</label></div></form></div>
@@ -329,6 +331,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 </div>
 <div id="pageview" class="mx-auto w-full" style="display:none;max-width:46rem"></div>
 </main>
+
+<footer style="text-align:center;padding:1.4rem 1rem 5rem;opacity:.55;font-size:.82rem"><a href="https://github.com/Michi4/deal-radar" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">deal-radar on GitHub</a> · finds used products, live</footer>
 <div id="drawer"><div class="scrim" data-act="closeD"></div><div class="sheet" id="sheet"></div></div>
 <div id="cmptray" style="display:none"><span id="cmpcnt"></span><button class="btn btn-primary" data-act="cmp">compare now</button><button class="btn btn-ghost" data-act="cmpClear">clear</button></div>
 <div id="toasts"></div>

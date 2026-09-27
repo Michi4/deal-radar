@@ -34,8 +34,6 @@ async function tick() {
       const dd = await api('/drivers');
       m._allDrivers = dd;
     } catch (e) { m._allDrivers = null; }
-    document.getElementById('livedot').className = 'dot';
-    document.getElementById('livetxt').textContent = 'live';
     document.getElementById('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
     const drv = m.drivers || {};
     const okN = Object.values(drv).filter(d => d.ok).length;
@@ -84,8 +82,7 @@ async function tick() {
       .map(e => `<div class="ev">${esc(e.kind || '?')}: ${esc((e.title || e.listing_id || '').slice(0, 100))}</div>`).join('') || 'none yet';
     document.getElementById('nev').textContent = m.events || 0;
   } catch (e) {
-    document.getElementById('livedot').className = 'dot bad';
-    document.getElementById('livetxt').textContent = 'unreachable';
+    document.getElementById('updated').textContent = 'unreachable — retrying…';
   }
 }
 function showMsg(t) {

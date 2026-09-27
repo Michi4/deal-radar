@@ -523,6 +523,52 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                  intent.get("ranking", None))
             s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
         scored.sort(key=lambda s: s.final_score, reverse=True)
+    # distance fill (bounded network use, forever-cached) + max_distance enforcement.
+    # Listings never carry coords — only text — so distances are computed, not given.
+    _origin = None
+    _oloc = (intent.get("location") or "").strip()
+    if _oloc:
+        from .geocode import cached as _gcached
+        from .geocode import geocode as _geo
+        from .geocode import haversine_km as _hav
+        _origin = _gcached(_oloc, store) or (await asyncio.to_thread(_geo, _oloc, store))
+        if _origin:
+            _geobudget = [150]  # max fresh geocodes per search; cache hits are free
+            scored.sort(key=lambda s: s.final_score, reverse=True)
+            for _gs in scored:
+                if _gs.listing.distance_km is not None:
+                    continue
+                _glt = (_gs.listing.location or "").strip()
+                if not _glt:
+                    continue
+                _gco: tuple[float, float] | None = _gcached(_glt, store)
+                if _gco is None:
+                    if _geobudget[0] <= 0:
+                        continue
+                    _geobudget[0] -= 1
+                    _gco = await asyncio.to_thread(_geo, _glt, store)
+                if _gco:
+                    _gs.listing.distance_km = _hav(_origin, _gco)
+            _gmd: float | None = None
+            try:
+                _gmd = float((hard.get("max_distance_km") or intent.get("max_distance_km") or 0) or 0) or None
+            except (ValueError, TypeError):
+                _gmd = None
+            if _gmd:
+                _gkept, _gmoved = [], []
+                for _gs in scored:
+                    _gdd = _gs.listing.distance_km
+                    if _gdd is not None and _gdd > _gmd:
+                        _gs.lane = "hidden"
+                        _gs.why.append(f"hidden: {_gdd:.0f} km > max {_gmd:.0f} km")
+                        _gmoved.append(_gs)
+                    else:
+                        _gkept.append(_gs)
+                if _gmoved:
+                    scored[:] = _gkept
+                    for _gm in _gmoved[:5000 - len(flagged)]:
+                        flagged.append(_gm.model_dump())
+                    filtered_out += len(_gmoved)
     # enrichment-fabric second stage: cohort facts for every scored listing
     try:
         from .enrich import REGISTRY

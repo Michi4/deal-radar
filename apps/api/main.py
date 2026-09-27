@@ -858,7 +858,7 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             merged["stopped"] = True
         base = meta.get("base", intents[0] if intents else {})
         SEARCHES[sid] = base
-        store.save_search(sid, base, len(merged["results"]))
+        store.save_search(sid, base, len(merged["results"]), merged.get("filtered_out", 0))
         try:
             _t0snap = time.time()
             await asyncio.to_thread(store.save_snapshot, sid, merged)

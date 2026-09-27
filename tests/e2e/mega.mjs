@@ -11,6 +11,9 @@ page.on('pageerror', e => errs.push(String(e).slice(0, 80)));
 await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 check('index loads', await page.locator('#q').count() === 1);
 await page.click('#modeseg button[data-mode="kw"]');
+await page.click('details summary');
+await page.selectOption('#limitN', '50');
+await page.selectOption('#deepN', '50');
 
 // search
 await page.fill('#q', 'ThinkPad');
@@ -23,7 +26,6 @@ await page.waitForFunction(() => ACTIVEJOBS.size === 0, null, { timeout: 300000 
 // sort + blacklist-field typing are client-side (no roundtrip); only Search button queries
 let fetches = 0;
 page.on('request', r => { if (r.url().includes('/searches')) fetches++; });
-await page.click('details summary');
 await page.fill('#black', 'rucksack XYZ123');
 await page.waitForTimeout(1000);
 await page.selectOption('#sortsel', 'price');

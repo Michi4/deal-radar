@@ -950,3 +950,312 @@ def test_kleinanzeigen_category_urls():
         assert re.fullmatch(r"[a-z0-9-]+", slug), slug
     for g, slug in d.GENERIC.items():
         assert slug in d.CATEGORIES, (g, slug)
+
+
+def test_geocode_math_and_cache():
+    from deal_radar.geocode import cached, geocode, haversine_km
+    # Vienna Stephansplatz -> Schönbrunn ~4.5km
+    d = haversine_km((48.2082, 16.3738), (48.1856, 16.3124))
+    assert 3.5 < d < 5.5
+    assert geocode("") is None and geocode("x" * 200) is None
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "geo.db"))
+    assert cached("Wien", st) is None  # nothing cached, no network in cached()
+    st.db.execute("INSERT INTO geocache VALUES(?,?,?,?)", ("wien", 48.2, 16.37, 1.0))
+    st.db.commit()
+    assert cached("Wien", st) == (48.2, 16.37)
+    st.close()
+
+
+def test_cancel_pause_ttl_and_disarm():
+    import asyncio
+    import time
+
+    from deal_radar import cancel as C
+    assert C.should_stop(None) is False
+    assert C.should_stop("nope") is False
+    C._STOP.add("s1")
+    assert C.should_stop("s1") is True
+    C.disarm("s1")
+    assert C.should_stop("s1") is False
+    C._PAUSE.add("s2")
+    C._PAUSE_SINCE["s2"] = time.time() - C.PAUSE_TTL_S - 1
+    assert asyncio.run(C.pause_gate("s2")) is True  # TTL expired -> stop
+    assert "s2" in C._STOP and "s2" not in C._PAUSE
+    C.disarm("s2")
+
+
+def test_snapshot_roundtrip():
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "snap.db"))
+    st.save_search("s9", {"keywords": "t"}, total=2)
+    payload = {"results": [{"listing": {"id": "a"}, "final_score": 1}], "filtered": [], "flags": {}}
+    st.save_snapshot("s9", payload)
+    back = st.load_snapshot("s9")
+    assert back["results"][0]["listing"]["id"] == "a"
+    assert st.load_snapshot("missing") is None
+    st.close()
+
+
+def test_price_rise_notifies_with_direction():
+    import asyncio
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+
+    state = {"price": 100}
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [CanonicalListing(id="t:x", source="t", native_id="x", url="https://t/x",
+                                     title="ThinkPad T14", description="good laptop",
+                                     price=state["price"], images=[], seller=Seller(name="s"))]
+
+    class FakeN:
+        def __init__(self):
+            self.sent = []
+
+        async def send(self, *a, **k):
+            self.sent.append(a)
+
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    reg = DriverRegistry()
+    reg.register(F())
+    st = Store(os.path.join(tempfile.mkdtemp(), "rise.db"))
+    n = FakeN()
+    base = {"keywords": "thinkpad", "sources": ["t"], "limit": 5, "notify_on": ["price_rise"],
+            "risk": {}, "enrich": False, "ocr": False, "benchmarks": False,
+            "vision": False, "details": False}
+    asyncio.run(run_search(dict(base), reg, st, n))
+    assert n.sent == []
+    state["price"] = 120
+    asyncio.run(run_search(dict(base), reg, st, n))
+    assert len(n.sent) == 1 and "▲20%" in n.sent[0][0], n.sent
+    state["price"] = 100
+    asyncio.run(run_search(dict(base, notify_on=["price_drop"]), reg, st, n))
+    assert len(n.sent) == 2 and "▼" in n.sent[1][0]
+    st.close()
+
+
+def test_geocode_network_path_mocked():
+    import json
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    from deal_radar import geocode as G
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "geo2.db"))
+    payload = json.dumps([{"lat": "48.2", "lon": "16.37"}]).encode()
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return payload
+
+    with patch.object(G.urllib.request, "urlopen", return_value=FakeResp()):
+        G._last_call = 0
+        assert G.geocode("Wien", st) == (48.2, 16.37)
+        # second call served from cache (would raise if network hit)
+        with patch.object(G.urllib.request, "urlopen", side_effect=AssertionError("net!")):
+            assert G.geocode("Wien", st) == (48.2, 16.37)
+    st.close()
+
+
+def test_distance_fill_and_max_distance_flag():
+    import asyncio
+    import os
+    import tempfile
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+    from deal_radar.store import Store
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            mk = lambda i, loc, price: CanonicalListing(
+                id=f"t:{i}", source="t", native_id=str(i), url="https://t/x", title=f"ThinkPad {i}",
+                description="good laptop with plenty of description text here", price=price,
+                images=["https://t/i.jpg"], location=loc, seller=Seller(name="s"))
+            return [mk(1, "1010 Wien", 500), mk(2, "80331 München", 500)]
+
+    reg = DriverRegistry()
+    reg.register(F())
+    st = Store(os.path.join(tempfile.mkdtemp(), "dist.db"))
+    st.db.execute("INSERT OR REPLACE INTO geocache VALUES(?,?,?,?)", ("1010 wien", 48.2, 16.37, 1.0))
+    st.db.execute("INSERT OR REPLACE INTO geocache VALUES(?,?,?,?)", ("80331 münchen", 48.13, 11.57, 1.0))
+    st.db.execute("INSERT OR REPLACE INTO geocache VALUES(?,?,?,?)", ("wien", 48.2, 16.37, 1.0))
+    st.db.commit()
+    out = asyncio.run(run_search(
+        {"keywords": "thinkpad", "sources": ["t"], "limit": 10, "location": "Wien",
+         "max_distance_km": 100, "risk": {}, "enrich": False, "ocr": False,
+         "benchmarks": False, "vision": False, "details": False}, reg, st, None))
+    by_id = {r["listing"]["id"]: r for r in out["results"]}
+    hid = {r["listing"]["id"]: r for r in out["filtered"]}
+    assert by_id["t:1"]["listing"]["distance_km"] is not None
+    assert by_id["t:1"]["listing"]["distance_km"] < 50
+    assert "t:2" in hid and hid["t:2"]["listing"]["distance_km"] > 300
+    assert any("km > max" in w for w in hid["t:2"]["why"])
+    st.close()
+
+
+def test_lab_publish_posts_pr(monkeypatch):
+    import asyncio
+    import os
+    import sys
+    sys.path.insert(0, "apps")
+    os.environ["GH_TOKEN"] = "t"
+    os.environ["LAB_PUBLISH"] = "1"
+    import api.main as m
+    calls = []
+
+    class FakeResp:
+        def __init__(self, payload):
+            self._p = payload
+
+        def json(self):
+            return self._p
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url, headers=None):
+            calls.append(url)
+            if "git/ref" in url:
+                return FakeResp({"object": {"sha": "abc"}})
+            return FakeResp({"default_branch": "main"})
+
+        async def post(self, url, headers=None, json=None):
+            calls.append(url)
+            return FakeResp({"html_url": "https://x/pr/1"})
+
+        async def put(self, url, headers=None, json=None):
+            calls.append(url)
+            return FakeResp({})
+
+    monkeypatch.setattr(m.httpx, "AsyncClient", FakeClient)
+    try:
+        out = asyncio.run(m.lab_publish({"id": "d", "kind": "enricher",
+                                         "path": "enrichers/custom/d.py"}))
+        assert out["ok"] and out["pr"].endswith("/pr/1"), out
+        assert any("/pulls" in u for u in calls)
+    finally:
+        del os.environ["GH_TOKEN"]
+        del os.environ["LAB_PUBLISH"]
+
+
+def test_detail_enrich_upgrades_listing():
+    import asyncio
+    import os
+    import tempfile
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+    from deal_radar.store import Store
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t",
+                                  capabilities=["search", "fetch_detail"])
+
+        async def search(self, query: SearchQuery):
+            return [CanonicalListing(id="t:x", source="t", native_id="x", url="https://t/x",
+                                     title="ThinkPad T14", description="short",
+                                     price=None, images=[], seller=Seller(name=""))]
+
+        async def fetch_detail(self, native_id_or_url: str):
+            return CanonicalListing(id="t:x", source="t", native_id="x", url="https://t/x",
+                                    title="ThinkPad T14", description="full description here",
+                                    price=450, images=[], seller=Seller(name="shop"))
+
+    reg = DriverRegistry()
+    reg.register(F())
+    st = Store(os.path.join(tempfile.mkdtemp(), "det.db"))
+    out = asyncio.run(run_search(
+        {"keywords": "thinkpad", "sources": ["t"], "limit": 5,
+         "risk": {}, "enrich": False, "ocr": False, "benchmarks": False, "vision": False,
+         "details": True}, reg, st, None))
+    r = out["results"][0]
+    assert r["listing"]["price"] == 450
+    assert any("detail page enriched" in w for w in r["why"])
+    st.close()
+
+
+def test_notifiers_send_and_from_env(monkeypatch):
+    import asyncio
+
+    import deal_radar.notifications as N
+
+    posted = []
+
+    class FakeResp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **k):
+            posted.append(url)
+            return FakeResp()
+
+    monkeypatch.setattr(N.httpx, "AsyncClient", FakeClient)
+    assert asyncio.run(N.NtfyNotifier("https://n/t").send("t", "b")) is True
+    assert asyncio.run(N.WebhookNotifier("https://h/x").send("t", "b")) is True
+    assert asyncio.run(N.SignalNotifier("http://s", "123").send("t", "b")) is True
+    assert asyncio.run(N.TelegramNotifier("tok", "1").send("t", "b")) is True
+    assert asyncio.run(N.LogNotifier().send("t", "b")) is True
+    assert len(posted) == 4
+    multi = N.notifier_from_env({"NOTIFIERS_JSON": '[{"type": "log"}]', "SIGNAL_NUMBER": "x"})
+    assert asyncio.run(multi.send("t", "b")) is True

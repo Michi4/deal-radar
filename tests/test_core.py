@@ -738,3 +738,97 @@ def test_admin_reset_requires_confirm():
     assert wiped["searches"] >= 1 and wiped["favorites"] >= 1
     assert st.list_searches() == [] and st.favorites_with_history() == []
     st.close()
+
+
+def test_job_endpoints_edge_cases():
+    import os
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    # unknown ids
+    assert c.get("/searches/nope").status_code == 404
+    assert c.post("/searches/nope/redo").status_code == 404
+    assert c.get("/searches/nope/compare").status_code == 404
+    # finished jobs reject control with 409
+    m.JOBS["s_done_edge"] = {"status": "done", "done": 1, "total": 1, "result": {}}
+    try:
+        assert c.post("/searches/s_done_edge/stop").status_code == 409
+        assert c.post("/searches/s_done_edge/pause").status_code == 409
+        assert c.post("/searches/s_done_edge/resume").status_code == 409
+        # done job without payload falls back cleanly
+        r = c.get("/searches/s_done_edge").json()
+        assert r["status"] == "done"
+    finally:
+        m.JOBS.pop("s_done_edge", None)
+    # lab follow guards (no model needed)
+    os.environ["LAB_ENABLED"] = "1"
+    try:
+        assert c.post("/lab/follow", json={"job_id": "nope", "followup": "x"}).status_code == 404
+        m.LAB_JOBS["lj1"] = {"status": "failed", "result": {}, "kind": "enricher",
+                             "instruction": "i"}
+        assert c.post("/lab/follow", json={"job_id": "lj1", "followup": ""}).status_code == 400
+        assert c.get("/lab/build/nope").status_code == 404
+    finally:
+        m.LAB_JOBS.pop("lj1", None)
+        del os.environ["LAB_ENABLED"]
+    # uninstall unknown + builtin disable/enable already covered; unknown here
+    assert c.delete("/marketplace/definitely-not-a-driver").status_code == 404
+
+
+def test_category_fanout_and_watch_clone_shapes():
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    seen = {}
+
+    async def fake_start(intents, meta):
+        seen["intents"] = intents
+        seen["meta"] = meta
+        return {"id": "s_fake", "status": "running"}
+
+    old = m._start_job
+    m._start_job = fake_start
+    try:
+        c.post("/searches", json={"keywords": "a; b", "category": "laptops,phones"})
+        intents = seen["intents"]
+        assert len(intents) <= 6 and all("category" in i for i in intents)
+        assert len({(i["keywords"], i["category"]) for i in intents}) == len(intents)
+        c.post("/searches", json={"keywords": "x"})
+        assert seen["meta"]["limit"] is None
+        m.SEARCHES["s_wc"] = {"keywords": "w", "sources": ["t"], "limit": 5}
+        try:
+            r = c.post("/searches/s_wc/watch", json={}).json()
+            assert r["id"] == "s_fake"
+            assert seen["intents"][0]["watch"] is True
+            assert seen["intents"][0]["poll_interval_s"] == 1800
+        finally:
+            m.SEARCHES.pop("s_wc", None)
+    finally:
+        m._start_job = old
+
+
+def test_admin_reset_endpoint_wipes_isolated_db():
+    import os
+    import sys
+    import tempfile
+    sys.path.insert(0, "apps")
+    os.environ["DB_PATH"] = os.path.join(tempfile.mkdtemp(), "wipe2.db")
+    import importlib
+
+    import api.main as m
+    try:
+        importlib.reload(m)
+        from fastapi.testclient import TestClient
+        c = TestClient(m.app)
+        m.store.save_search("sx", {"keywords": "t"}, total=1)
+        m.store.favorite("l1", "")
+        r = c.post("/admin/reset", json={"confirm": "RESET"}).json()
+        assert r["ok"] and r["wiped"]["searches"] >= 1
+        assert m.store.list_searches() == []
+    finally:
+        del os.environ["DB_PATH"]
+        importlib.reload(m)

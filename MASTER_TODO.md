@@ -1,0 +1,53 @@
+# MASTER TODO — everything requested this session. Do not stop until all ticked.
+
+## Done (verified live)
+- [x] Signal end-to-end proof
+- [x] Git auth via SSH (Michi4 identity)
+- [x] BeBetter-style navbar + mobile bottom nav
+- [x] Only NL + Search visible, rest in advanced
+- [x] AI-understood panel + auto-applied filters mirrored
+- [x] Search hero tabs (Natural/Keywords)
+- [x] Favicon, logo refresh, meta/theme-color
+- [x] Volume: unlimited default, 2000+201 proven on prod
+- [x] Kept (flagged) filters + Hidden section + full post-search deck
+- [x] Real pages (pageview routing, search chrome hides)
+- [x] History opens instantly (snapshots), legacy rows reconstructed
+- [x] Enter submits everywhere (real forms)
+- [x] Simple login (env toggle, off on prod behind Authelia)
+- [x] Background jobs persist, adoptable, partials stream
+- [x] Stop/pause/resume (endpoints + tiles + cooperative in-loop cancel)
+- [x] Parallel searches proven (2 at once, both finish)
+- [x] Sort dropdown, all keys asc/desc, enrichment-aware disabling
+- [x] Price rises (▲▼ + %) alongside drops, new watch triggers
+- [x] Product tracking (favorites re-fetch, title versioning, time-travel snapshots)
+- [x] kleinanzeigen: 20/20 slugs verified, generic + per-source + automatch + fan-out
+- [x] Lab: staged jobs, follow-up refinement, e2e-tested, coding-agent docs
+- [x] Store: install/uninstall incl. core disable/enable roundtrip
+- [x] Compare: visible buttons, tray, unlimited picks, explainer
+- [x] Stored XSS closed (esc/safeUrl/delegation), strict CSP, zero inline handlers
+- [x] Headers, rate limits (300 + Retry-After), hmac, 404/400 shapes, input bounds
+- [x] DB: indexes, N+1 kills, write lock, WAL assert, snapshots, jobs/settings tables
+- [x] Coverage gate 85 enforced (verify + CI), Dockerfile non-root/healthcheck/sqlite3
+- [x] Secrets manager (19 keys, no-leak proof) + rebuilt admin
+- [x] Admin 2-way (searches re-run/watch/delete, drivers, events clear, tracking)
+- [x] AI accessory-exclusion suggestions, EN fallback cues
+- [x] NL category detect + manual override + multi fan-out
+- [x] Location inputs (kleinanzeigen geo + willhaben areaId verified live), NL hints, geolocate
+- [x] Backticks, empty applied panel, tab-first-click, sources repaint
+- [x] Navbar stacking (explicit z), stacking proven while scrolling
+- [x] 429 self-throttle fixed, /stream backoff, resilient api() layer
+- [x] Sidebar layout (filters left ≥1100px), sticky refine, animations
+- [x] Full data wipe (authorized, tested on scratch)
+- [x] 5 audit passes, reports + scorecards (Conditional Go, named conditions)
+
+## Open (this batch)
+- [ ] Stopped/interrupted pill (shows done) + halt animations on stop
+- [ ] Tile hidden counts (persist filtered_out, show "30 + 245 hidden")
+- [ ] Footer with GitHub link (index + admin)
+- [ ] Admin live-dot removal
+- [ ] Distance calc for ALL core drivers + radius slider 1km→unlimited
+- [ ] Running searches as in-grid product-like tiles (animated, no page resize)
+- [ ] Margin/spacing deep pass (toolbar/pager/cards/sidebar rhythm)
+- [ ] willhaben full categories (session-API bootstrap attempt, time-boxed)
+- [ ] Fresh-profile proof (searches survive new browser)
+- [ ] Shutdown laptop (only at the very end, confirm first)

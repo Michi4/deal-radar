@@ -1,11 +1,6 @@
 let RUNNING=false;
 const ACTIVEJOBS=new Map();let FOLLOWED=null;const ABORTSET=new Map();
-function drawLive(){const box=$('livestrip');if(!box)return;const ids=[...ACTIVEJOBS.keys()];
-if(!ids.length){box.style.display='none';box.innerHTML='';return}
-box.style.display='flex';
-box.innerHTML='<span class="eyebrow" style="align-self:center">live</span>'+ids.map(id=>{const a=ACTIVEJOBS.get(id)||{};const lbl=esc((a.label||id).slice(0,40));
-const elaps=a.t0?Math.round((Date.now()-a.t0)/1000):0;const mm=Math.floor(elaps/60),ss=(''+elaps%60).padStart(2,'0');
-return `<div class="livetile"><b>${lbl}</b><br/><small>${esc(String(a.detail||((a.done||0)+'/'+(a.total||'?'))))} · ${mm}:${ss}${a.found?` · <b>${a.found} found</b>`:''}</small><div class="pbar"><i style="width:${a.total&&+a.total?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8}%"></i></div><div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">❚❚</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">▶</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">■</button></div></div>`}).join('')}
+function drawLive(){}
 function leave(sid){ACTIVEJOBS.delete(sid);ABORTSET.delete(sid);drawLive();if(FOLLOWED===sid)FOLLOWED=null;for(const [k,t] of ABORTSET)if(Date.now()-t>600000)ABORTSET.delete(k);if(!ACTIVEJOBS.size)RUNNING=false}
 function claim(sid){FOLLOWED=sid}
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
@@ -14,7 +9,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const safeUrl=u=>{try{const p=new URL(String(u||''),location.href);return (p.protocol==='http:'||p.protocol==='https:')?p.href:''}catch(e){return ''}};
 const ACT={tab:a=>tab(a),showFavs:()=>showFavs(),cmp:()=>cmp(),page:a=>page(+a),
 gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
-applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
+applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;const _rd2=$('rDist');if(_rd2)_rd2.value='';RDIST=null;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
 closeD:()=>closeD(),resetFilters:()=>resetFilters(),geoloc:()=>doGeoloc(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
@@ -97,7 +92,7 @@ function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).f
 function card(s,idx){const l=s.listing;const best=(idx===0&&(SORT==='ppe'||SORT==='gpe'))?'<span class="best-badge">best value</span><br/>':'';const fav=isFav(l.id)?'★':'☆';const picked=CMP.has(l.id);
 const inner=`${thumb(l)}<div class="body">${best}<h4>${esc(l.title)||'(no title)'}</h4>
 <div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
-<div class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)} · ${esc(l.location||'')}</div>
+<div class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)} · ${esc(l.location||'')}${l.distance_km!=null?` · ${Math.round(l.distance_km)} km`:''}</div>
 <div style="margin-top:6px"><button class="btn ${picked?'btn-primary':'btn-ghost'}" data-act="cmpTgl" data-arg="${esc(l.id)}" aria-pressed="${picked}">⇄ ${picked?'picked ✓':'compare'}</button> <button class="btn btn-ghost" data-fav="${esc(l.id)}" aria-label="save favorite">${fav}</button></div></div>`;
 return VIEW==='grid'?`<div class="card" data-open="${esc(l.id)}">${inner}</div>`
 :`<div class="listrow" data-open="${esc(l.id)}">${(l.images&&l.images[0])?`<img loading="lazy" src="${safeUrl(l.images[0])}" data-rm="1">`:''}<div><b>${esc(l.title)||'(no title)'}</b><br/><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)}</span> <button class="btn btn-ghost" data-fav="${esc(l.id)}">${fav}</button></div></div>`}
@@ -107,15 +102,15 @@ function isFav(id){return FAVS.has(id)}
 async function favAct(id,close){await api('/favorites/'+encodeURIComponent(id),{method:'POST'},0);await loadFavs();if(close)closeD();else render()}
 async function fav(id){return favAct(id,false)}
 async function unfav(id){await api('/favorites/'+encodeURIComponent(id),{method:'DELETE'},0);await loadFavs();showFavs()}
-const SORTS=[{id:'score',label:'Score',dir:-1},{id:'price',label:'Price',dir:1},{id:'ppe',label:'Perf/€',dir:-1,need:'bench'},{id:'mt',label:'Multithread',dir:-1,need:'bench'},{id:'gpe',label:'GPU/€',dir:-1,need:'gpu'},{id:'tc',label:'Total cost',dir:1}];
+const SORTS=[{id:'score',label:'Score',dir:-1},{id:'price',label:'Price',dir:1},{id:'ppe',label:'Perf/€',dir:-1,need:'bench'},{id:'mt',label:'Multithread',dir:-1,need:'bench'},{id:'gpe',label:'GPU/€',dir:-1,need:'gpu'},{id:'tc',label:'Total cost',dir:1},{id:'dist',label:'Distance',dir:1}];
 let FLAGS={enrich:true,ocr:true,benchmarks:true,vision:true,details:true};
 function gpuPerEur(x){const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0}
-const KEYFNS={score:s=>s.final_score??0,price:s=>s.listing.price??1e18,ppe:perfEur,mt:benchOf,gpe:gpuPerEur,tc:s=>((s.deal_dna||{}).total_cost??s.listing.price??1e18)};
+const KEYFNS={score:s=>s.final_score??0,price:s=>s.listing.price??1e18,ppe:perfEur,mt:benchOf,gpe:gpuPerEur,tc:s=>((s.deal_dna||{}).total_cost??s.listing.price??1e18),dist:s=>s.listing.distance_km??1e18};
 function sortAvail(){const hasB=LAST.some(s=>(s.enrichments||[]).some(e=>e.field==='cpu_benchmark'||e.field==='gpu_benchmark'));
 const hasG=LAST.some(s=>(s.enrichments||[]).some(e=>e.field==='gpu_benchmark'));
 return {bench:hasB,gpu:hasG}}
 let SORT='score',PDIR=1,PERPAGE=20,SRCS=new Set(),HIDELANES=new Set(),HIDEKIND={want:true,parts:true,acc:true};
-let HIDDEN=[],FRISK=100,FSCORE=0,SHOWHID=false,WW={match:.35,value:.35,risk:.2,comp:.1};
+let HIDDEN=[],FRISK=100,FSCORE=0,RDIST=null,SHOWHID=false,WW={match:.35,value:.35,risk:.2,comp:.1};
 function rerank(){const t=WW.match+WW.value+WW.risk+WW.comp||1;
 for(const s of LAST){const d=s.deal_dna||{};const rk=(s.risk||{}).score??0;
 s.final_score=Math.round(((WW.match*(d.match??0)+WW.value*(d.value??0)-WW.risk*rk+WW.comp*(d.completeness??0))/t)*1000)/1000}
@@ -141,6 +136,7 @@ if(HIDEKIND.parts)arr=arr.filter(s=>!JSON.stringify(s.why).match(/parts\/repair/
 if(HIDEKIND.acc)arr=arr.filter(s=>!JSON.stringify(s.why).match(/accessory\/box/));
 arr=arr.filter(s=>!HIDELANES.has(s.lane));
 arr=arr.filter(s=>(((s.risk||{}).score??0)*100)<=FRISK&&(s.final_score??0)*100>=FSCORE);
+if(RDIST!=null)arr=arr.filter(s=>{const d=s.listing.distance_km;return d!=null&&d<=RDIST});
 const m=SORT;const kf=KEYFNS[m]||KEYFNS.score;const dd=(SORTS.find(o=>o.id===m)||{dir:-1}).dir*PDIR;
 arr.sort((a,b)=>dd*(kf(a)-kf(b)));
 return arr}
@@ -150,20 +146,27 @@ const rq=($('rReq').value||'').split(',').map(w=>w.trim().toLowerCase()).filter(
 return arr.filter(s=>{const l=s.listing;if(mn!=null&&(l.price??1e18)<mn)return false;if(mx!=null&&(l.price??-1)>mx)return false;
 const t=((l.title||'')+' '+(l.description||'')).toLowerCase();
 if(bl.some(w=>t.includes(w)))return false;if(rq.length&&!rq.every(w=>t.includes(w)))return false;return true})}
+function jobTiles(){
+  return [...ACTIVEJOBS.entries()].map(([id,a])=>{const lbl=esc(String((a&&a.label)||id).slice(0,50));const det=esc(String((a&&a.detail)||'starting').slice(0,90));const pct=(a&&a.total&&+a.total)?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8;
+  const ctrls=`<div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">❚❚</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">▶</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">■</button></div>`;
+  return VIEW==='grid'?`<div class="card jobtile"><div class="jobart"></div><div class="body"><h4>${lbl}</h4><div class="lane">${det}</div><div class="pbar"><i style="width:${pct}%"></i></div>${ctrls}</div></div>`
+  :`<div class="listrow jobtile"><div style="flex:1"><b>${lbl}</b><br/><span class="lane">${det}</span><div class="pbar"><i style="width:${pct}%"></i></div>${ctrls}</div></div>`}).join('');
+}
 function render(){const active=($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value||$('hideRisk').checked||HIDEKIND.want||HIDEKIND.parts||HIDEKIND.acc)?1:0;
 const fd=$('fdot');if(fd)fd.style.display=active?'inline-block':'none';
 const arr=refined(filtered());
 $('refinebar').style.display=SEARCHED?'':'none';const _tb=$('toolbar');if(_tb)_tb.style.display='flex';const pp=PERPAGE;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
 drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
-$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
+const jobs=jobTiles();
+$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${jobs+slice.map((s,i)=>card(s,i)).join('')}</div>`:jobs+slice.map((s,i)=>card(s,i)).join('');
 $('results').innerHTML+=arr.length?'':(RUNNING?'':'<div class="empty">No results. Try fewer filters or another query.</div>');
 $('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`;
 const hn=$('hidN');if(hn)hn.textContent=HIDDEN.length;
 if(SHOWHID&&HIDDEN.length){const hc=HIDDEN.slice(0,100).map(s=>{const l=s.listing;return `<div class="card hid" data-open="${esc(l.id)}"><div class="body"><h4>${esc(l.title)||'(no title)'}</h4><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span></div><div class="lane">hidden · match ${((s.match_score??0)*100).toFixed(0)}% · ${esc(l.source)}</div><div class="hidreason">${esc((s.why||[]).join('; ').slice(0,160))}</div></div></div>`}).join('');
 $('results').innerHTML+=`<div class="ptitle" style="margin-top:1rem"><h2>Hidden by filters</h2><small>unhide by loosening filters above · showing ${Math.min(100,HIDDEN.length)} of ${HIDDEN.length}</small></div><div class="rgrid">${hc}</div>`}}
 function page(d){PAGE+=d;render();const t=$('pagertop').style.display!=='none'?$('pagertop'):$('results');if(t)t.scrollIntoView({block:'start',behavior:'smooth'})}
-function skel(n){$('results').innerHTML=`<div class="rgrid">${'<div class="skel"></div>'.repeat(Math.min(6,n))}</div>`}
+function skel(n){$('results').innerHTML=`<div class="rgrid">${jobTiles()+'<div class="skel"></div>'.repeat(Math.min(6,n))}</div>`}
 function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
 function pushHist(q){HIST=[q,...HIST.filter(x=>x!==q)].slice(0,8);localStorage.setItem('drh',JSON.stringify(HIST));drawHist()}
 function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" data-hist="${esc(h)}">${esc(h.slice(0,30))}</button>`).join('')}
@@ -311,9 +314,9 @@ try{const r=await api('/searches',{},1);
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
 const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading="lazy" src="'+su+'" data-rm="1" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>':''}).join('');
 const jb=s.job||null;
-const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':'<span class="jobpill">done</span>'):'';
+const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':jb.status==='stopped'?'<span class="jobpill joberr">stopped</span>':'<span class="jobpill">done</span>'):'';
 const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
-return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+((s.sources||[]).map(esc).join('+')||'all sources')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
+return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+((s.sources||[]).map(esc).join('+')||'all sources')+' · '+esc(s.results)+' results'+(s.filtered_out?` · ${esc(s.filtered_out)} hidden`:'')+'</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
 const tiles=(r.searches||[]).map(s=>{try{return tile(s)}catch(e){return '<div class="card" style="padding:10px"><b>'+esc(s.keywords||'(query)')+'</b><br/><small>unreadable entry</small><div class="row"><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button></div></div>'}}).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},8000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
@@ -383,6 +386,7 @@ for(const id of ['rRisk','rScore']) {const el=$(id);if(el)el.addEventListener('i
 for(const id of ['minMatch','warnT','blockT']) {const el=$(id);if(el)el.addEventListener('change',()=>{el.value=Math.max(0,Math.min(100,+el.value||0))})}
 let _deb=null;for(const id of ['rMin','rMax','rBlack','rReq']) {const el=$(id);if(el)el.addEventListener('input',()=>{clearTimeout(_deb);_deb=setTimeout(()=>{PAGE=0;render()},400)})}
 for(const id of ['wMa','wVa','wRi','wCo']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();readWeights();rerank()})}
+const _rd=$('rDist');if(_rd)_rd.addEventListener('change',()=>{RDIST=_rd.value===''?null:+_rd.value;const lb=$('rDistV');if(lb)lb.textContent=_rd.value===''?'any':_rd.value+' km';PAGE=0;render()});
 const sh=$('showHidden');if(sh)sh.addEventListener('change',()=>{SHOWHID=sh.checked;render()});
 try{let esT=0,esBack=5000;const esConnect=()=>{try{esT++;const es=new EventSource('/stream');
 es.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.kind!=='new_match'&&m.kind!=='search_done'&&m.kind!=='price')return;toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){}};
