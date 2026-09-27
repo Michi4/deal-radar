@@ -1,4 +1,5 @@
 let RUNNING=false;
+const ACTIVEJOBS=new Map();
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -104,7 +105,7 @@ $('refinebar').style.display=SEARCHED?'':'none';const _tb=$('toolbar');if(_tb)_t
 drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
 $('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
-$('results').innerHTML+=arr.length?'':(RUNNING?'':'`<div class="empty">No results. Try fewer filters or another query.</div>`');
+$('results').innerHTML+=arr.length?'':(RUNNING?'':'<div class="empty">No results. Try fewer filters or another query.</div>');
 $('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`;
 const hn=$('hidN');if(hn)hn.textContent=HIDDEN.length;
 if(SHOWHID&&HIDDEN.length){const hc=HIDDEN.slice(0,100).map(s=>{const l=s.listing;return `<div class="card hid" data-open="${esc(l.id)}"><div class="body"><h4>${esc(l.title)||'(no title)'}</h4><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span></div><div class="lane">hidden · match ${((s.match_score??0)*100).toFixed(0)}% · ${esc(l.source)}</div><div class="hidreason">${esc((s.why||[]).join('; ').slice(0,160))}</div></div></div>`}).join('');
@@ -148,11 +149,11 @@ mirrorRefine();
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 let LASTDUR=0;
-async function poll(sid,onDone){const t0=Date.now();RUNNING=true;for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
-if(r.status==='running'){if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
+async function poll(sid,onDone){const t0=Date.now();RUNNING=true;ACTIVEJOBS.set(sid,{done:0,total:'?',detail:'starting'});for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
+if(r.status==='running'){ACTIVEJOBS.set(sid,{done:r.done||0,total:r.total||'?',detail:r.detail||'',control:r.control||'run'});if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
 status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
-RUNNING=false;SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
-async function run(){if($('searchbtn').disabled)return;const sel=[...SRCS];
+RUNNING=false;ACTIVEJOBS.delete(sid);if(!ACTIVEJOBS.size)RUNNING=false;SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
+async function run(){const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
@@ -160,14 +161,14 @@ const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','de
 const mp=+$('maxpages').value||undefined;
 const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:limN,...intent()};
 if(mp)body.max_pages=mp;
-$('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
+$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
 try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
-async function runNL(){if($('askbtn').disabled)return;const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
+async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
-$('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
+$('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})})).json();
 pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
@@ -248,8 +249,9 @@ return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keyword
 const tiles=(r.searches||[]).map(tile).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
-async function openSearch(id){const r=await(await fetch('/searches/'+id)).json();if(r.intent)applyIntent(r.intent);
-if(r.status==='running'){toast('still running…');return}LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
+async function openSearch(id){tab('search');const r=await(await fetch('/searches/'+id)).json();if(r.intent)applyIntent(r.intent);
+if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');await poll(id,x=>{LAST=x.results||[];SID=id;render()});return}
+LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
 async function redoSearch(id){const r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json();toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
 async function delSearch(id){await fetch('/searches/'+id,{method:'DELETE'});showHistory()}
 async function watchTile(id){const r=await(await fetch('/searches/'+id+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json();toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
