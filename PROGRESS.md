@@ -67,6 +67,18 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
   header:60/drawer:70/toasts:60/bottomnav:50. Screenshot-proven while scrolling.
 - Empty-state backtick artifact removed.
 
+## Verified 2026-09-27 (accounting/prices/lab batch)
+- Per-source fetch accounting (driver_fetched merged per search) — iphone 17 unlimited:
+  willhaben 3005 + vinted 896 + shpock 61 = 3770 results; kleinanzeigen cooldown (transient),
+  ricardo 403 (structural). "Shouldn't there be more" answered with data.
+- Price rises: orchestrator notifies ▲/▼ with % (opt-in price_rise trigger); history rows
+  show direction; fav tracking labels rises.
+- Lab rebuilt: staged jobs (prompting→done checklist + live log), follow-up refinement on
+  previous code, disabled-state guard, e2e-tested with stubbed model (build + follow-up).
+- Sort dropdown (all keys asc/desc) + enrichment-aware disabling + per-job flags.
+- Navbar: absolute-centering attempt caused collisions → reverted to grid (provably
+  non-overlapping at 1100/1280/1600). Logo stays container-left by grid design.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
