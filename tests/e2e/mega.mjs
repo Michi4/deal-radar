@@ -10,6 +10,7 @@ page.on('pageerror', e => errs.push(String(e).slice(0, 80)));
 
 await page.goto(BASE + '/', { waitUntil: 'networkidle' });
 check('index loads', await page.locator('#q').count() === 1);
+await page.click('#modeseg button[data-mode="kw"]');
 
 // search
 await page.fill('#q', 'ThinkPad');

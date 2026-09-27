@@ -17,10 +17,12 @@ await page.selectOption('#limitN', '50');
 await page.fill('#deepN', '5');
 
 // start keyword search (don't await completion)
+await page.click('#modeseg button[data-mode="kw"]');
 await page.fill('#q', 'ThinkPad');
 await page.click('#searchbtn');
 await page.waitForTimeout(1500);
 // start NL search while the first is running
+await page.click('#modeseg button[data-mode="nl"]');
 await page.fill('#nl', 'iphone with usb-c charging');
 await page.click('#askbtn');
 await page.waitForTimeout(3000);

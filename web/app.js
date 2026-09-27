@@ -4,7 +4,7 @@ function drawLive(){const box=$('livestrip');if(!box)return;const ids=[...ACTIVE
 if(!ids.length){box.style.display='none';box.innerHTML='';return}
 box.style.display='flex';
 box.innerHTML='<span class="eyebrow" style="align-self:center">live</span>'+ids.map(id=>{const a=ACTIVEJOBS.get(id)||{};const lbl=esc((a.label||id).slice(0,40));
-return `<div class="livetile"><b>${lbl}</b><br/><small>${esc(String(a.detail||((a.done||0)+'/'+(a.total||'?'))))}</small><div class="pbar"><i style="width:${a.total&&+a.total?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8}%"></i></div><div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">stop</button></div></div>`}).join('')}
+return `<div class="livetile"><b>${lbl}</b><br/><small>${esc(String(a.detail||((a.done||0)+'/'+(a.total||'?'))))}</small><div class="pbar"><i style="width:${a.total&&+a.total?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8}%"></i></div><div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">❚❚</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">▶</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">■</button></div></div>`}).join('')}
 function leave(sid){ACTIVEJOBS.delete(sid);ABORTSET.delete(sid);drawLive();if(FOLLOWED===sid)FOLLOWED=null;for(const [k,t] of ABORTSET)if(Date.now()-t>600000)ABORTSET.delete(k);if(!ACTIVEJOBS.size)RUNNING=false}
 function claim(sid){FOLLOWED=sid}
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
@@ -23,6 +23,10 @@ function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rS
 ['wMa','wMaV',null],['wVa','wVaV',null],['wRi','wRiV',null],['wCo','wCoV',null]];
 for(const [id,lab,fn] of pairs){const el=$(id);if(!el)continue;const lb=$(lab);if(lb)lb.textContent=el.value;if(fn)fn(el.value)}}
 function readWeights(){WW={match:+$('wMa').value/100,value:+$('wVa').value/100,risk:+$('wRi').value/100,comp:+$('wCo').value/100}}
+let SMODE='nl';
+function setMode(m){SMODE=m;try{localStorage.setItem('drmode',m)}catch(e){}
+const nl=$('nlform'),qw=$('qform');if(nl)nl.style.display=m==='nl'?'':'none';if(qw)qw.style.display=m==='kw'?'':'none';
+document.querySelectorAll('#modeseg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m))}
 function paintChecks(){document.querySelectorAll('.ck>input').forEach(c=>c.closest('.ck').classList.toggle('on',c.checked))}
 async function api(path,opts={},retries=0){
 let last=null;
@@ -57,7 +61,7 @@ const rs=e.target.closest('[data-rsearch]');if(rs){redoSearch(rs.dataset.rsearch
 const ds=e.target.closest('[data-dsearch]');if(ds){delSearch(ds.dataset.dsearch);return}
 const ws=e.target.closest('[data-wsearch]');if(ws){watchTile(ws.dataset.wsearch);return}
 const sn=e.target.closest('[data-snap]');if(sn){const [i,t]=sn.dataset.snap.split('|');viewSnap(i,t);return}
-const hh=e.target.closest('[data-hist]');if(hh){$('nl').value=hh.dataset.hist;runNL();return}
+const hh=e.target.closest('[data-hist]');if(hh){histGo(hh.dataset.hist);return}
 const op=e.target.closest('[data-open]');if(op){openD(op.dataset.open)}});
 function setView(v){VIEW=v;localStorage.setItem('drv',v);const g=$('vgrid'),l=$('vlist');if(g)g.classList.toggle('active',v==='grid');if(l)l.classList.toggle('active',v==='list');render()}
 function theme(){const r=document.documentElement;const t=r.classList.contains('dark')?'':'dark';r.classList.toggle('dark',t==='dark');localStorage.setItem('drt',t||'light')}
@@ -141,10 +145,11 @@ const hn=$('hidN');if(hn)hn.textContent=HIDDEN.length;
 if(SHOWHID&&HIDDEN.length){const hc=HIDDEN.slice(0,100).map(s=>{const l=s.listing;return `<div class="card hid" data-open="${esc(l.id)}"><div class="body"><h4>${esc(l.title)||'(no title)'}</h4><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span></div><div class="lane">hidden · match ${((s.match_score??0)*100).toFixed(0)}% · ${esc(l.source)}</div><div class="hidreason">${esc((s.why||[]).join('; ').slice(0,160))}</div></div></div>`}).join('');
 $('results').innerHTML+=`<div class="ptitle" style="margin-top:1rem"><h2>Hidden by filters</h2><small>unhide by loosening filters above · showing ${Math.min(100,HIDDEN.length)} of ${HIDDEN.length}</small></div><div class="rgrid">${hc}</div>`}}
 function page(d){PAGE+=d;render();const t=$('pagertop').style.display!=='none'?$('pagertop'):$('results');if(t)t.scrollIntoView({block:'start',behavior:'smooth'})}
-function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${'<div class="skel"></div>'.repeat(n)}</div>`:'<div class="skel"></div>'.repeat(3)}
+function skel(n){$('results').innerHTML=`<div class="rgrid">${'<div class="skel"></div>'.repeat(Math.min(6,n))}</div>`}
 function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
 function pushHist(q){HIST=[q,...HIST.filter(x=>x!==q)].slice(0,8);localStorage.setItem('drh',JSON.stringify(HIST));drawHist()}
 function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" data-hist="${esc(h)}">${esc(h.slice(0,30))}</button>`).join('')}
+function histGo(h){if(SMODE==='kw'){$('q').value=h;run()}else{$('nl').value=h;runNL()}}
 function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
 const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
 return{ranking,category:$('catSel').value,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
@@ -351,7 +356,8 @@ let DRVLIST=[];
 function paintSources(){const el=$('sources');if(!el)return;el.innerHTML='<div class="pills">'+DRVLIST.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}
 async function init(){try{const d=await(await fetch('/drivers')).json();
 d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});DRVLIST=d;paintSources()}catch(e){}
-drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();loadFilters();authKick();
+drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();loadFilters();authKick();try{const sm=localStorage.getItem('drmode');if(sm)setMode(sm)}catch(e){}
+const _ms=document.querySelector('#modeseg');if(_ms)_ms.addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(b)setMode(b.dataset.mode)});
 const bind=(id,fn)=>{const f=$(id);if(f)f.addEventListener('submit',e=>{e.preventDefault();fn()})};
 bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());const _ss=$('sortsel');if(_ss)_ss.addEventListener('change',()=>setSort(_ss.value));
 for(const id of ['rRisk','rScore']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();FRISK=+$('rRisk').value;FSCORE=+$('rScore').value;PAGE=0;render()})}
