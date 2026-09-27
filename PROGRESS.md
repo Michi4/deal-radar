@@ -108,6 +108,16 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Reconstructed rows honest (lane review, None-safe score).
 - Mega fixed for progressive partials (waits ACTIVEJOBS empty). All green.
 
+## Verified 2026-09-27 (categories batch)
+- kleinanzeigen: 20/20 slugs verified live, GENERIC (5) + CATEGORIES in driver,
+  per-platform chooser + automatch toggle + multi fan-out, SDK convention for
+  community drivers, Lab prompts + DRIVER_AUTHORING.md (categories, pagination
+  + stop/pause contract, enrichers).
+- willhaben: REST API needs session+CSRF bootstrap (deferred, logged); vinted:
+  403 + catalog IDs unmapped (deferred). Keyword fallback everywhere else.
+- Core uninstall roundtrip tested live (disable -> gone -> enable).
+- verify GREEN (92 passed), mega/xss green, screenshots clean. Deployed + healthy.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
