@@ -537,7 +537,7 @@ async def _start_job(intents: list[dict], meta: dict) -> dict:
     sid = f"s_{int(time.time() * 1000)}"
     base = meta.get("base", intents[0] if intents else {})
     JOBS[sid] = {"status": "running", "done": 0, "total": len(intents),
-                 "intent": base,
+                 "intent": base, "control": "run", "detail": "queued",
                  "parsed": meta.get("parsed"), "subqueries": meta.get("subqueries", [])}
     try:
         store.job_upsert(sid, "running", 0, len(intents), base)
@@ -579,17 +579,45 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
     try:
         outs = []
         for i, data in enumerate(intents):
+            while JOBS[sid].get("control") == "pause":
+                JOBS[sid]["detail"] = f"paused at sub-search {i + 1}/{len(intents)}"
+                await asyncio.sleep(2)
+                if JOBS[sid].get("control") == "stop":
+                    break
+            if JOBS[sid].get("control") == "stop":
+                merged = _merge_outs(outs, meta.get("limit", None))
+                merged["stopped"] = True
+                JOBS[sid].update({"status": "stopped", "done": i, "result": merged,
+                                  "detail": f"stopped after {i}/{len(intents)} sub-searches"})
+                try:
+                    store.job_upsert(sid, "stopped", i, len(intents),
+                                     summary=f"{len(merged['results'])} partial results")
+                except Exception:
+                    pass
+                return
             JOBS[sid]["done"] = i
+            JOBS[sid]["detail"] = f"sub-search {i + 1}/{len(intents)}: {str(data.get('keywords', ''))[:60]}"
             try:
                 store.job_upsert(sid, "running", i, len(intents))
             except Exception:
                 pass
             outs.append(await _run_cached(data, force=True))
+            # progressive partials: UI renders these while the job continues
+            try:
+                part = _merge_outs(outs, meta.get("limit", None))
+                JOBS[sid]["partial"] = {"results": part["results"][:200],
+                                        "filtered": part.get("filtered", [])[:100],
+                                        "n_results": len(part["results"]),
+                                        "n_filtered": len(part.get("filtered", []))}
+            except Exception:
+                pass
         JOBS[sid]["done"] = len(intents)
         merged = _merge_outs(outs, meta.get("limit", None))
         base = meta.get("base", intents[0] if intents else {})
         SEARCHES[sid] = base
         store.save_search(sid, base, len(merged["results"]))
+        merged["flags"] = {k: bool(base.get(k, True)) for k in
+                           ("enrich", "ocr", "benchmarks", "vision", "details")}
         if base.get("watch"):
             _notify_watch_changes(base, merged)
         LAST_RUN[sid] = time.time()
@@ -704,7 +732,14 @@ async def get_search(sid: str):
     job = JOBS.get(sid)
     if job is not None:
         if job["status"] == "running":
-            return {"id": sid, "status": "running", "done": job["done"], "total": job["total"]}
+            out = {"id": sid, "status": "running", "done": job["done"], "total": job["total"],
+                   "detail": job.get("detail", ""), "control": job.get("control", "run")}
+            if job.get("partial"):
+                out["partial"] = job["partial"]
+            return out
+        if job["status"] == "stopped":
+            out = dict(job.get("result", {}))
+            return {"id": sid, "status": "stopped", **out}
         if job["status"] == "error":
             return {"id": sid, "status": "error", "error": job.get("error")}
         out = job.get("result", {})
@@ -740,6 +775,33 @@ async def stream(request: Request):
             yield ": keep-alive\n\n"
             await asyncio.sleep(2)
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@app.post("/searches/{sid}/stop")
+def stop_search(sid: str):
+    job = JOBS.get(sid)
+    if job is None:
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
+    job["control"] = "stop"
+    return {"ok": True, "id": sid}
+
+
+@app.post("/searches/{sid}/pause")
+def pause_search(sid: str):
+    job = JOBS.get(sid)
+    if job is None:
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
+    job["control"] = "pause"
+    return {"ok": True, "id": sid}
+
+
+@app.post("/searches/{sid}/resume")
+def resume_search(sid: str):
+    job = JOBS.get(sid)
+    if job is None:
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
+    job["control"] = "run"
+    return {"ok": True, "id": sid}
 
 
 @app.delete("/searches/{sid}")

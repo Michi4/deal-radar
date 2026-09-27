@@ -1,3 +1,4 @@
+let RUNNING=false;
 let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=false,HIST=JSON.parse(localStorage.getItem('drh')||'[]');
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7,7 +8,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),resetFilters:()=>resetFilters(),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),resetFilters:()=>resetFilters(),stopJob:async(a)=>{await fetch('/searches/'+a+'/stop',{method:'POST'});toast('stopping…')},pauseJob:async(a)=>{await fetch('/searches/'+a+'/pause',{method:'POST'});toast('paused')},resumeJob:async(a)=>{await fetch('/searches/'+a+'/resume',{method:'POST'});toast('resumed')},uninstallX:(a,el)=>uninstallX(el.dataset.kind,a),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -53,21 +54,31 @@ function isFav(id){return FAVS.has(id)}
 async function favAct(id,close){await fetch('/favorites/'+encodeURIComponent(id),{method:'POST'});await loadFavs();if(close)closeD();else render()}
 async function fav(id){return favAct(id,false)}
 async function unfav(id){await fetch('/favorites/'+encodeURIComponent(id),{method:'DELETE'});await loadFavs();showFavs()}
-const SORTS=[{id:'score',label:'Score'},{id:'price',label:'Price'},{id:'ppe',label:'Perf/€'},{id:'mt',label:'Multithread'},{id:'gpe',label:'GPU/€'},{id:'tc',label:'Total'}];
+const SORTS=[{id:'score',label:'Score',dir:-1},{id:'price',label:'Price',dir:1},{id:'ppe',label:'Perf/€',dir:-1,need:'bench'},{id:'mt',label:'Multithread',dir:-1,need:'bench'},{id:'gpe',label:'GPU/€',dir:-1,need:'gpu'},{id:'tc',label:'Total cost',dir:1}];
+let FLAGS={enrich:true,ocr:true,benchmarks:true,vision:true,details:true};
+function gpuPerEur(x){const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0}
+const KEYFNS={score:s=>s.final_score??0,price:s=>s.listing.price??1e18,ppe:perfEur,mt:benchOf,gpe:gpuPerEur,tc:s=>((s.deal_dna||{}).total_cost??s.listing.price??1e18)};
+function sortAvail(){const hasB=LAST.some(s=>(s.enrichments||[]).some(e=>e.field==='cpu_benchmark'||e.field==='gpu_benchmark'));
+const hasG=LAST.some(s=>(s.enrichments||[]).some(e=>e.field==='gpu_benchmark'));
+return {bench:hasB,gpu:hasG}}
 let SORT='score',PDIR=1,PERPAGE=20,SRCS=new Set(),HIDELANES=new Set(),HIDEKIND={want:true,parts:true,acc:true};
 let HIDDEN=[],FRISK=100,FSCORE=0,SHOWHID=false,WW={match:.35,value:.35,risk:.2,comp:.1};
 function rerank(){const t=WW.match+WW.value+WW.risk+WW.comp||1;
 for(const s of LAST){const d=s.deal_dna||{};const rk=(s.risk||{}).score??0;
 s.final_score=Math.round(((WW.match*(d.match??0)+WW.value*(d.value??0)-WW.risk*rk+WW.comp*(d.completeness??0))/t)*1000)/1000}
 PAGE=0;render()}
-function setSort(id){if(id==='price'&&SORT==='price')PDIR*=-1;else{SORT=id;PDIR=1}PAGE=0;drawSegs();render()}
+function setSort(id){SORT=id;PDIR=1;PAGE=0;drawSegs();render()}
+function toggleDir(){PDIR*=-1;PAGE=0;drawSegs();render()}
 function setPP(n){PERPAGE=n;PAGE=0;drawSegs();render()}
 function toggleSrc(id){SRCS.has(id)?SRCS.delete(id):SRCS.add(id);drawSegs()}
 function toggleLane(l){HIDELANES.has(l)?HIDELANES.delete(l):HIDELANES.add(l);render()}
 function toggleKind(k){HIDEKIND[k]=!HIDEKIND[k];drawSegs();render()}
 function drawKinds(){const map={want:'Gesuche',parts:'parts',acc:'accessories'};const el=document.querySelector('#kindpills');if(!el)return;
 el.innerHTML=Object.entries(map).map(([k,l])=>`<button class="${HIDEKIND[k]?'active':''}" data-act="toggleKind" data-arg="${k}">${l}</button>`).join('')}
-function drawSegs(){drawKinds();const sg=$('sortseg');if(sg)sg.innerHTML=SORTS.map(o=>{const a=SORT===o.id;const arr=o.id==='price'?(PDIR===1?'↓':'↑'):'';return `<button class="${a?'active':''}" data-act="setSort" data-arg="${o.id}">${o.label}<span class="arr">${arr}</span></button>`}).join('');
+function drawSegs(){drawKinds();const sg=$('sortsel');if(sg){const av=sortAvail();
+if(!SORTS.some(o=>o.id===SORT&&(!o.need||av[o.need])))SORT='score';
+sg.innerHTML=SORTS.map(o=>{const off=o.need&&!av[o.need];return `<option value="${o.id}" ${o.id===SORT?'selected':''} ${off?'disabled':''}>${o.label}${off?' (re-run with '+(o.need==='gpu'?'GPU benchmarks':'benchmarks')+')':''}</option>`}).join('');
+const dd=$('sortdir');if(dd)dd.textContent=(SORTS.find(o=>o.id===SORT).dir*PDIR===1)?'↑':'↓';}
 const pg=$('pageseg');if(pg)pg.innerHTML=[20,50,100,'all'].map(n=>{const v=n==='all'?100000:n;return `<button class="${PERPAGE===v?'active':''}" data-act="setPP" data-arg="${v}">${n}</button>`}).join('');
 const ln=$('lanes');if(ln)ln.innerHTML=[...new Set(LAST.map(s=>s.lane))].map(l=>`<button class="${HIDELANES.has(l)?'':'active'}" data-act="toggleLane" data-arg="${esc(l)}">${l}</button>`).join('');
 const fdot=$('fdot');if(fdot)fdot.style.display=(($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value)?'inline-block':'none')}
@@ -77,13 +88,8 @@ if(HIDEKIND.parts)arr=arr.filter(s=>!JSON.stringify(s.why).match(/parts\/repair/
 if(HIDEKIND.acc)arr=arr.filter(s=>!JSON.stringify(s.why).match(/accessory\/box/));
 arr=arr.filter(s=>!HIDELANES.has(s.lane));
 arr=arr.filter(s=>(((s.risk||{}).score??0)*100)<=FRISK&&(s.final_score??0)*100>=FSCORE);
-const m=SORT;
-if(m==='price')arr.sort((a,b)=>PDIR*((a.listing.price??1e18)-(b.listing.price??1e18)));
-else if(m==='ppe')arr.sort((a,b)=>perfEur(b)-perfEur(a));
-else if(m==='mt')arr.sort((a,b)=>benchOf(b)-benchOf(a));
-else if(m==='tc')arr.sort((a,b)=>((a.deal_dna||{}).total_cost??a.listing.price??1e18)-((b.deal_dna||{}).total_cost??b.listing.price??1e18));
-else if(m==='gpe')arr.sort((a,b)=>{const gb=x=>{const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0};return gb(b)-gb(a)});
-else arr.sort((a,b)=>b.final_score-a.final_score);
+const m=SORT;const kf=KEYFNS[m]||KEYFNS.score;const dd=(SORTS.find(o=>o.id===m)||{dir:-1}).dir*PDIR;
+arr.sort((a,b)=>dd*(kf(a)-kf(b)));
 return arr}
 function refined(arr){const mn=+$('rMin').value||null,mx=+$('rMax').value||null;
 const bl=($('rBlack').value||'').split(',').map(w=>w.trim().toLowerCase()).filter(Boolean);
@@ -98,7 +104,7 @@ $('refinebar').style.display=SEARCHED?'':'none';const _tb=$('toolbar');if(_tb)_t
 drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
 $('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
-$('results').innerHTML+=arr.length?'':`<div class="empty">No results. Try fewer filters or another query.</div>`;
+$('results').innerHTML+=arr.length?'':(RUNNING?'':'`<div class="empty">No results. Try fewer filters or another query.</div>`');
 $('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}/${pages} · ${arr.length} items`;$('pagertop').style.display=pages>1?'flex':'none';$('pinfotop').textContent=`${PAGE+1}/${pages}`;
 const hn=$('hidN');if(hn)hn.textContent=HIDDEN.length;
 if(SHOWHID&&HIDDEN.length){const hc=HIDDEN.slice(0,100).map(s=>{const l=s.listing;return `<div class="card hid" data-open="${esc(l.id)}"><div class="body"><h4>${esc(l.title)||'(no title)'}</h4><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span></div><div class="lane">hidden · match ${((s.match_score??0)*100).toFixed(0)}% · ${esc(l.source)}</div><div class="hidreason">${esc((s.why||[]).join('; ').slice(0,160))}</div></div></div>`}).join('');
@@ -142,9 +148,10 @@ mirrorRefine();
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
 let LASTDUR=0;
-async function poll(sid,onDone){const t0=Date.now();for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
-if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
-SEARCHED=true;HIDDEN=r.filtered||[];LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
+async function poll(sid,onDone){const t0=Date.now();RUNNING=true;for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
+if(r.status==='running'){if(r.partial&&r.partial.n_results){LAST=r.partial.results||[];HIDDEN=r.partial.filtered||[];SID=sid;render()}
+status(`<div class="row"><small>working… ${esc(r.detail||(`${r.done||0}/${r.total||'?'} sub-searches`))} (you can keep browsing — toast on finish)</small><button class="btn btn-ghost" data-act="stopJob" data-arg="${sid}">stop</button></div>`);await new Promise(x=>setTimeout(x,3000));continue}
+RUNNING=false;SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
 async function run(){if($('searchbtn').disabled)return;const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
@@ -153,14 +160,14 @@ const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','de
 const mp=+$('maxpages').value||undefined;
 const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:limN,...intent()};
 if(mp)body.max_pages=mp;
-$('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);status('Search started in background …');PAGE=0;
+$('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
 try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){if($('askbtn').disabled)return;const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
-$('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
+$('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})})).json();
 pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
@@ -237,7 +244,7 @@ const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading=
 const jb=s.job||null;
 const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':'<span class="jobpill">done</span>'):'';
 const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
-return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button></div></div>'};
+return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
 const tiles=(r.searches||[]).map(tile).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
@@ -294,7 +301,7 @@ d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});
 $('sources').innerHTML='<div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
 drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();loadFilters();authKick();
 const bind=(id,fn)=>{const f=$(id);if(f)f.addEventListener('submit',e=>{e.preventDefault();fn()})};
-bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());
+bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());const _ss=$('sortsel');if(_ss)_ss.addEventListener('change',()=>setSort(_ss.value));
 for(const id of ['rRisk','rScore']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();FRISK=+$('rRisk').value;FSCORE=+$('rScore').value;PAGE=0;render()})}
 for(const id of ['wMa','wVa','wRi','wCo']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();readWeights();rerank()})}
 const sh=$('showHidden');if(sh)sh.addEventListener('change',()=>{SHOWHID=sh.checked;render()});

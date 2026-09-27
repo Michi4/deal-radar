@@ -559,3 +559,23 @@ def test_watch_clone_and_change_triggers():
         assert len(sent) == 1 and sent[0][0].startswith("desc_change")
     finally:
         m.notifier = old
+
+
+def test_job_stop_pause_resume():
+    import asyncio
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    assert c.post("/searches/nope/stop").status_code == 404
+    assert c.post("/searches/nope/pause").status_code == 404
+    assert c.post("/searches/nope/resume").status_code == 404
+    created = asyncio.run(m._start_job([], {"base": {"keywords": "t"}}))
+    sid = created["id"]
+    assert c.post(f"/searches/{sid}/pause").json()["ok"]
+    assert m.JOBS[sid]["control"] == "pause"
+    assert c.post(f"/searches/{sid}/resume").json()["ok"]
+    assert m.JOBS[sid]["control"] == "run"
+    assert c.post(f"/searches/{sid}/stop").json()["ok"]
+    assert m.JOBS[sid]["control"] == "stop"

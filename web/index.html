@@ -228,7 +228,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <div class="row mt-2"><button type="button" class="btn btn-ghost" data-act="resetFilters">reset filters to defaults</button></div>
 </details>
 <div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar">
-<div class="seg" role="group" aria-label="sort order" id="sortseg"></div>
+<select id="sortsel" class="inp" style="max-width:190px" aria-label="sort results"></select>
+<button id="sortdir" class="btn btn-ghost" data-act="toggleDir" aria-label="toggle sort direction" title="ascending / descending">↓</button>
 <div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
 <div class="seg" role="group" aria-label="view"><button id="vgrid" data-act="setView" data-arg="grid" aria-label="grid view" title="Grid view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button id="vlist" data-act="setView" data-arg="list" aria-label="list view" title="List view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button></div>
 <span id="lanes" class="pills"></span></div>
