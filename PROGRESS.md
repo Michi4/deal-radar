@@ -96,6 +96,18 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Verdict: CONDITIONAL GO (conditions + named blockers in report).
 - verify GREEN, 89 passed, 86%, mega 11/11, xss 4/4. Deployed + healthy.
 
+## Verified 2026-09-27 (pass-5 fix batch)
+- POST retries truly 0 now (earlier edit never wrote file — verified by grep this time).
+- Job lifecycle: stop/pause/resume 409 unless running; _STOP single-source; error-path
+  disarms; 6h pause TTL (loop + between-intent); periodic session/lab prune; snapshot
+  off-loop with latency metric; SEEN_IDS seeded from snapshots (no restart storm).
+- Category x multi-query cartesian (capped 6) with divided limits.
+- Frontend: background error/give-up toasts, flicker-free status, adopt parity,
+  ABORTSET timestamps+sweep, FOLLOWED cleared, lazy FAVMAP, aria-live status +
+  lab labels + uninstall confirm, lab loop cancels on tab change.
+- Reconstructed rows honest (lane review, None-safe score).
+- Mega fixed for progressive partials (waits ACTIVEJOBS empty). All green.
+
 ## Next (needs human — do NOT shutdown)
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
