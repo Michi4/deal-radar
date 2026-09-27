@@ -642,6 +642,10 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
         base = meta.get("base", intents[0] if intents else {})
         SEARCHES[sid] = base
         store.save_search(sid, base, len(merged["results"]))
+        try:
+            store.save_snapshot(sid, merged)
+        except Exception:
+            pass
         merged["flags"] = {k: bool(base.get(k, True)) for k in
                            ("enrich", "ocr", "benchmarks", "vision", "details")}
         if base.get("watch"):
@@ -778,12 +782,16 @@ async def get_search(sid: str):
     if row and row[0] == "running":
         return {"id": sid, "status": "running", "adopted": True,
                 "done": 0, "total": 1, "note": "still running (or interrupted by restart)"}
-    intent = SEARCHES.get(sid)  # persisted from earlier session: re-run cached
+    intent = SEARCHES.get(sid)
     if not intent:
         return JSONResponse({"error": "unknown search id"}, status_code=404)
-    out = await _run_cached(intent)
-    EVENT_LOG.extend(out.get("events", []))
-    return {"id": sid, "status": "done", "cached": True, "intent": intent, **out}
+    snap = store.load_snapshot(sid)
+    if not snap:
+        return {"id": sid, "status": "empty",
+                "error": "no saved snapshot for this search — press re-run for fresh results",
+                "intent": intent, "results": [], "filtered": []}
+    return {"id": sid, "status": "done", "cached": True, "snapshot": True,
+            "intent": intent, **snap}
 
 
 @app.get("/stream")

@@ -17,6 +17,7 @@ function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rS
 for(const [id,lab,fn] of pairs){const el=$(id);if(!el)continue;const lb=$(lab);if(lb)lb.textContent=el.value;if(fn)fn(el.value)}}
 function readWeights(){WW={match:+$('wMa').value/100,value:+$('wVa').value/100,risk:+$('wRi').value/100,comp:+$('wCo').value/100}}
 function paintChecks(){document.querySelectorAll('.ck>input').forEach(c=>c.closest('.ck').classList.toggle('on',c.checked))}
+document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.hasAttribute('data-rm'))t.remove()},true);
 document.addEventListener('click',e=>{
 const da=e.target.closest('[data-act]');if(da){if(da.tagName==='A')e.preventDefault();const f=ACT[da.dataset.act];if(f){f(da.dataset.arg,da)}return}
 const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favAct(fav.dataset.fav,fav.hasAttribute('data-close'));return}
@@ -37,7 +38,7 @@ function toast(t){const box=$('toasts');while(box.children.length>2)box.lastChil
 function benchOf(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark')||(s.enrichments||[]).find(e=>e.field==='gpu_benchmark');return b?b.value:0}
 function perfEur(s){const b=benchOf(s);return (b&&s.listing.price)?b/s.listing.price:0}
 function thumb(l,idx){const imgs=l.images||[];if(!imgs.length)return '';const i=idx||0;
-return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${safeUrl(imgs[i%imgs.length])}" onerror="this.remove()">${imgs.length>1?`<button class="thumbnav l" data-cyc="${esc(l.id)}" data-d="-1">‹</button><button class="thumbnav r" data-cyc="${esc(l.id)}" data-d="1">›</button>`:''}</div>`}
+return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${safeUrl(imgs[i%imgs.length])}" data-rm="1">${imgs.length>1?`<button class="thumbnav l" data-cyc="${esc(l.id)}" data-d="-1">‹</button><button class="thumbnav r" data-cyc="${esc(l.id)}" data-d="1">›</button>`:''}</div>`}
 function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listing.images||[]).length)return;const n=s.listing.images.length;let i=((+btn.parentElement.dataset.i||0)+d+n)%n;btn.parentElement.dataset.i=i;btn.parentElement.querySelector('img').src=s.listing.images[i]}
 let CMP=new Set();
 function cmpTgl(id){CMP.has(id)?CMP.delete(id):CMP.add(id);if(CMP.size>4)CMP.delete([...CMP][0]);const c=$('cmpn');if(c){c.textContent=CMP.size;c.style.display=CMP.size?'':'none'}render()}
@@ -48,7 +49,7 @@ const inner=`${thumb(l)}<div class="body">${best}<h4>${esc(l.title)||'(no title)
 <div class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)} · ${esc(l.location||'')}</div>
 <div style="margin-top:6px"><label style="font-size:12px"><input type="checkbox" data-cmp="${esc(l.id)}" ${ck}/> compare</label> <button class="btn btn-ghost" data-fav="${esc(l.id)}">${fav}</button></div></div>`;
 return VIEW==='grid'?`<div class="card" data-open="${esc(l.id)}">${inner}</div>`
-:`<div class="listrow" data-open="${esc(l.id)}">${(l.images&&l.images[0])?`<img loading="lazy" src="${safeUrl(l.images[0])}" onerror="this.remove()">`:''}<div><b>${esc(l.title)||'(no title)'}</b><br/><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)}</span> <button class="btn btn-ghost" data-fav="${esc(l.id)}">${fav}</button></div></div>`}
+:`<div class="listrow" data-open="${esc(l.id)}">${(l.images&&l.images[0])?`<img loading="lazy" src="${safeUrl(l.images[0])}" data-rm="1">`:''}<div><b>${esc(l.title)||'(no title)'}</b><br/><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)}</span> <button class="btn btn-ghost" data-fav="${esc(l.id)}">${fav}</button></div></div>`}
 let FAVS=new Set();
 async function loadFavs(){try{const f=await(await fetch('/favorites')).json();FAVS=new Set(f.map(x=>x.listing_id));$('favn').textContent=f.length}catch(e){}$('favn').textContent=FAVS.size}
 function isFav(id){return FAVS.has(id)}
@@ -254,7 +255,7 @@ async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship
 async function showHistory(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading…</div>';
 try{const r=await(await fetch('/searches')).json();
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
-const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading="lazy" src="'+su+'" onerror="this.remove()" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>':''}).join('');
+const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading="lazy" src="'+su+'" data-rm="1" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>':''}).join('');
 const jb=s.job||null;
 const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':'<span class="jobpill">done</span>'):'';
 const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
@@ -262,12 +263,14 @@ return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keyword
 const tiles=(r.searches||[]).map(tile).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
-async function openSearch(id){tab('search');const r=await(await fetch('/searches/'+id)).json();if(r.intent)applyIntent(r.intent);
+async function openSearch(id){tab('search');let r;try{r=await(await fetch('/searches/'+id)).json()}catch(e){status(`<div class="err">open failed (network): ${esc(String(e))}</div>`);return}
+if(r.error&&!(r.results||[]).length){status(`<div class="err">${esc(r.error)}</div>`);return}
+if(r.intent)applyIntent(r.intent);
 if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');await poll(id,x=>{LAST=x.results||[];SID=id;render()});return}
-LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
-async function redoSearch(id){const r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json();toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
-async function delSearch(id){await fetch('/searches/'+id,{method:'DELETE'});showHistory()}
-async function watchTile(id){const r=await(await fetch('/searches/'+id+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json();toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
+LAST=r.results||[];HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;SID=id;PAGE=0;render();tab('search');if(r.snapshot)toast('opened saved snapshot — re-run for fresh results')}
+async function redoSearch(id){let r;try{r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json()}catch(e){toast('re-run failed (network)');return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
+async function delSearch(id){try{await fetch('/searches/'+id,{method:'DELETE'})}catch(e){toast('delete failed (network)')}showHistory()}
+async function watchTile(id){let r;try{r=await(await fetch('/searches/'+id+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json()}catch(e){toast('watch failed (network)');return}toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
 async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){showPage(false);return cmpSel()}if(!SID){showPage(false);$('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><b>How comparing works</b><br/><small>1. Run any search.<br/>2. Tick <b>compare</b> on 2–4 listings (cards or list rows).<br/>3. Open this tab — you get them side by side: price, source, risk, score, CPU + benchmark.</small><br/><br/><button class="btn btn-primary" data-act="tab" data-arg="search">go search</button></div>';return}showPage(false);status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
 $('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}

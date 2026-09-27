@@ -46,10 +46,12 @@ class Store:
         self.db.execute("PRAGMA wal_autocheckpoint=1000")
         with self._lock:
             self.db.executescript(SCHEMA)
-            try:
-                self.db.execute("ALTER TABLE searches ADD COLUMN total INTEGER DEFAULT 0")
-            except Exception:
-                pass
+            for ddl in ("ALTER TABLE searches ADD COLUMN total INTEGER DEFAULT 0",
+                        "ALTER TABLE searches ADD COLUMN snapshot BLOB"):
+                try:
+                    self.db.execute(ddl)
+                except Exception:
+                    pass
 
     def upsert(self, l: CanonicalListing) -> list[dict]:
         """Returns change events (price/desc/image/seller)."""
@@ -111,9 +113,33 @@ class Store:
     def save_search(self, sid: str, intent: dict, total: int = 0) -> None:
         import time as _t
         with self._lock:
-            self.db.execute("INSERT OR REPLACE INTO searches VALUES(?,?,?,?)",
+            self.db.execute("INSERT OR REPLACE INTO searches(id, ts, intent, total) VALUES(?,?,?,?)",
                             (sid, _t.time(), json.dumps(intent), total))
             self.db.commit()
+
+    def save_snapshot(self, sid: str, payload: dict) -> None:
+        """Compressed full result snapshot: opening old searches is instant, never re-runs."""
+        import zlib
+        try:
+            raw = json.dumps({"results": payload.get("results", [])[:5000],
+                              "filtered": payload.get("filtered", [])[:1000],
+                              "flags": payload.get("flags", {})}).encode()
+            blob = zlib.compress(raw, 1)
+        except Exception:
+            return
+        with self._lock:
+            self.db.execute("UPDATE searches SET snapshot=? WHERE id=?", (blob, sid))
+            self.db.commit()
+
+    def load_snapshot(self, sid: str) -> dict | None:
+        import zlib
+        try:
+            row = self.db.execute("SELECT snapshot FROM searches WHERE id=?", (sid,)).fetchone()
+            if not row or not row[0]:
+                return None
+            return json.loads(zlib.decompress(row[0]).decode())
+        except Exception:
+            return None
 
     def load_searches(self) -> dict[str, dict]:
         out: dict[str, dict] = {}

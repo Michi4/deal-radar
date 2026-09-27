@@ -639,3 +639,37 @@ def test_lab_job_flow_staged():
     finally:
         del os.environ["LAB_ENABLED"]
         importlib.reload(m)
+
+
+def test_open_old_search_serves_snapshot_instantly():
+    """Opening history must NOT re-run the pipeline: snapshot served, _run_cached untouched."""
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    sid = "s_snaptest"
+    intent = {"keywords": "snap", "sources": ["t"]}
+    m.SEARCHES[sid] = intent
+    try:
+        m.store.save_search(sid, intent, total=1)
+        m.store.save_snapshot(sid, {"results": [{"listing": {"id": "x"}, "final_score": 1}],
+                                    "filtered": [], "flags": {}})
+        async def boom(*a, **k):
+            raise AssertionError("pipeline must not run on open")
+        old = m._run_cached
+        m._run_cached = boom
+        try:
+            r = c.get(f"/searches/{sid}").json()
+        finally:
+            m._run_cached = old
+        assert r["status"] == "done" and r.get("snapshot") is True
+        assert r["results"][0]["listing"]["id"] == "x"
+        m.store.delete_search(sid)
+        m.SEARCHES.pop(sid, None)
+    finally:
+        m.SEARCHES.pop(sid, None)
+        try:
+            m.store.delete_search(sid)
+        except Exception:
+            pass
