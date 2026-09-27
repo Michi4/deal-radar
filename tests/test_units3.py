@@ -84,6 +84,10 @@ def test_nl_fallback_paths():
     assert fb2["attributes"].get("connector") == "usb-c"
     fb3 = D.nl_fallback("laptop ab 200")
     assert fb3["hard"].get("min_price") == 200
+    fb4 = D.nl_fallback("ThinkPad under 700 without defects")
+    assert fb4["hard"].get("max_price") == 700
+    assert any("defect" in b.get("value", "") for b in fb4["blacklist"])
+    assert "without" not in fb4["keywords"] and "700" not in fb4["keywords"]
 
 
 def test_stage_b_via_cloud_shapes():

@@ -87,12 +87,35 @@ async def generate(kind: str, instruction: str) -> dict:
     return result
 
 
+_IMPORT_ALLOW = {"deal_radar", "re", "math", "statistics", "datetime", "json",
+                  "httpx", "pydantic", "asyncio", "time", "urllib"}
+_CALL_DENY = {"eval", "exec", "open", "__import__", "compile", "input", "breakpoint"}
+_ATTR_DENY = {"__subclasses__", "__bases__", "__mro__", "__globals__", "__code__",
+              "__closure__", "__dict__", "__weakref__", "gi_frame", "f_globals"}
+
+
 def validate_python(code: str) -> str | None:
+    """Syntax + import/call AST gate. Hardening, not a sandbox: generated code still
+    runs in-process after human-visible contract checks — keep LAB behind auth."""
     try:
-        ast.parse(code)
-        return None
+        tree = ast.parse(code)
     except SyntaxError as e:
         return f"syntax: {e}"
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for n in node.names:
+                if n.name.split(".")[0] not in _IMPORT_ALLOW:
+                    return f"import not allowed: {n.name}"
+        elif isinstance(node, ast.ImportFrom):
+            if (node.level or 0) > 0:
+                return "relative imports not allowed"
+            if (node.module or "").split(".")[0] not in _IMPORT_ALLOW:
+                return f"import not allowed: {node.module}"
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _CALL_DENY:
+            return f"call not allowed: {node.func.id}"
+        elif isinstance(node, ast.Attribute) and node.attr in _ATTR_DENY:
+            return f"attribute not allowed: {node.attr}"
+    return None
 
 
 def save_enricher(code: str, eid: str) -> Path:

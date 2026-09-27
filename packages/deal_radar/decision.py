@@ -316,20 +316,20 @@ def nl_fallback(text: str) -> dict:
     t = text
     tl = t.lower()
     hard: dict = {"rules": []}
-    m = re.search(r"(?:unter|max|bis|<=?)\s*(\d[\d\.\s]*)\s*€?", tl)
+    m = re.search(r"(?:unter|under|below|max|bis|<=?)\s*(\d[\d\.\s]*)\s*€?", tl)
     if m:
         try:
             hard["max_price"] = float(m.group(1).replace(".", "").replace(" ", ""))
         except ValueError:
             pass
-    m = re.search(r"(?:über|min|ab|>=?)\s*(\d[\d\.\s]*)\s*€?", tl)
-    if m and "unter" not in tl and "max" not in tl:
+    m = re.search(r"(?:über|over|above|min|ab|>=?)\s*(\d[\d\.\s]*)\s*€?", tl)
+    if m and not any(w in tl for w in ("unter", "under", "below", "max", "bis")):
         try:
             hard["min_price"] = float(m.group(1).replace(".", "").replace(" ", ""))
         except ValueError:
             pass
     blacklist: list[dict] = []
-    for cue in re.finditer(r"(?:ohne|kein(?:e|er)?|nicht|ausschlie[ßs]en|no)\s+([a-zäöüß\- ]{2,30}?)(?:,| und | oder |$)", tl):
+    for cue in re.finditer(r"(?:ohne|kein(?:e|er)?|nicht|ausschlie[ßs]en|without|with\s+no|exclud(?:e|ing)|minus|no)\s+([a-zäöüß\- ]{2,30}?)(?:,| und | oder | and | or |$)", tl):
         blacklist.append({"fields": ["title", "description"], "op": "not_contains",
                           "value": cue.group(1).strip()})
     attrs: dict = {}
@@ -341,8 +341,8 @@ def nl_fallback(text: str) -> dict:
     if "lightning" in tl:
         attrs["connector"] = "lightning"
     # core keywords: strip price/exclusion/connector clauses
-    kw = re.sub(r"(unter|max|bis|über|min|ab)\s*\d[\d\.\s]*\s*€?", " ", tl)
-    kw = re.sub(r"(ohne|keine?r?|nicht|ausschlie[ßs]en)\s+[a-zäöüß\- ]{2,30}?(,| und | oder |$)", " ", kw)
+    kw = re.sub(r"(unter|under|below|max|bis|über|over|above|min|ab)\s*\d[\d\.\s]*\s*€?", " ", tl)
+    kw = re.sub(r"(ohne|keine?r?|nicht|ausschlie[ßs]en|without|with\s+no|exclud(?:e|ing)|minus)\s+[a-zäöüß\- ]{2,30}?(,| und | oder | and | or |$)", " ", kw)
     kw = re.sub(r"(welche[rs]?|mit|mit einem|der|die|das|ein(?:e|er|em)?|und|oder|zum|für|to|with|a|an|the|that|uses?|use|which|charge[sd]?|plug|to)\b", " ", kw)
     kw = re.sub(r"\s+", " ", kw).strip()
     return {"keywords": kw or tl[:80], "category": "", "hard": hard, "blacklist": blacklist,

@@ -3,12 +3,29 @@ services:
     build: .
     ports: ["8099:8099"]
     volumes: [dealdata:/data]
+    restart: unless-stopped
+    healthcheck: { test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8099/health',timeout=4)"], interval: 30s, timeout: 5s, retries: 3 }
     environment:
       EBAY_OAUTH_TOKEN: ${EBAY_OAUTH_TOKEN:-}
       JEV_API_KEY: ${JEV_API_KEY:-}
       KEV_URL: ${KEV_URL:-}
+      CLOUD_API_URL: ${CLOUD_API_URL:-}
+      CLOUD_API_KEY: ${CLOUD_API_KEY:-}
+      CLOUD_MODELS: ${CLOUD_MODELS:-}
+      LOCAL_API_URL: ${LOCAL_API_URL:-}
+      LOCAL_MODEL_VISION: ${LOCAL_MODEL_VISION:-}
+      SIGNAL_NUMBER: ${SIGNAL_NUMBER:-}
       NTFY_TOPIC_URL: ${NTFY_TOPIC_URL:-}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      NOTIFIERS_JSON: ${NOTIFIERS_JSON:-}
       TRANSPORTS_JSON: ${TRANSPORTS_JSON:-{}}
+      LAB_ENABLED: ${LAB_ENABLED:-}
+      LAB_PUBLISH: ${LAB_PUBLISH:-}
+      GH_TOKEN: ${GH_TOKEN:-}
+      CACHE_TTL_S: ${CACHE_TTL_S:-120}
+      DB_PATH: ${DB_PATH:-/data/dealradar.db}
+      API_KEY: ${API_KEY:-}
+      RATE_PER_MIN: ${RATE_PER_MIN:-120}
     labels:
       - "traefik.enable=true"
 volumes: { dealdata: {} }

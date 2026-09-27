@@ -18,19 +18,38 @@ CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
 CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_id TEXT, title TEXT,
   price REAL, currency TEXT, source TEXT, url TEXT, image TEXT, score REAL,
   PRIMARY KEY (search_id, listing_id));
+CREATE TABLE IF NOT EXISTS fact_overrides(listing_id TEXT, field TEXT, value TEXT, ts REAL, by TEXT,
+  PRIMARY KEY (listing_id, field));
+CREATE INDEX IF NOT EXISTS idx_obs_listing ON observations(listing_id);
+CREATE INDEX IF NOT EXISTS idx_sr_search ON search_results(search_id);
+CREATE INDEX IF NOT EXISTS idx_listings_seen ON listings(last_seen);
+CREATE INDEX IF NOT EXISTS idx_listings_source ON listings(source);
+CREATE INDEX IF NOT EXISTS idx_searches_ts ON searches(ts);
 """
 
 
 class Store:
     def __init__(self, path: str = "data/dealradar.db"):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
+        import threading as _th
+        self._lock = _th.Lock()
         self.db = sqlite3.connect(path, check_same_thread=False, timeout=30.0, isolation_level=None)
-        self.db.execute("PRAGMA journal_mode=WAL")
+        mode = self.db.execute("PRAGMA journal_mode=WAL").fetchone()
+        if not mode or mode[0].lower() != "wal":
+            raise RuntimeError(f"SQLite WAL mode unavailable (got {mode}) for {path}")
         self.db.execute("PRAGMA busy_timeout=30000")
-        self.db.executescript(SCHEMA)
+        self.db.execute("PRAGMA synchronous=NORMAL")
+        self.db.execute("PRAGMA foreign_keys=ON")
+        self.db.execute("PRAGMA wal_autocheckpoint=1000")
+        with self._lock:
+            self.db.executescript(SCHEMA)
 
     def upsert(self, l: CanonicalListing) -> list[dict]:
         """Returns change events (price/desc/image/seller)."""
+        with self._lock:
+            return self._upsert_locked(l)
+
+    def _upsert_locked(self, l: CanonicalListing) -> list[dict]:
         cur = self.db.execute("SELECT price,title,data FROM listings WHERE id=?", (l.id,))
         row = cur.fetchone()
         now = time.time()
@@ -42,10 +61,10 @@ class Store:
                             (l.id, l.source, l.url, l.title, l.price, l.currency, now, now, data))
         else:
             old_price, old_title, old_data = row[0], row[1], row[2]
-            old_desc = None
             try:
-                old_desc = json.loads(old_data).get("description", "")
-                old_imgs = json.loads(old_data).get("images", [])
+                _old = json.loads(old_data)
+                old_desc = _old.get("description", "")
+                old_imgs = _old.get("images", [])
             except Exception:
                 old_desc, old_imgs = "", []
             if old_price != l.price:
@@ -68,21 +87,24 @@ class Store:
         return events
 
     def favorite(self, listing_id: str, note: str = "") -> None:
-        self.db.execute("INSERT OR REPLACE INTO favorites VALUES(?,?,?)", (listing_id, time.time(), note))
-        self.db.commit()
+        with self._lock:
+            self.db.execute("INSERT OR REPLACE INTO favorites VALUES(?,?,?)", (listing_id, time.time(), note))
+            self.db.commit()
 
     def unfavorite(self, listing_id: str) -> None:
-        self.db.execute("DELETE FROM favorites WHERE listing_id=?", (listing_id,))
-        self.db.commit()
+        with self._lock:
+            self.db.execute("DELETE FROM favorites WHERE listing_id=?", (listing_id,))
+            self.db.commit()
 
     def is_favorite(self, listing_id: str) -> bool:
         return self.db.execute("SELECT 1 FROM favorites WHERE listing_id=?", (listing_id,)).fetchone() is not None
 
     def save_search(self, sid: str, intent: dict) -> None:
         import time as _t
-        self.db.execute("INSERT OR REPLACE INTO searches VALUES(?,?,?)",
-                        (sid, _t.time(), json.dumps(intent)))
-        self.db.commit()
+        with self._lock:
+            self.db.execute("INSERT OR REPLACE INTO searches VALUES(?,?,?)",
+                            (sid, _t.time(), json.dumps(intent)))
+            self.db.commit()
 
     def load_searches(self) -> dict[str, dict]:
         out: dict[str, dict] = {}
@@ -94,12 +116,23 @@ class Store:
         return out
 
     def delete_search(self, sid: str) -> None:
-        self.db.execute("DELETE FROM searches WHERE id=?", (sid,))
-        self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
-        self.db.commit()
+        with self._lock:
+            self.db.execute("DELETE FROM searches WHERE id=?", (sid,))
+            self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
+            self.db.commit()
 
     def save_results(self, sid: str, results: list[dict], limit: int = 12) -> None:
         try:
+            from deal_radar import metrics as _m
+            with self._lock:
+                self._save_results_locked(sid, results, limit)
+        except Exception:
+            try:
+                _m.inc("store_errors")
+            except Exception:
+                pass
+
+    def _save_results_locked(self, sid: str, results: list[dict], limit: int) -> None:
             self.db.execute("DELETE FROM search_results WHERE search_id=?", (sid,))
             for i, r in enumerate(results[:limit]):
                 l = r.get("listing", {})
@@ -109,37 +142,45 @@ class Store:
                                  l.get("currency"), l.get("source"), l.get("url"),
                                  imgs[0] if imgs else None, r.get("final_score")))
             self.db.commit()
-        except Exception:
-            pass
 
     def list_searches(self) -> list[dict]:
         out = []
         try:
-            for sid, ts, intent in self.db.execute(
-                    "SELECT id, ts, intent FROM searches ORDER BY ts DESC LIMIT 60").fetchall():
+            rows = self.db.execute(
+                "SELECT id, ts, intent FROM searches ORDER BY ts DESC LIMIT 60").fetchall()
+            sids = [r[0] for r in rows]
+            counts: dict[str, int] = {}
+            thumbs: dict[str, list] = {}
+            if sids:
+                ph = ",".join("?" * len(sids))
+                for sid, n in self.db.execute(
+                        f"SELECT search_id, COUNT(*) FROM search_results WHERE search_id IN ({ph}) "
+                        f"GROUP BY search_id", sids).fetchall():
+                    counts[sid] = n
+                for sid, img in self.db.execute(
+                        f"SELECT search_id, image FROM search_results WHERE search_id IN ({ph}) "
+                        f"AND image IS NOT NULL ORDER BY search_id, rank", sids).fetchall():
+                    if len(thumbs.setdefault(sid, [])) < 4:
+                        thumbs[sid].append(img)
+            for sid, ts, intent in rows:
                 try:
                     import json as _j
                     intent = _j.loads(intent)
                 except Exception:
                     intent = {}
-                n = self.db.execute("SELECT COUNT(*) FROM search_results WHERE search_id=?",
-                                    (sid,)).fetchone()[0]
-                thumbs = [r[0] for r in self.db.execute(
-                    "SELECT image FROM search_results WHERE search_id=? AND image IS NOT NULL "
-                    "ORDER BY rank LIMIT 4", (sid,)).fetchall()]
                 out.append({"id": sid, "ts": ts, "keywords": intent.get("keywords", ""),
                             "watch": bool(intent.get("watch")), "sources": intent.get("sources", []),
-                            "results": n, "thumbs": thumbs})
+                            "results": counts.get(sid, 0), "thumbs": thumbs.get(sid, [])})
         except Exception:
             pass
         return out
 
     def set_fact(self, listing_id: str, field: str, value: str, by: str = "user") -> None:
         import time as _t
-        self.db.execute("CREATE TABLE IF NOT EXISTS fact_overrides(listing_id TEXT, field TEXT, value TEXT, ts REAL, by TEXT, PRIMARY KEY (listing_id, field))")
-        self.db.execute("INSERT OR REPLACE INTO fact_overrides VALUES(?,?,?,?,?)",
-                        (listing_id, field, value, _t.time(), by))
-        self.db.commit()
+        with self._lock:
+            self.db.execute("INSERT OR REPLACE INTO fact_overrides VALUES(?,?,?,?,?)",
+                            (listing_id, field, value, _t.time(), by))
+            self.db.commit()
 
     def get_facts(self, listing_id: str) -> dict[str, str]:
         try:
@@ -158,14 +199,25 @@ class Store:
     def favorites_with_history(self) -> list[dict]:
         favs = self.db.execute("SELECT listing_id, ts, note FROM favorites ORDER BY ts DESC").fetchall()
         out: list[dict] = []
+        lids = [f[0] for f in favs]
+        rows: dict = {}
+        obss: dict[str, list] = {}
+        if lids:
+            ph = ",".join("?" * len(lids))
+            for r in self.db.execute(
+                    f"SELECT id, title, price, currency, url, last_seen FROM listings WHERE id IN ({ph})",
+                    lids).fetchall():
+                rows[r[0]] = r
+            for o in self.db.execute(
+                    f"SELECT listing_id, ts, kind, old_value, new_value FROM observations "
+                    f"WHERE listing_id IN ({ph}) ORDER BY listing_id, ts", lids).fetchall():
+                obss.setdefault(o[0], []).append(o[1:])
         for lid, ts, note in favs:
-            row = self.db.execute("SELECT title, price, currency, url, last_seen, data FROM listings WHERE id=?",
-                                  (lid,)).fetchone()
-            obs = self.db.execute("SELECT ts, kind, old_value, new_value FROM observations WHERE listing_id=? ORDER BY ts",
-                                  (lid,)).fetchall()
+            row = rows.get(lid)
+            obs = obss.get(lid, [])
             out.append({"listing_id": lid, "saved_at": ts, "note": note,
-                        "title": row[0] if row else None, "price": row[1] if row else None,
-                        "currency": row[2] if row else None, "url": row[3] if row else None,
-                        "last_seen": row[4] if row else None,
+                        "title": row[1] if row else None, "price": row[2] if row else None,
+                        "currency": row[3] if row else None, "url": row[4] if row else None,
+                        "last_seen": row[5] if row else None,
                         "history": [{"ts": o[0], "kind": o[1], "old": o[2], "new": o[3]} for o in obs]})
         return out

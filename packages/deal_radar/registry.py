@@ -94,7 +94,14 @@ def check(driver_id: str) -> dict:
             "capabilities": list(mani.capabilities)}
 
 
+_ID_RE = __import__("re").compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
+_REPO_RE = __import__("re").compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_REF_RE = __import__("re").compile(r"^[A-Za-z0-9_./-]{1,80}$")
+
+
 def install(entry: dict, index_source: str = "") -> dict:
+    if not _ID_RE.match(entry.get("id", "")):
+        return {"ok": False, "error": "invalid marketplace id"}
     src: str = entry.get("source", "")
     dest = COMMUNITY / entry["id"]
     if dest.exists():
@@ -111,10 +118,14 @@ def install(entry: dict, index_source: str = "") -> dict:
                 rest, _, sub = rest.partition(":")
             repo, _, ref = rest.partition("@")
             ref = ref or "main"
+            if not _REPO_RE.match(repo) or not _REF_RE.match(ref) or ".." in sub:
+                return {"ok": False, "error": "invalid marketplace source"}
             import httpx as _hx
             url = f"https://github.com/{repo}/archive/refs/heads/{ref}.tar.gz"
-            r = _hx.get(url, timeout=180, follow_redirects=True)
+            r = _hx.get(url, timeout=60, follow_redirects=True)
             r.raise_for_status()
+            if len(r.content) > 50 * 1024 * 1024:
+                return {"ok": False, "error": "tarball too large (>50MB) — aborted"}
             tmp = COMMUNITY / f".tmp-{entry['id']}"
             with _tf.open(fileobj=_io.BytesIO(r.content), mode="r:gz") as tf:
                 tf.extractall(tmp, filter="data")
@@ -127,10 +138,11 @@ def install(entry: dict, index_source: str = "") -> dict:
         want = entry.get("sha256", "")
         if want:
             h = hashlib.sha256()
-            for f in sorted(dest.rglob("*.py")):
+            for f in sorted(p for p in dest.rglob("*") if p.is_file() and ".tmp-" not in p.parts):
+                h.update(str(f.relative_to(dest)).encode())
                 h.update(f.read_bytes())
             if h.hexdigest() != want:
-                shutil.rmtree(dest)
+                shutil.rmtree(dest, ignore_errors=True)
                 return {"ok": False, "error": "checksum mismatch — install aborted"}
         chk = check(entry["id"])
         if not chk.get("ok"):

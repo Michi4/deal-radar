@@ -374,17 +374,19 @@ def test_app_gate_and_ratelimit():
     import importlib
 
     import api.main as m
-    importlib.reload(m)
-    from fastapi.testclient import TestClient
-    c = TestClient(m.app)
-    assert c.get("/searches/xxx").status_code == 401
-    assert c.get("/health").status_code == 200
-    h = {"x-api-key": "secret123"}
-    assert c.get("/searches/xxx", headers=h).status_code == 200
-    assert c.get("/searches/xxx", headers=h).status_code == 200
-    assert c.get("/searches/xxx", headers=h).status_code == 429
-    del os.environ["API_KEY"], os.environ["RATE_PER_MIN"]
-    importlib.reload(m)
+    try:
+        importlib.reload(m)
+        from fastapi.testclient import TestClient
+        c = TestClient(m.app)
+        assert c.get("/searches/xxx").status_code == 401
+        assert c.get("/health").status_code == 200
+        h = {"x-api-key": "secret123"}
+        assert c.get("/searches/xxx", headers=h).status_code == 404
+        assert c.get("/favorites", headers=h).status_code == 200
+        assert c.get("/favorites", headers=h).status_code == 429
+    finally:
+        del os.environ["API_KEY"], os.environ["RATE_PER_MIN"]
+        importlib.reload(m)
 
 
 def test_willhaben_real_search_fixture():

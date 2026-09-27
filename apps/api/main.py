@@ -1,5 +1,5 @@
 """FastAPI: searches, live SSE stream, favorites, drivers, metrics, health.
-Run: PYTHONPATH=packages:drivers uvicorn api.main:app --reload (from apps/api)
+Run: PYTHONPATH=packages:drivers:apps .venv/bin/python -m uvicorn api.main:app --app-dir apps (from repo root)
 Generic engine: intent DSL works for products, jobs, housing, anything with listings.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ from fastapi.responses import (
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from deal_radar import metrics
 from deal_radar.driver_sdk import DriverRegistry
@@ -35,6 +35,7 @@ from deal_radar.store import Store
 app = FastAPI(title="deal-radar", version="0.1.0")
 
 # in-app auth + rate limit (defense in depth behind Authelia/basic-auth at the edge)
+import hmac as _hmac
 import time as _t
 
 API_KEY = os.getenv("API_KEY", "")
@@ -42,19 +43,35 @@ _hits: dict[str, list[float]] = {}
 RATE_PER_MIN = int(os.getenv("RATE_PER_MIN", "120"))
 
 
+_RL_PATHS = ("/searches", "/stream", "/lab", "/marketplace", "/favorites", "/listings", "/market")
+
+
 @app.middleware("http")
 async def _gate(request: Request, call_next):
-    if API_KEY and request.url.path not in ("/health",) and request.headers.get("x-api-key") != API_KEY:
+    if API_KEY and request.url.path not in ("/health",) and not _hmac.compare_digest(
+            request.headers.get("x-api-key", ""), API_KEY):
         return JSONResponse({"detail": "unauthorized"}, status_code=401)
-    ip = (request.client.host if request.client else "?") if request.url.path.startswith(("/searches", "/stream")) else None
-    if ip:
+    if request.url.path.startswith(_RL_PATHS) or request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        ip = request.client.host if request.client else "?"
         now = _t.time()
+        if len(_hits) > 5000:  # bound memory: drop stale buckets
+            for k in [k for k, v in _hits.items() if not v or now - v[-1] > 60][:1000]:
+                _hits.pop(k, None)
         lst = [t for t in _hits.get(ip, []) if now - t < 60]
         if len(lst) >= RATE_PER_MIN:
             return JSONResponse({"detail": "rate limited"}, status_code=429)
         lst.append(now)
         _hits[ip] = lst
-    return await call_next(request)
+    resp = await call_next(request)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "SAMEORIGIN"
+    resp.headers["Referrer-Policy"] = "same-origin"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' https: data:; connect-src 'self'; "
+        "frame-ancestors 'self'; base-uri 'self'; form-action 'self'")
+    return resp
 registry = DriverRegistry()
 store = Store(os.getenv("DB_PATH", "data/dealradar.db"))
 notifier = notifier_from_env(os.environ)
@@ -131,7 +148,8 @@ async def _watcher() -> None:
                             {"url": r["listing"]["url"]})
                 EVENT_LOG.extend(out.get("events", []))  # price notifies are sent (rule-gated) by the orchestrator itself
         except Exception as e:
-            print(f"[watcher] {e}", flush=True)
+            metrics.inc("watcher_errors")
+            print(f"[watcher] {type(e).__name__}: {e}", flush=True)
         await asyncio.sleep(15)
 
 
@@ -182,23 +200,23 @@ if static_dir.exists():
 
 
 class SearchIntent(BaseModel):
-    keywords: str = ""
-    category: str = ""
-    sources: list[str] | None = None
+    keywords: str = Field(default="", max_length=500)
+    category: str = Field(default="", max_length=100)
+    sources: list[str] | None = Field(default=None, max_length=10)
     hard: dict = {}
-    blacklist: list[dict] = []
-    whitelist: list[dict] = []
-    required: list[dict] = []  # must-contain (AND): every rule must match
+    blacklist: list[dict] = Field(default=[], max_length=50)
+    whitelist: list[dict] = Field(default=[], max_length=50)
+    required: list[dict] = Field(default=[], max_length=50)  # must-contain (AND): every rule must match
     risk: dict = {}
     ranking: dict | None = None
     enrich: bool = True
-    limit: int = 20
-    max_pages: int | None = None  # per-source page cap; empty = walk to exhaustion
+    limit: int = Field(default=20, ge=1, le=200)
+    max_pages: int | None = Field(default=None, ge=1, le=50)  # per-source page cap; empty = walk to exhaustion
     watch: bool = False
-    poll_interval_s: int = 300
+    poll_interval_s: int = Field(default=300, ge=45, le=86400)
     notify_on: list[str] = ["new_top", "price_drop"]
-    notify_rules: list[dict] = []  # e.g. {"kind":"price_drop","min_drop_pct":15},{"kind":"new_match","max_risk":0.2}
-    max_distance_km: float | None = None
+    notify_rules: list[dict] = Field(default=[], max_length=20)  # e.g. {"kind":"price_drop","min_drop_pct":15},{"kind":"new_match","max_risk":0.2}
+    max_distance_km: float | None = Field(default=None, ge=0, le=20000)
     require_pickup: bool = False
     require_shipping: bool = False
 
@@ -247,12 +265,12 @@ def admin():
 
 
 class NLQuery(BaseModel):
-    text: str
-    sources: list[str] | None = None
+    text: str = Field(max_length=2000)
+    sources: list[str] | None = Field(default=None, max_length=10)
     watch: bool = False
-    poll_interval_s: int = 300
-    limit: int = 20
-    max_pages: int | None = None
+    poll_interval_s: int = Field(default=300, ge=45, le=86400)
+    limit: int = Field(default=20, ge=1, le=200)
+    max_pages: int | None = Field(default=None, ge=1, le=50)
     ocr: bool = True
     benchmarks: bool = True
     vision: bool = True
@@ -395,7 +413,7 @@ async def redo_search(sid: str):
         except Exception:
             intent = None
     if not intent:
-        return {"error": "unknown search id"}
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
     from copy import deepcopy
     return await _start_job([deepcopy(intent)], {"base": deepcopy(intent), "limit": intent.get("limit", 20),
                                                 "watch": intent.get("watch", False), "notify_done": True})
@@ -414,7 +432,7 @@ async def get_search(sid: str):
                 "subqueries": job.get("subqueries", []), **out}
     intent = SEARCHES.get(sid)  # persisted from earlier session: re-run cached
     if not intent:
-        return {"error": "unknown search id"}
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
     out = await _run_cached(intent)
     EVENT_LOG.extend(out.get("events", []))
     return {"id": sid, "status": "done", "cached": True, **out}
@@ -447,14 +465,14 @@ def delete_search(sid: str):
 
 
 class LabRequest(BaseModel):
-    kind: str = "enricher"
-    instruction: str = ""
+    kind: str = Field(default="enricher", pattern="^(enricher|driver)$")
+    instruction: str = Field(default="", max_length=4000)
     publish: bool = False
 
 
 class FactOverride(BaseModel):
-    field: str = "cpu"
-    value: str = ""
+    field: str = Field(default="cpu", pattern="^[a-z][a-z0-9_]{0,29}$")
+    value: str = Field(default="", max_length=200)
 
 
 @app.post("/listings/{lid}/facts")
@@ -516,7 +534,7 @@ def marketplace():
 
 
 class InstallRequest(BaseModel):
-    id: str = ""
+    id: str = Field(default="", pattern="^[a-z0-9][a-z0-9-]{0,40}$")
 
 
 @app.post("/marketplace/install")
@@ -527,7 +545,7 @@ def marketplace_install(req: InstallRequest):
     idx = _j.loads(p.read_text()) if p.exists() else {"drivers": []}
     entry = next((d for d in idx.get("drivers", []) if d["id"] == req.id), None)
     if not entry:
-        return {"ok": False, "error": f"unknown marketplace id: {req.id}"}
+        return JSONResponse({"ok": False, "error": f"unknown marketplace id: {req.id}"}, status_code=404)
     if entry.get("source") == "builtin":
         return {"ok": True, "installed": req.id, "note": "built in — enable per search"}
     from deal_radar.registry import install
@@ -538,7 +556,7 @@ def marketplace_install(req: InstallRequest):
 def notifications_status():
     chans = []
     if os.getenv("SIGNAL_NUMBER"):
-        chans.append({"type": "signal", "target": "***" + os.getenv("SIGNAL_NUMBER", "")[-4:]})
+        chans.append({"type": "signal", "configured": True})
     if os.getenv("NTFY_TOPIC_URL"):
         chans.append({"type": "ntfy"})
     if os.getenv("WEBHOOK_URL"):
@@ -557,7 +575,7 @@ def notifications_status():
 @app.post("/lab/build")
 async def lab_build(req: LabRequest):
     if not os.getenv("LAB_ENABLED"):
-        return {"ok": False, "error": "LAB_ENABLED=0 (code-writing disabled)"}
+        return JSONResponse({"ok": False, "error": "LAB_ENABLED=0 (code-writing disabled)"}, status_code=400)
     from deal_radar import ailab
     out = await ailab.generate(req.kind, req.instruction)
     if out.get("ok") and req.publish:
@@ -601,7 +619,7 @@ async def compare(sid: str):
     import re as _re
     intent = SEARCHES.get(sid)
     if not intent:
-        return {"error": "unknown search id"}
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
     out = await _run_cached(intent)
     groups: dict[str, list] = {}
     for r in out.get("results", []):
@@ -662,4 +680,4 @@ def market(limit: int = 60, offset: int = 0, source: str = ""):
         items.append({"id": lid, "source": src, "url": url, "title": title, "price": price,
                       "currency": cur, "last_seen": seen, "image": imgs[0] if imgs else None,
                       "favorite": store.is_favorite(lid)})
-    return {"items": items, "limit": limit, "offset": offset}
+    return {"items": items, "limit": max(1, min(limit, 200)), "offset": max(0, offset)}

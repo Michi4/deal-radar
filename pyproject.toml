@@ -49,4 +49,4 @@ source = ["packages/deal_radar"]
 omit = ["*/tests/*"]
 
 [tool.coverage.report]
-fail_under = 70
+fail_under = 85
