@@ -6,8 +6,10 @@ const ACT={tab:a=>tab(a),showFavs:()=>showFavs(),cmp:()=>cmp(),page:a=>page(+a),
 gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';render()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
+document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
+function paintChecks(){document.querySelectorAll('.ck>input').forEach(c=>c.closest('.ck').classList.toggle('on',c.checked))}
 document.addEventListener('click',e=>{
 const da=e.target.closest('[data-act]');if(da){if(da.tagName==='A')e.preventDefault();const f=ACT[da.dataset.act];if(f){f(da.dataset.arg,da)}return}
 const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favAct(fav.dataset.fav,fav.hasAttribute('data-close'));return}
@@ -121,7 +123,8 @@ if(p.hard&&p.hard.max_price&&!$('max').value)$('max').value=p.hard.max_price;
 if(p.hard&&p.hard.min_price&&!$('min').value)$('min').value=p.hard.min_price;
 }catch(e){}
 }
-async function poll(sid,onDone){for(;;){const r=await(await fetch('/searches/'+sid)).json();
+async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
+async function poll(sid,onDone){for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
 SEARCHED=true;onDone(r);return}}
 async function run(){const sel=[...SRCS];
@@ -133,19 +136,20 @@ const body={keywords:$('q').value,sources:sel,hard,required:req,...intent()};
 if(mp)body.max_pages=mp;
 $('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);status('Search started in background …');PAGE=0;
 try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
-pushHist($('q').value);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();
+pushHist($('q').value);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
 $('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:30})})).json();
-pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();
+pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();status('');try{const f=await(await fetch('/favorites')).json();
 $('results').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){status(`<div class="err">${e}</div>`)}}
 async function unfavWrap(){}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
+function mirrorRefine(){try{$('rMin').value=$('min').value;$('rMax').value=$('max').value;$('rBlack').value=$('black').value;$('rReq').value=$('req').value}catch(e){}}
 function hideSearchChrome(){for(const id of ['toolbar','refinebar','pagertop','pager']){const e=$(id);if(e)e.style.display='none'}}
 function markActive(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t))}
 function hideChrome(){['toolbar','refinebar','pagertop','pager'].forEach(id=>{const e=$(id);if(e)e.style.display='none'})}
@@ -212,7 +216,7 @@ document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{pas
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
 async function init(){try{const d=await(await fetch('/drivers')).json();
 d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});
-$('sources').innerHTML='<span class="flabel">sources</span><div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
-drawHist();loadFavs();setView(VIEW);
+$('sources').innerHTML='<div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
+drawHist();loadFavs();setView(VIEW);paintChecks();authKick();
 try{const es=new EventSource('/stream');es.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.kind!=='new_match'&&m.kind!=='search_done'&&m.kind!=='price')return;toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){}};es.onerror=()=>{toast('live feed reconnecting…')}}catch(e){}}
 init();

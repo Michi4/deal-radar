@@ -21,6 +21,8 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     PlainTextResponse,
+    RedirectResponse,
+    Response,
     StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
@@ -39,8 +41,48 @@ import hmac as _hmac
 import time as _t
 
 API_KEY = os.getenv("API_KEY", "")
+LOGIN_PASSWORD = os.getenv("LOGIN_PASSWORD", "")
 _hits: dict[str, list[float]] = {}
+_login_hits: dict[str, list[float]] = {}
+SESSIONS: dict[str, float] = {}  # token -> expiry ts
+SESSION_TTL = 30 * 24 * 3600
 RATE_PER_MIN = int(os.getenv("RATE_PER_MIN", "120"))
+
+
+def _logged_in(request: Request) -> bool:
+    if not LOGIN_PASSWORD:
+        return True
+    tok = request.cookies.get("dr_session", "")
+    exp = SESSIONS.get(tok)
+    if exp and exp > _t.time():
+        return True
+    SESSIONS.pop(tok, None)
+    return False
+
+
+def _login_page(err: str = "") -> HTMLResponse:
+    return HTMLResponse(
+        "<!doctype html><html lang='en' class='dark'><head><meta charset='utf-8'/>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'/>"
+        "<meta name='theme-color' content='#059669'/>"
+        "<title>deal-radar — login</title>"
+        "<style>:root{color-scheme:dark light}body{margin:0;min-height:100vh;display:flex;"
+        "align-items:center;justify-content:center;background:#020617;color:#e2e8f0;"
+        "font-family:system-ui,sans-serif}.card{background:#0f172a;border:1px solid #1e293b;"
+        "border-radius:1rem;padding:2rem;min-width:min(22rem,90vw);text-align:center}"
+        "h1{font-size:1.3rem;margin:.5rem 0 1.2rem;background:linear-gradient(90deg,#34d399,#6ee7b7);"
+        "-webkit-background-clip:text;background-clip:text;color:transparent}"
+        "input{width:100%;box-sizing:border-box;padding:.7rem .9rem;border-radius:.6rem;border:2px solid #334155;"
+        "background:#020617;color:inherit;font-size:1rem;margin-bottom:.8rem}"
+        "input:focus{outline:none;border-color:#34d399}"
+        "button{width:100%;padding:.7rem;background:#059669;border:none;border-radius:.6rem;color:#fff;"
+        "font-size:1rem;font-weight:700;cursor:pointer;min-height:44px}"
+        ".err{color:#f87171;margin-bottom:.8rem}</style></head><body>"
+        "<form class='card' method='post' action='/login'>"
+        "<div style='font-size:2rem'>◎</div><h1>deal-radar</h1>"
+        + (f"<div class='err'>{err}</div>" if err else "") +
+        "<input type='password' name='password' placeholder='password' autocomplete='current-password' autofocus/>"
+        "<button type='submit'>log in</button></form></body></html>")
 
 
 _RL_PATHS = ("/searches", "/stream", "/lab", "/marketplace", "/favorites", "/listings", "/market")
@@ -51,6 +93,16 @@ async def _gate(request: Request, call_next):
     if API_KEY and request.url.path not in ("/health",) and not _hmac.compare_digest(
             request.headers.get("x-api-key", ""), API_KEY):
         return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    path = request.url.path
+    if LOGIN_PASSWORD and path not in ("/health", "/login", "/auth/status", "/static/favicon.svg"):
+        if request.method == "GET" and path in ("/", "/admin"):
+            if not _logged_in(request):
+                return _login_page()
+        elif path.startswith("/static/"):
+            if not _logged_in(request):
+                return JSONResponse({"detail": "login required"}, status_code=401)
+        elif not _logged_in(request):
+            return JSONResponse({"detail": "login required"}, status_code=401)
     if request.url.path.startswith(_RL_PATHS) or request.method in ("POST", "PUT", "PATCH", "DELETE"):
         ip = request.client.host if request.client else "?"
         now = _t.time()
@@ -221,10 +273,31 @@ class SearchIntent(BaseModel):
     require_shipping: bool = False
 
 
+_ASSET_VER: dict[str, str] = {}
+
+
+def _asset(name: str) -> str:
+    """Cache-busted static URL: /static/app.js?v=<sha8>."""
+    if name not in _ASSET_VER:
+        import hashlib as _h
+        p = Path(__file__).resolve().parents[2] / "web" / name
+        _ASSET_VER[name] = _h.sha256(p.read_bytes()).hexdigest()[:8] if p.exists() else "0"
+    return f"/static/{name}?v={_ASSET_VER[name]}"
+
+
+def _page(name: str, fallback: str) -> HTMLResponse:
+    p = Path(__file__).resolve().parents[2] / "web" / name
+    if not p.exists():
+        return HTMLResponse(fallback)
+    html = p.read_text()
+    for js in ("app.js", "admin.js"):
+        html = html.replace(f"/static/{js}", _asset(js))
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
-    html = Path(__file__).resolve().parents[2] / "web" / "index.html"
-    return html.read_text() if html.exists() else "<h1>deal-radar up. See /docs</h1>"
+    return _page("index.html", "<h1>deal-radar up. See /docs</h1>")
 
 
 @app.get("/health")
@@ -260,8 +333,58 @@ def metrics_json():
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin():
-    html = Path(__file__).resolve().parents[2] / "web" / "admin.html"
-    return html.read_text() if html.exists() else "<h1>admin missing</h1>"
+    return _page("admin.html", "<h1>admin missing</h1>")
+
+
+@app.get("/auth/status")
+def auth_status(request: Request):
+    return {"login_required": bool(LOGIN_PASSWORD), "logged_in": _logged_in(request)}
+
+
+@app.post("/login")
+async def login(request: Request):
+    """Simple password login (OTP/users later). Sets HttpOnly session cookie."""
+    if not LOGIN_PASSWORD:
+        return JSONResponse({"ok": True, "note": "no password configured"})
+    ip = request.client.host if request.client else "?"
+    now = _t.time()
+    lst = [t for t in _login_hits.get(ip, []) if now - t < 60]
+    if len(lst) >= 5:
+        return JSONResponse({"ok": False, "error": "too many attempts, wait a minute"},
+                            status_code=429)
+    lst.append(now)
+    _login_hits[ip] = lst
+    ctype = request.headers.get("content-type", "")
+    if "application/json" in ctype:
+        body = await request.json()
+        pw = str(body.get("password", ""))
+        wants_json = True
+    else:
+        form = await request.form()
+        pw = str(form.get("password", ""))
+        wants_json = False
+    if not _hmac.compare_digest(pw, LOGIN_PASSWORD):
+        if wants_json:
+            return JSONResponse({"ok": False, "error": "wrong password"}, status_code=401)
+        return _login_page("wrong password")
+    import secrets as _sec
+    tok = _sec.token_urlsafe(32)
+    SESSIONS[tok] = now + SESSION_TTL
+    if wants_json:
+        resp: Response = JSONResponse({"ok": True})
+    else:
+        resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie("dr_session", tok, httponly=True, samesite="lax", max_age=SESSION_TTL,
+                    secure=request.url.scheme == "https")
+    return resp
+
+
+@app.post("/logout")
+def logout(request: Request):
+    SESSIONS.pop(request.cookies.get("dr_session", ""), None)
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie("dr_session")
+    return resp
 
 
 class NLQuery(BaseModel):

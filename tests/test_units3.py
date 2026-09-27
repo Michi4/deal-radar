@@ -90,6 +90,41 @@ def test_nl_fallback_paths():
     assert "without" not in fb4["keywords"] and "700" not in fb4["keywords"]
 
 
+def test_priceless_listing_never_kills_search():
+    """Regression: price=None (e.g. 'on request' iPhone boxes) must not fail ScoredListing."""
+    import asyncio
+    import os
+    import tempfile
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [CanonicalListing(id="t:x", source="t", native_id="x", url="https://t/x",
+                                     title="iPhone 17 box empty", description="box only",
+                                     price=None, images=[], seller=Seller(name="s"))]
+
+    from deal_radar.orchestrator import run_search
+    from deal_radar.store import Store
+    reg = DriverRegistry()
+    reg.register(F())
+    st = Store(os.path.join(tempfile.mkdtemp(), "nol.db"))
+    out = asyncio.run(run_search(
+        {"keywords": "iphone 17", "sources": ["t"], "limit": 5,
+         "risk": {}, "enrich": False, "ocr": False, "benchmarks": False, "vision": False,
+         "details": False}, reg, st, None))
+    assert out.get("results"), out.get("driver_errors")
+    st.close()
+
+
 def test_stage_b_via_cloud_shapes():
     async def fake_json(*a, **k):
         return {"exact": 0.9, "risk": 0.1, "condition": 0.8, "note": "ok"}

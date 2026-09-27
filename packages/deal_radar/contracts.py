@@ -118,7 +118,7 @@ class EnrichmentFact(BaseModel):
 class ScoredListing(BaseModel):
     listing: CanonicalListing
     match_score: float = 0.0
-    deal_dna: dict[str, float] = Field(default_factory=dict)
+    deal_dna: dict[str, float | None] = Field(default_factory=dict)
     risk: RiskAssessment = Field(default_factory=RiskAssessment)
     enrichments: list[EnrichmentFact] = Field(default_factory=list)
     value_score: float = 0.0

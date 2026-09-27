@@ -296,11 +296,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         lane = apply_risk_policy(r, val, risk_policy)
         final = rank(h["match"], val, r.score, completeness, weights)
 
-        dna = {"match": h["match"], "value": val, "risk": r.score,
-               "completeness": round(completeness, 3), "condition": h.get("condition", 0.65),
-               "confidence": r.confidence,
-               "total_cost": total_cost(l.price, l.shipping_cost, l.distance_km,
-                                        float(intent.get("cost_per_km", 0) or 0))}
+        _tc = total_cost(l.price, l.shipping_cost, l.distance_km,
+                           float(intent.get("cost_per_km", 0) or 0))
+        _cond = h.get("condition", 0.65)
+        dna = {"match": h["match"], "value": val,
+               "risk": r.score if r.score is not None else 0.0,
+               "completeness": round(completeness, 3),
+               "condition": _cond if _cond is not None else 0.65,
+               "confidence": r.confidence if r.confidence is not None else 0.0,
+               "total_cost": _tc if _tc is not None else 0.0}
         why = [*fr.reasons, *val_why, *attr_hits, *(f"risk: {x}" for x in r.reasons),
                *(f"ok: {x}" for x in r.counter_evidence)]
         why.extend(bn_why)
@@ -369,8 +373,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         await asyncio.gather(*(_sb(it) for it in _stageb_queue[:12]))  # bound cost
         for s in scored:
-            s.final_score = rank(s.deal_dna.get("match", s.match_score), s.value_score, s.risk.score,
-                                 s.deal_dna.get("completeness", 0.5), intent.get("ranking", None))
+            _m = s.deal_dna.get("match", s.match_score)
+            _c = s.deal_dna.get("completeness", 0.5)
+            s.final_score = rank(_m if _m is not None else s.match_score, s.value_score,
+                                 s.risk.score if s.risk.score is not None else 0.0,
+                                 _c if _c is not None else 0.5, intent.get("ranking", None))
             s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
         scored.sort(key=lambda s: s.final_score, reverse=True)
     # lazy detail enrichment: full description + seller age for top results (feeds risk + CPU extraction)
@@ -442,8 +449,10 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         _vision_queue.sort(key=lambda s: s.final_score, reverse=True)
         await asyncio.gather(*(_one(it) for it in _vision_queue[:3]))  # hard cap: top-3 only
         for s in scored:  # re-rank after vision evidence
-            s.final_score = rank(s.match_score, s.value_score, s.risk.score,
-                                 s.deal_dna.get("completeness", 0.5),
+            _c2 = s.deal_dna.get("completeness", 0.5)
+            s.final_score = rank(s.match_score, s.value_score,
+                                 s.risk.score if s.risk.score is not None else 0.0,
+                                 _c2 if _c2 is not None else 0.5,
                                  intent.get("ranking", None))
             s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
         scored.sort(key=lambda s: s.final_score, reverse=True)

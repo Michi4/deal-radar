@@ -38,6 +38,7 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 | `LOCAL_API_URL` / `LOCAL_MODEL_VISION` | no | NL/vision via cloud or skipped fast (breaker) |
 | `SIGNAL_NUMBER` / `NTFY_TOPIC_URL` / `WEBHOOK_URL` | no | alerts log only |
 | `API_KEY`, `RATE_PER_MIN` | no | open + 120/min default (set behind Authelia in prod) |
+| `LOGIN_PASSWORD` | no | no app login (short memorable password recommended for prod) |
 | `LAB_ENABLED`, `GH_TOKEN`/`LAB_PUBLISH` | no | AI Lab + PR publishing stay off |
 
 ## Key behaviors

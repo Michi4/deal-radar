@@ -501,3 +501,31 @@ def test_ricardo_fixture():
     assert all(i["title"] and i["url"].startswith("https://www.ricardo.ch/de/a/") for i in items)
     assert any(i["price"] for i in items) and any(i["images"] for i in items)
     assert RicardoDriver.manifest.id == "ricardo"
+
+
+def test_simple_login_flow():
+    import sys
+    sys.path.insert(0, "apps")
+    import os
+    os.environ["LOGIN_PASSWORD"] = "testpw123"
+    import importlib
+
+    import api.main as m
+    try:
+        importlib.reload(m)
+        from fastapi.testclient import TestClient
+        c = TestClient(m.app)
+        assert c.get("/favorites").status_code == 401
+        r = c.get("/")
+        assert r.status_code == 200 and "password" in r.text
+        assert c.post("/login", json={"password": "nope"}).status_code == 401
+        ok = c.post("/login", json={"password": "testpw123"})
+        assert ok.status_code == 200 and ok.json()["ok"]
+        assert c.get("/favorites").status_code == 200
+        st = c.get("/auth/status").json()
+        assert st == {"login_required": True, "logged_in": True}
+        assert c.post("/logout").json()["ok"]
+        assert c.get("/favorites").status_code == 401
+    finally:
+        del os.environ["LOGIN_PASSWORD"]
+        importlib.reload(m)
