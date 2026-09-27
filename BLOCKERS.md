@@ -1,11 +1,9 @@
 # BLOCKERS.md — external items this agent cannot clear alone. Everything else keeps moving.
 
-- [ ] AUTH TOPOLOGY DECISION (audit HIGH, 2026-09-27): API_KEY unset by default (incl. prod) →
-  every endpoint open to anyone past the edge; no per-user isolation (searches/favs/watches
-  readable+deletable by ID-guessing). Mitigations landed (rate limits, AST gate, checksums, CSP,
-  headers) but don't replace auth. Options: (a) auto-generate+persist API_KEY on first boot
-  [recommended], (b) accept Authelia-only + document fork risk, (c) per-user tokens + owner
-  columns. Needed: Michi picks a/b/c. Prod-ready sign-off blocked on this.
+- [x] AUTH (audit HIGH, 2026-09-27): simple password login shipped (`LOGIN_PASSWORD`,
+  HttpOnly SameSite session cookie 30d, /login page + JSON, 5/min brute-force bucket,
+  extendable to users/OTP later). Enabled on prod 2026-09-27 (password in server .env,
+  handed to Michi in chat). Unit-tested + live-verified (401/303/cookie/429).
 - [ ] spare host (203.0.113.88) unreachable: `ubuntu` + `root` key auth both denied, no password known.
   Tried 2026-09-25 (ssh BatchMode). Needed: working user/key to use it for Kev/Ollama offload.
   Fallback active: AI host (11GB RAM) hosts Kev-0.8B + Ollama; laptop keeps dev copies.

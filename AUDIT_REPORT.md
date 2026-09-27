@@ -100,8 +100,21 @@ squatting :8099 caused two false e2e failures — always `bash killsrv.sh` first
 - Residual LOW: `style-src 'unsafe-inline'` (JS-set styles); NL 7-day cache can serve stale
 parses after parser upgrades (bump cache version on parser change — queued).
 
+## Pass 3 (same session) — user-reported prod issues, all root-caused live
+- **iphone 17 → 0 results**: `ScoredListing` pydantic crash on `deal_dna.total_cost=None`
+(priceless listings) killed the whole job. Fixed (coerce + `float | None` type) + regression
+test `test_priceless_listing_never_kills_search` + live proof (20 results, real iPhones top).
+- **Stale prod assets**: index/admin now `Cache-Control: no-store`, app.js/admin.js `?v=<sha8>`.
+- **Filters restyled** (labeled sections, no spinners, card checkboxes) + **refine auto-mirrors**
+search filters on every completed search.
+- **Simple login shipped** (see BLOCKERS) — the auth decision, implemented as agreed in chat.
+- Navbar labels ≥1280px only (fixes 1024–1280 overflow/overlap seen in user screenshot).
+- User's console CSP error traced to a **browser extension** (content.js + file:/// refs),
+not the app (prod serves zero inline handlers — verified via container).
+- python-multipart added (form login needs it).
+
 ## Open items (need human decision — not auto-fixed)
-### [HIGH] No auth by default; no per-user isolation
+### [HIGH] ~~No auth by default~~ → DONE via simple login (2026-09-27)
 **Where:** apps/api/main.py:40-47; all /searches /favorites /lab /marketplace routes
 **Evidence:** API_KEY unset (default, incl. prod .env per docs/DEPLOYMENT.md) = everything open;
 any caller can read/delete others' searches, install drivers, build lab code (AST-gated but
