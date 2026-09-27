@@ -73,7 +73,7 @@ class VintedDriver(MarketplaceDriver):
             url += f"&price_to={int(query.max_price)}"
         items: list[dict] = []
         seen: set[str] = set()
-        for _ in range(query.max_pages or 40):  # deep pages for volume
+        for _ in range(query.max_pages or 10**9):  # walk to exhaustion (breaks when no next page)
             r = await self.transport.get(url, headers=HEADERS)
             if r.status_code in (401, 403):
                 if not items:

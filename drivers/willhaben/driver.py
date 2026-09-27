@@ -136,7 +136,7 @@ class WillhabenDriver(MarketplaceDriver):
         # marketplace (13M rows). Verified live 2026-09-26.
         if query.max_price:
             base += f"&PRICE_TO={int(query.max_price)}"
-        max_pages = query.max_pages or max(1, min(25, (query.limit + 89) // 90 + 2))
+        max_pages = query.max_pages or 10**9  # walk to exhaustion (breaks on empty page)
         items: list[dict] = []
         seen: set[str] = set()
         for page_no in range(1, max_pages + 1):  # sequential, polite

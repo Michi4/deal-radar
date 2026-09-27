@@ -579,3 +579,16 @@ def test_job_stop_pause_resume():
     assert m.JOBS[sid]["control"] == "run"
     assert c.post(f"/searches/{sid}/stop").json()["ok"]
     assert m.JOBS[sid]["control"] == "stop"
+
+
+def test_tracking_settings_roundtrip():
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    assert c.get("/settings/tracking").json()["fav_poll_min"] == 30
+    assert c.put("/settings/tracking", json={"fav_poll_min": 45}).json()["ok"]
+    assert c.get("/settings/tracking").json()["fav_poll_min"] == 45
+    assert c.put("/settings/tracking", json={"fav_poll_min": 1}).status_code == 422
+    assert c.put("/settings/tracking", json={"fav_poll_min": 30}).json()["ok"]

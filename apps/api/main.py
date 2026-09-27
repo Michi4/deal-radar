@@ -168,10 +168,32 @@ FAV_POLL_S = int(os.getenv("FAV_POLL_S", "1800"))
 _last_fav_poll = 0.0
 
 
+def _fav_poll_s() -> int:
+    try:
+        return max(300, int(store.setting_get("fav_poll_s", str(FAV_POLL_S))))
+    except Exception:
+        return FAV_POLL_S
+
+
+@app.get("/settings/tracking")
+def tracking_settings():
+    return {"fav_poll_min": _fav_poll_s() // 60}
+
+
+class TrackingSettings(BaseModel):
+    fav_poll_min: int = Field(ge=5, le=1440)
+
+
+@app.put("/settings/tracking")
+def tracking_settings_put(s: TrackingSettings):
+    store.setting_set("fav_poll_s", str(s.fav_poll_min * 60))
+    return {"ok": True, "fav_poll_min": s.fav_poll_min}
+
+
 async def _track_favorites() -> None:
     """Snoty-style product tracking: re-fetch every saved product, version all changes."""
     global _last_fav_poll
-    if time.time() - _last_fav_poll < FAV_POLL_S:
+    if time.time() - _last_fav_poll < _fav_poll_s():
         return
     _last_fav_poll = time.time()
     try:

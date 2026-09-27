@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS favorites(listing_id TEXT PRIMARY KEY, ts REAL, note 
 CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
 CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, ts REAL, status TEXT, done INTEGER,
   total INTEGER, intent TEXT, summary TEXT);
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_id TEXT, title TEXT,
   price REAL, currency TEXT, source TEXT, url TEXT, image TEXT, score REAL,
   PRIMARY KEY (search_id, listing_id));
@@ -149,6 +150,18 @@ class Store:
                                 (sid, i, l.get("id"), (l.get("title") or "")[:200], l.get("price"),
                                  l.get("currency"), l.get("source"), l.get("url"),
                                  imgs[0] if imgs else None, r.get("final_score")))
+            self.db.commit()
+
+    def setting_get(self, key: str, default: str = "") -> str:
+        try:
+            row = self.db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+            return row[0] if row else default
+        except Exception:
+            return default
+
+    def setting_set(self, key: str, value: str) -> None:
+        with self._lock:
+            self.db.execute("INSERT OR REPLACE INTO settings VALUES(?,?)", (key, value))
             self.db.commit()
 
     def job_upsert(self, sid: str, status: str, done: int, total: int,
