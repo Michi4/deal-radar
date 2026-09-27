@@ -74,6 +74,12 @@ class VintedDriver(MarketplaceDriver):
         items: list[dict] = []
         seen: set[str] = set()
         for _ in range(query.max_pages or 10**9):  # walk to exhaustion (breaks when no next page)
+            from deal_radar.cancel import pause_gate as _pg
+            from deal_radar.cancel import should_stop as _ss
+            if _ss(query.sid):
+                break
+            if await _pg(query.sid):
+                break
             r = await self.transport.get(url, headers=HEADERS)
             if r.status_code in (401, 403):
                 if not items:

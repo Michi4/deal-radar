@@ -8,11 +8,23 @@
 :root{--acc:#059669;--acc-d:#047857;--acc-soft:rgba(5,150,105,.12)}
 .dark{--acc:#34d399;--acc-d:#6ee7b7;--acc-soft:rgba(52,211,153,.12)}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-.card{background:#fff;border:1px solid rgb(226 232 240);border-radius:.875rem;padding:.875rem;margin:.75rem 0}
+body{font-family:system-ui,-apple-system,sans-serif}
+.page{max-width:56rem;margin:0 auto;padding:.9rem .9rem 3rem}
+.card{background:#fff;border:1px solid rgb(226 232 240);border-radius:.875rem;padding:.875rem}
 .dark .card{background:#0f172a;border-color:#1e293b}
-.card h3{margin:0 0 .5rem;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
+.eyebrow{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:.5rem}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin:.8rem 0}
+@media(min-width:640px){.stat-grid{grid-template-columns:repeat(4,1fr)}}
+.stat{text-align:center}
+.stat b{display:block;font-size:1.4rem;font-weight:800;color:var(--acc-d,#047857)}
+.dark .stat b{color:#34d399}
+.stat span{font-size:.66rem;opacity:.6}
+.tabs{display:flex;gap:.4rem;overflow-x:auto;padding:.2rem 0;margin:.4rem 0 .8rem;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;padding:.45rem .9rem;border-radius:.6rem;font-size:.8rem;font-weight:600;border:none;background:transparent;color:inherit;opacity:.6;cursor:pointer;min-height:44px}
+.tab.on{background:var(--acc);color:#fff;opacity:1}
 .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{border-collapse:collapse;width:100%;min-width:34rem}
+table{border-collapse:collapse;width:100%;min-width:32rem}
 td,th{border:1px solid rgb(226 232 240);padding:6px 10px;text-align:left;font-size:13px}
 .dark td,.dark th{border-color:#1e293b}
 th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}
@@ -20,9 +32,25 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}
 .navlink{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .8rem;border-radius:.7rem;font-size:.875rem;font-weight:600;color:#64748b;background:transparent;border:none;cursor:pointer;text-decoration:none;min-height:44px}
 .dark .navlink{color:#94a3b8}.navlink:hover{background:rgba(100,116,139,.12)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:6px}
-.dot.bad{background:#ef4444}
+.dot.bad{background:#ef4444}.dot.off{background:#64748b}
 .ev{padding:.3rem 0;border-bottom:1px dashed rgb(226 232 240);font-size:13px}
 .dark .ev{border-color:#1e293b}
+.secrow{display:flex;gap:.6rem;align-items:center;padding:.55rem 0;border-bottom:1px dashed rgb(226 232 240)}
+.dark .secrow{border-color:#1e293b}
+.secrow:last-child{border-bottom:none}
+.secrow .meta{flex:1;min-width:0}
+.secrow .meta b{display:block;font-size:.9rem}
+.secrow .meta small{opacity:.6}
+.inp{border-radius:.625rem;padding:.625rem .75rem;font-size:.875rem;min-height:44px;border:2px solid rgb(203 213 225);background:#fff;color:#0f172a}
+.dark .inp{background:#020617;border-color:#334155;color:#e2e8f0}
+.inp:focus{outline:none;border-color:var(--acc)}
+.btn{border-radius:.75rem;padding:.625rem .875rem;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid transparent;min-height:44px}
+.btn-primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn-ghost{background:transparent;border-color:var(--acc);color:var(--acc)}
+.secinput{flex:2;min-width:140px}
+.empty{text-align:center;opacity:.55;padding:1.6rem;font-size:.9rem}
+.err{background:#fee2e2;color:#b91c1c;border-radius:.625rem;padding:.625rem;margin:.5rem 0}
+.dark .err{background:#3f1d1d;color:#fca5a5}
 </style>
 </head><body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
 <header class="sticky top-0 z-50 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85">
@@ -32,12 +60,15 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6}
 <span class="logograd">deal-radar</span><span style="opacity:.5;font-weight:600;font-size:.9rem">admin</span></a>
 <span style="flex:1"></span>
 <span class="text-sm" style="opacity:.7"><span class="dot" id="livedot"></span><span id="livetxt">connecting…</span></span>
-<button class="navlink" id="themebtn" aria-label="toggle theme" style="font-size:1rem">◐</button>
+<button class="navlink" id="themebtn" aria-label="toggle theme">◐</button>
 </div></header>
-<main class="max-w-6xl mx-auto px-3 py-3">
-<p class="text-sm" style="opacity:.65">auto-refreshes every 15s · <span id="updated"></span></p>
-<div class="card"><h3>Drivers</h3><div class="tscroll" id="drivers"></div></div>
-<div class="card"><h3>Pipeline metrics</h3><div class="tscroll" id="metrics"></div></div>
-<div class="card"><h3>Searches (<span id="nsearch">0</span>)</h3><div class="tscroll" id="searches"></div></div>
-<div class="card"><h3>Live events (<span id="nev">0</span>)</h3><div id="events"></div></div>
+<main class="page">
+<div class="stat-grid" id="stats"></div>
+<nav class="tabs" aria-label="admin sections" id="tabs"></nav>
+<section id="tab-overview"><div class="card"><div class="eyebrow">Pipeline metrics</div><div class="tscroll" id="metrics"></div></div></section>
+<section id="tab-drivers" style="display:none"><div class="card"><div class="eyebrow">Drivers — enable / disable / install</div><div id="drivers"></div></div></section>
+<section id="tab-secrets" style="display:none"><div class="card"><div class="eyebrow">Tokens &amp; keys — values never leave this box, never shown back</div><div id="secrets"></div><div id="secmsg"></div><small style="opacity:.6">Saved to the server database and applied live (no restart). Server env stays the fallback.</small></div></section>
+<section id="tab-searches" style="display:none"><div class="card"><div class="eyebrow">Searches (<span id="nsearch">0</span>)</div><div class="tscroll" id="searches"></div></div></section>
+<section id="tab-events" style="display:none"><div class="card"><div class="eyebrow">Live events (<span id="nev">0</span>)</div><div id="events"></div></div></section>
+<p class="text-sm" style="opacity:.65;margin-top:.6rem">auto-refreshes every 15s · <span id="updated"></span></p>
 </main><script src="/static/admin.js"></script></body></html>

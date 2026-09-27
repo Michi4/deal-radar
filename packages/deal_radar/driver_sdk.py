@@ -33,6 +33,7 @@ class SearchQuery(BaseModel):
     radius_km: int | None = None
     limit: int = 20
     max_pages: int | None = None  # user-configurable page cap; None = driver default (walk to exhaustion)
+    sid: str = ""  # search id for cooperative stop/pause (checked every page)
 
 
 class HealthStatus(BaseModel):

@@ -1,21 +1,115 @@
-document.documentElement.classList.toggle('dark',(localStorage.getItem('drt')||'dark')!=='light');
-document.getElementById('themebtn').onclick=()=>{const r=document.documentElement;const dark=!r.classList.contains('dark');r.classList.toggle('dark',dark);localStorage.setItem('drt',dark?'dark':'light')};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function tick(){try{
-const m=await(await fetch('/metrics.json')).json();
-document.getElementById('livedot').className='dot';
-document.getElementById('livetxt').textContent='live';
-document.getElementById('updated').textContent='updated '+new Date().toLocaleTimeString();
-document.getElementById('drivers').innerHTML='<table><tr><th>driver</th><th>ok</th><th>degraded</th><th>failures</th><th>last error</th></tr>'+
-Object.entries(m.drivers).map(([k,v])=>`<tr><td>${k}</td><td>${v.ok}</td><td>${v.degraded}</td><td>${v.consecutive_failures}</td><td>${(v.last_error||'').slice(0,120)}</td></tr>`).join('')+'</table>';
-const m2=m.metrics;
-document.getElementById('metrics').innerHTML='<table>'+
-Object.entries(m2.counters).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+
-Object.entries(m2.latency_avg_ms).map(([k,v])=>`<tr><td>latency ${k}</td><td>${v} ms</td></tr>`).join('')+'</table>';
-document.getElementById('searches').innerHTML='<table><tr><th>id</th><th>keywords</th><th>watch</th><th>sources</th></tr>'+
-(m.watchlist||[]).map(s=>`<tr><td>${s.id}</td><td>${s.keywords}</td><td>${s.watch}</td><td>${(s.sources||[]).join(',')}</td></tr>`).join('')+'</table>';
-document.getElementById('nsearch').textContent=(m.watchlist||[]).length;
-document.getElementById('events').innerHTML=(m.events_tail||[]).slice().reverse().map(e=>`<div class="ev">${esc(e.kind||'?')}: ${esc((e.title||e.listing_id||'').slice(0,100))}</div>`).join('')||'none yet';
-document.getElementById('nev').textContent=m.events||0;
-}catch(e){document.getElementById('livedot').className='dot bad';document.getElementById('livetxt').textContent='unreachable';}}
-setInterval(tick,15000);tick();
+document.documentElement.classList.toggle('dark', (localStorage.getItem('drt') || 'dark') !== 'light');
+document.getElementById('themebtn').onclick = () => {
+  const r = document.documentElement;
+  const dark = !r.classList.contains('dark');
+  r.classList.toggle('dark', dark);
+  localStorage.setItem('drt', dark ? 'dark' : 'light');
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TABS = ['Overview', 'Drivers', 'Secrets', 'Searches', 'Events'];
+let activeTab = 'Overview';
+function drawTabs() {
+  document.getElementById('tabs').innerHTML = TABS.map(t =>
+    `<button class="tab ${t === activeTab ? 'on' : ''}" data-tab="${t}">${t}</button>`).join('');
+  for (const t of TABS) {
+    const el = document.getElementById('tab-' + t.toLowerCase());
+    if (el) el.style.display = t === activeTab ? '' : 'none';
+  }
+  document.querySelectorAll('#tabs .tab').forEach(b =>
+    b.addEventListener('click', () => { activeTab = b.dataset.tab; drawTabs(); }));
+}
+drawTabs();
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  const txt = await res.text();
+  let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch (e) { throw new Error('bad response'); }
+  if (!res.ok) throw new Error((data && data.error) || ('server ' + res.status));
+  return data;
+}
+async function tick() {
+  try {
+    const m = await api('/metrics.json');
+    try {
+      const dd = await api('/drivers');
+      m._allDrivers = dd;
+    } catch (e) { m._allDrivers = null; }
+    document.getElementById('livedot').className = 'dot';
+    document.getElementById('livetxt').textContent = 'live';
+    document.getElementById('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+    const drv = m.drivers || {};
+    const okN = Object.values(drv).filter(d => d.ok).length;
+    const running = (m.watchlist || []).length;
+    document.getElementById('stats').innerHTML = [
+      [m.searches ?? 0, 'searches'], [m.events ?? 0, 'live events'],
+      [okN + '/' + Object.keys(drv).length, 'drivers ok'], [running, 'watches/jobs'],
+    ].map(([v, l]) => `<div class="card stat"><b>${v}</b><span>${l}</span></div>`).join('');
+    const allD = m._allDrivers || [];
+    const healthById = {};
+    for (const [k, v] of Object.entries(drv)) healthById[k] = v;
+    document.getElementById('drivers').innerHTML = '<table><tr><th>driver</th><th>state</th><th>failures</th><th>last error</th><th></th></tr>' +
+      allD.map(x => { const h = healthById[x.id] || {}; const dis = !!x.disabled;
+        return `<tr><td>${esc(x.display_name || x.id)}${dis ? ' <small>(disabled)</small>' : ''}${x.configured === false ? ' <small>(needs setup)</small>' : ''}</td><td>${dis ? '—' : (h.ok ? '✓' : '✗')}</td>` +
+        `<td>${h.consecutive_failures ?? 0}</td><td>${esc((h.last_error || '').slice(0, 100))}</td>` +
+        `<td><button class="btn btn-ghost" data-drv="${esc(x.id)}">${dis ? 'enable' : 'disable'}</button></td></tr>`; }).join('') + '</table>';
+    document.querySelectorAll('#drivers [data-drv]').forEach(b => b.addEventListener('click', async () => {
+      const id = b.dataset.drv;
+      const dis = b.textContent.trim() === 'disable';
+      try {
+        if (dis) await api('/marketplace/' + encodeURIComponent(id), { method: 'DELETE' });
+        else await api('/marketplace/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+        tick();
+      } catch (e) { showMsg(String(e.message || e)); }
+    }));
+    const m2 = m.metrics || {};
+    document.getElementById('metrics').innerHTML = '<table>' +
+      Object.entries(m2.counters || {}).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('') +
+      Object.entries(m2.latency_avg_ms || {}).map(([k, v]) => `<tr><td>latency ${esc(k)}</td><td>${esc(v)} ms</td></tr>`).join('') + '</table>';
+    document.getElementById('searches').innerHTML = '<table><tr><th>keywords</th><th>results</th><th>sources</th></tr>' +
+      (m.watchlist || []).map(s => `<tr><td>${esc(s.keywords)}</td><td>${s.results ?? '?'}</td><td>${esc((s.sources || []).join(','))}</td></tr>`).join('') + '</table>';
+    document.getElementById('nsearch').textContent = (m.watchlist || []).length;
+    document.getElementById('events').innerHTML = (m.events_tail || []).slice().reverse()
+      .map(e => `<div class="ev">${esc(e.kind || '?')}: ${esc((e.title || e.listing_id || '').slice(0, 100))}</div>`).join('') || 'none yet';
+    document.getElementById('nev').textContent = m.events || 0;
+  } catch (e) {
+    document.getElementById('livedot').className = 'dot bad';
+    document.getElementById('livetxt').textContent = 'unreachable';
+  }
+}
+function showMsg(t) {
+  document.getElementById('secmsg').innerHTML = t ? `<div class="err">${esc(t)}</div>` : '';
+}
+async function loadSecrets() {
+  try {
+    const d = await api('/settings/secrets');
+    document.getElementById('secrets').innerHTML = d.secrets.map(s =>
+      `<div class="secrow"><div class="meta"><b>${esc(s.label)}</b><small>${esc(s.key)} · ` +
+      `<span class="dot ${s.configured ? '' : 'off'}"></span>${s.configured ? 'set' : 'not set'}</small></div>` +
+      `<input class="inp secinput" id="sec-${esc(s.key)}" type="${s.secret ? 'password' : 'text'}" ` +
+      `placeholder="${s.configured ? '•••••• (type to replace)' : 'empty'}" autocomplete="off" aria-label="${esc(s.label)}"/>` +
+      `<button class="btn btn-primary" data-save="${esc(s.key)}">save</button>` +
+      (s.configured ? `<button class="btn btn-ghost" data-clear="${esc(s.key)}">clear</button>` : '') +
+      `</div>`).join('');
+    document.querySelectorAll('#secrets [data-save]').forEach(b => b.addEventListener('click', async () => {
+      const k = b.dataset.save;
+      const inp = document.getElementById('sec-' + CSS.escape(k));
+      try {
+        await api('/settings/secrets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k, value: inp.value }) });
+        inp.value = '';
+        showMsg('');
+        loadSecrets();
+        tick();
+      } catch (e) { showMsg(String(e.message || e)); }
+    }));
+    document.querySelectorAll('#secrets [data-clear]').forEach(b => b.addEventListener('click', async () => {
+      try {
+        await api('/settings/secrets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: b.dataset.clear, value: '' }) });
+        loadSecrets();
+        tick();
+      } catch (e) { showMsg(String(e.message || e)); }
+    }));
+  } catch (e) { showMsg(String(e.message || e)); }
+}
+setInterval(tick, 15000);
+tick();
+loadSecrets();

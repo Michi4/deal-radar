@@ -110,6 +110,15 @@ header.sticky{position:sticky;top:0;z-index:60}
  .dark #bottomnav{background:rgba(2,6,23,.88);border-color:#1e293b}
  .row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
 #results{scroll-margin-top:4.5rem}
+#livestrip{display:flex;gap:.5rem;overflow-x:auto;padding:.4rem 0}
+.livetile{flex:0 0 auto;min-width:220px;max-width:280px;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:.75rem;padding:.5rem .6rem;font-size:.8rem}
+.dark .livetile{background:#0f172a}
+.livetile .row{margin-top:.35rem}
+.livetile .pbar{margin-top:.35rem}
+#refinebar{position:sticky;top:3.6rem;z-index:40;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+#cmptray{position:fixed;left:50%;transform:translateX(-50%);bottom:1rem;z-index:55;display:flex;gap:.5rem;align-items:center;background:var(--tw-card,#fff);border:1px solid var(--acc);border-radius:99px;padding:.4rem .4rem .4rem 1rem;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:.85rem;font-weight:700}
+.dark #cmptray{background:#0f172a}
+@media (max-width: 767px){#cmptray{bottom:4.75rem}}
 #bottomnav .row{display:flex;justify-content:space-around;max-width:32rem;margin:0 auto;height:4rem;align-items:stretch}
  #bottomnav a,#bottomnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1;background:none;border:none;color:#64748b;font-size:10px;font-weight:600;cursor:pointer;min-width:56px;text-decoration:none}
  .dark #bottomnav a,.dark #bottomnav button{color:#64748b}
@@ -252,6 +261,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 </div>
 <div class="row mt-2"><button type="submit" class="btn btn-primary">apply</button><button type="button" class="btn btn-ghost" data-act="clearRefine">clear</button>
 <label class="ck" style="margin-left:auto"><input type="checkbox" id="showHidden"/> show hidden (<span id="hidN">0</span>)</label></div></form></div>
+<div id="livestrip" style="display:none"></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pagertop" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfotop" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button><input id="goto" class="inp" placeholder="page #" type="number" style="max-width:80px"/><button class="btn btn-ghost" data-act="gotoPage">go</button></div>
 <div id="results"></div>
 <div class="flex gap-2 items-center justify-center my-3 pager" id="pager" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfo" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button></div>
@@ -259,5 +269,6 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <div id="pageview" class="mx-auto w-full" style="display:none;max-width:46rem"></div>
 </main>
 <div id="drawer"><div class="scrim" data-act="closeD"></div><div class="sheet" id="sheet"></div></div>
+<div id="cmptray" style="display:none"><span id="cmpcnt"></span><button class="btn btn-primary" data-act="cmp">compare now</button><button class="btn btn-ghost" data-act="cmpClear">clear</button></div>
 <div id="toasts"></div>
 <script src="/static/app.js"></script></body></html>

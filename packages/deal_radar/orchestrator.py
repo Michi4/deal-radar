@@ -40,27 +40,8 @@ class _SearchStopped(Exception):
     pass
 
 
-_STOP: set[str] = set()  # sids requesting cooperative stop (checked in hot loops)
-_PAUSE: set[str] = set()  # sids paused (loop waits until resumed or stopped)
-_PAUSE_SINCE: dict[str, float] = {}
-PAUSE_TTL_S = 6 * 3600  # abandoned pauses auto-release as stopped
-
-
-async def _pause_gate(sid: str | None) -> bool:
-    """True if caller should abort (stopped). Waits while paused, max PAUSE_TTL_S."""
-    import asyncio as _aio
-    import time as _t
-    if sid and sid in _PAUSE and sid not in _PAUSE_SINCE:
-        _PAUSE_SINCE[sid] = _t.time()
-    while sid and sid in _PAUSE and sid not in _STOP:
-        if _t.time() - _PAUSE_SINCE.get(sid, _t.time()) > PAUSE_TTL_S:
-            _PAUSE.discard(sid)
-            _STOP.add(sid)
-            break
-        await _aio.sleep(2)
-    if sid:
-        _PAUSE_SINCE.pop(sid, None)
-    return bool(sid and sid in _STOP)
+from deal_radar.cancel import _PAUSE, _STOP
+from deal_radar.cancel import pause_gate as _pause_gate
 
 
 async def run_search(intent: dict[str, Any], registry: DriverRegistry,
@@ -72,7 +53,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     max_price=(intent.get("hard") or {}).get("max_price"),
                     min_price=(intent.get("hard") or {}).get("min_price"),
                     limit=int(_lim) if _lim else 1000000,
-                    max_pages=int(intent["max_pages"]) if intent.get("max_pages") else None)
+                    max_pages=int(intent["max_pages"]) if intent.get("max_pages") else None,
+                    sid=intent.get("_sid", ""))
     hard = intent.get("hard", {}) or {}
     if isinstance(hard, list):  # model sometimes returns bare rules list
         hard = {"rules": hard}

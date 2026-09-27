@@ -46,7 +46,7 @@ _hits: dict[str, list[float]] = {}
 _login_hits: dict[str, list[float]] = {}
 SESSIONS: dict[str, float] = {}  # token -> expiry ts
 SESSION_TTL = 30 * 24 * 3600
-RATE_PER_MIN = int(os.getenv("RATE_PER_MIN", "120"))
+RATE_PER_MIN = int(os.getenv("RATE_PER_MIN", "300"))
 
 
 def _prune_sessions() -> None:
@@ -121,7 +121,8 @@ async def _gate(request: Request, call_next):
                 _hits.pop(k, None)
         lst = [t for t in _hits.get(ip, []) if now - t < 60]
         if len(lst) >= RATE_PER_MIN:
-            return JSONResponse({"detail": "rate limited"}, status_code=429)
+            return JSONResponse({"detail": "rate limited"}, status_code=429,
+                                headers={"Retry-After": "20"})
         lst.append(now)
         _hits[ip] = lst
     resp = await call_next(request)
@@ -134,8 +135,45 @@ async def _gate(request: Request, call_next):
         "img-src 'self' https: data:; connect-src 'self'; "
         "frame-ancestors 'self'; base-uri 'self'; form-action 'self'")
     return resp
+# Secrets manager: UI-editable env with live apply. Values are NEVER returned
+# (only configured:true/false). Persisted in SQLite (same disk trust as .env),
+# re-applied to os.environ + live subsystems on every startup.
+UI_MANAGED: set[str] = set()  # keys currently overridden via the secrets UI
+
+
+SECRET_DEFS = [
+    ("EBAY_OAUTH_TOKEN", "eBay Browse API token", True),
+    ("EBAY_MARKETPLACE", "eBay marketplace (default EBAY_AT)", False),
+    ("CLOUD_API_URL", "OpenAI-compatible base URL", False),
+    ("CLOUD_API_KEY", "cloud model API key", True),
+    ("CLOUD_MODELS", "cloud models, comma separated", False),
+    ("KEV_URL", "Kev SystemOne endpoint", False),
+    ("JEV_API_KEY", "Jev API key", True),
+    ("LOCAL_API_URL", "local Ollama OpenAI endpoint", False),
+    ("SIGNAL_NUMBER", "Signal sender number", True),
+    ("NTFY_TOPIC_URL", "ntfy topic URL", False),
+    ("WEBHOOK_URL", "generic webhook URL", True),
+    ("NOTIFIERS_JSON", "notifier specs JSON (may embed creds)", True),
+    ("TRANSPORTS_JSON", "proxy transports JSON (may embed creds)", True),
+    ("GH_TOKEN", "GitHub token (Lab PR publishing)", True),
+    ("LAB_ENABLED", "AI Lab on/off (1/0)", False),
+    ("LAB_PUBLISH", "Lab PR publishing on/off (1/0)", False),
+    ("LOGIN_PASSWORD", "app login password (empty = off)", True),
+    ("API_KEY", "API key for x-api-key header", True),
+    ("RATE_PER_MIN", "rate limit per IP per minute", False),
+]
+_SECRET_KEYS = {k for k, _, _ in SECRET_DEFS}
+
 registry = DriverRegistry()
 store = Store(os.getenv("DB_PATH", "data/dealradar.db"))
+# DB-persisted UI secrets win over process env (set before drivers/notifiers init)
+try:
+    for _k in [k for k, _, _ in SECRET_DEFS]:
+        _v = store.setting_get("secret:" + _k, "")
+        if _v:
+            os.environ[_k] = _v
+except Exception:
+    pass
 notifier = notifier_from_env(os.environ)
 SEARCHES: dict[str, dict] = {}
 EVENT_LOG: list[dict] = []
@@ -324,6 +362,17 @@ async def _start_watcher():
     asyncio.create_task(_watcher())
 
 
+BUILTIN_IDS = ("ebay", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo")
+
+
+def disabled_drivers() -> set[str]:
+    try:
+        import json as _j
+        return set(_j.loads(store.setting_get("disabled_drivers", "[]")))
+    except Exception:
+        return set()
+
+
 def load_drivers() -> None:
     import json as _json
 
@@ -340,12 +389,19 @@ def load_drivers() -> None:
         cfg = _json.loads(os.getenv("TRANSPORTS_JSON", "{}"))
     except Exception:
         cfg = {}
-    registry.register(EbayDriver(transport_from_config(cfg.get("ebay"))))
-    registry.register(WillhabenDriver(transport_from_config(cfg.get("willhaben"))))
-    registry.register(KleinanzeigenDriver(transport_from_config(cfg.get("kleinanzeigen"))))
-    registry.register(VintedDriver(transport_from_config(cfg.get("vinted"))))
-    registry.register(ShpockDriver(transport_from_config(cfg.get("shpock"))))
-    registry.register(RicardoDriver(transport_from_config(cfg.get("ricardo"))))
+    off = disabled_drivers()
+    if "ebay" not in off:
+        registry.register(EbayDriver(transport_from_config(cfg.get("ebay"))))
+    if "willhaben" not in off:
+        registry.register(WillhabenDriver(transport_from_config(cfg.get("willhaben"))))
+    if "kleinanzeigen" not in off:
+        registry.register(KleinanzeigenDriver(transport_from_config(cfg.get("kleinanzeigen"))))
+    if "vinted" not in off:
+        registry.register(VintedDriver(transport_from_config(cfg.get("vinted"))))
+    if "shpock" not in off:
+        registry.register(ShpockDriver(transport_from_config(cfg.get("shpock"))))
+    if "ricardo" not in off:
+        registry.register(RicardoDriver(transport_from_config(cfg.get("ricardo"))))
 
 
 load_drivers()
@@ -434,6 +490,9 @@ def drivers():
         d["requires"] = reqs
         d["configured"] = all(os.getenv(r) for r in reqs)
         out.append(d)
+    for did in sorted(disabled_drivers()):
+        out.append({"id": did, "display_name": did, "installed": False, "disabled": True,
+                    "requires": [], "configured": True, "builtin": True})
     return out
 
 
@@ -444,10 +503,14 @@ def metrics_ep():
 
 @app.get("/metrics.json")
 def metrics_json():
+    try:
+        watchlist = store.list_searches()
+    except Exception:
+        watchlist = [{"id": sid, "keywords": i.get("keywords", ""), "watch": bool(i.get("watch", False)),
+                      "sources": i.get("sources", [])} for sid, i in SEARCHES.items()]
     return {"metrics": metrics.snapshot(), "drivers": {d: registry.get(d).health.model_dump() for d in registry.ids()},
             "searches": len(SEARCHES), "events": len(EVENT_LOG),
-            "watchlist": [{"id": sid, "keywords": i.get("keywords", ""), "watch": bool(i.get("watch", False)),
-                           "sources": i.get("sources", [])} for sid, i in SEARCHES.items()],
+            "watchlist": watchlist,
             "events_tail": EVENT_LOG[-30:]}
 
 
@@ -459,6 +522,95 @@ def admin():
 @app.get("/auth/status")
 def auth_status(request: Request):
     return {"login_required": bool(LOGIN_PASSWORD), "logged_in": _logged_in(request)}
+
+
+_DECISION_PATCH = ("KEV_URL", "JEV_API_URL", "JEV_API_KEY", "CLOUD_API_URL", "CLOUD_API_KEY",
+                   "CLOUD_MODEL", "CLOUD_MODELS", "CLOUD_MODEL_VISION")
+_MAIN_PATCH = ("API_KEY", "LOGIN_PASSWORD", "RATE_PER_MIN")
+
+
+class SecretSet(BaseModel):
+    key: str = ""
+    value: str = ""
+
+
+def apply_env_live() -> list[str]:
+    """Re-apply DB-persisted secrets to process env + live subsystems. Returns applied keys."""
+    import deal_radar.decision as _dec
+    import deal_radar.notifications as _ntf
+    applied = []
+    for key, _, _ in SECRET_DEFS:
+        v = store.setting_get("secret:" + key, "")
+        if not v:
+            continue
+        os.environ[key] = v
+        applied.append(key)
+        if key in _DECISION_PATCH:
+            try:
+                if key == "CLOUD_MODELS":
+                    _dec.CLOUD_MODELS = [m.strip() for m in v.split(",") if m.strip()]
+                else:
+                    setattr(_dec, key, v)
+            except Exception:
+                pass
+        if key in _MAIN_PATCH:
+            try:
+                globals()[key] = int(v) if key == "RATE_PER_MIN" and v.isdigit() else v
+            except Exception:
+                pass
+    if applied:
+        global notifier
+        try:
+            notifier = _ntf.notifier_from_env(os.environ)
+        except Exception:
+            pass
+        try:
+            load_drivers()
+        except Exception:
+            pass
+    return applied
+
+
+@app.get("/settings/secrets")
+def secrets_list():
+    return {"secrets": [{"key": k, "label": label, "secret": is_secret,
+                         "configured": bool(os.getenv(k))}
+                        for k, label, is_secret in SECRET_DEFS]}
+
+
+@app.post("/settings/secrets")
+def secrets_set(req: SecretSet):
+    if req.key not in _SECRET_KEYS:
+        return JSONResponse({"ok": False, "error": "unknown key"}, status_code=400)
+    if len(req.value) > 8000:
+        return JSONResponse({"ok": False, "error": "value too long"}, status_code=400)
+    if req.value:
+        store.setting_set("secret:" + req.key, req.value)
+        UI_MANAGED.add(req.key)
+    else:
+        store.db.execute("DELETE FROM settings WHERE key=?", ("secret:" + req.key,))
+        store.db.commit()
+        if req.key in UI_MANAGED:
+            UI_MANAGED.discard(req.key)
+            os.environ.pop(req.key, None)
+            import deal_radar.decision as _dec2
+            if req.key in _DECISION_PATCH:
+                try:
+                    setattr(_dec2, req.key, [] if req.key == "CLOUD_MODELS" else "")
+                except Exception:
+                    pass
+            if req.key in _MAIN_PATCH:
+                try:
+                    globals()[req.key] = 120 if req.key == "RATE_PER_MIN" else ""
+                except Exception:
+                    pass
+    applied = apply_env_live()
+    try:
+        metrics.inc("secrets_saved")
+    except Exception:
+        pass
+    return {"ok": True, "key": req.key, "configured": bool(os.getenv(req.key)),
+            "live": req.key in applied}
 
 
 @app.post("/login")
@@ -686,9 +838,8 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
                 pass
         JOBS[sid]["done"] = len(intents)
         try:
-            from deal_radar import orchestrator as _orc2
-            _orc2._STOP.discard(sid)
-            _orc2._PAUSE.discard(sid)
+            from deal_radar import cancel as _cancel2
+            _cancel2.disarm(sid)
         except Exception:
             pass
         merged = _merge_outs(outs, meta.get("limit", None))
@@ -726,10 +877,8 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
     except Exception as e:
         JOBS[sid].update({"status": "error", "error": f"{type(e).__name__}: {e}"})
         try:
-            from deal_radar import orchestrator as _orc3
-            _orc3._STOP.discard(sid)
-            _orc3._PAUSE.discard(sid)
-            _orc3._PAUSE_SINCE.pop(sid, None)
+            from deal_radar import cancel as _cancel3
+            _cancel3.disarm(sid)
             store.job_upsert(sid, "error", JOBS[sid].get("done", 0),
                              len(intents), summary=f"{type(e).__name__}: {e}"[:200])
         except Exception:
@@ -830,8 +979,8 @@ async def get_search(sid: str):
     job = JOBS.get(sid)
     if job is not None:
         if job["status"] == "running":
-            from deal_radar import orchestrator as _orc
-            _paused = sid in _orc._PAUSE
+            from deal_radar import cancel as _cancel4
+            _paused = sid in _cancel4._PAUSE
             out = {"id": sid, "status": "running", "done": job["done"], "total": job["total"],
                    "detail": "paused — resume to continue" if _paused else job.get("detail", ""),
                    "paused": _paused, "control": job.get("control", "run")}
@@ -915,9 +1064,9 @@ def stop_search(sid: str):
         return JSONResponse({"error": "job is not running"}, status_code=409)
     job["control"] = "stop"
     try:
-        from deal_radar import orchestrator as _orc
-        _orc._STOP.add(sid)
-        _orc._PAUSE.discard(sid)
+        from deal_radar import cancel as _cancel
+        _cancel._STOP.add(sid)
+        _cancel._PAUSE.discard(sid)
     except Exception:
         pass
     return {"ok": True, "id": sid}
@@ -932,8 +1081,8 @@ def pause_search(sid: str):
         return JSONResponse({"error": "job is not running"}, status_code=409)
     job["control"] = "pause"
     try:
-        from deal_radar import orchestrator as _orc
-        _orc._PAUSE.add(sid)
+        from deal_radar import cancel as _cancel
+        _cancel._PAUSE.add(sid)
     except Exception:
         pass
     return {"ok": True, "id": sid}
@@ -948,8 +1097,8 @@ def resume_search(sid: str):
         return JSONResponse({"error": "job is not running"}, status_code=409)
     job["control"] = "run"
     try:
-        from deal_radar import orchestrator as _orc
-        _orc._PAUSE.discard(sid)
+        from deal_radar import cancel as _cancel
+        _cancel.disarm(sid)
     except Exception:
         pass
     return {"ok": True, "id": sid}
@@ -1045,8 +1194,10 @@ def marketplace():
     from deal_radar.enrich import REGISTRY
     from deal_radar.registry import installed
     inst = set(installed())
+    off = disabled_drivers()
     for d in idx.get("drivers", []):
         d["installed"] = d["id"] in inst
+        d["disabled"] = d["id"] in off
         reqs = d.get("requires", [])
         d["configured"] = all(os.getenv(r) for r in reqs)
     for e in idx.get("enrichers", []):
@@ -1061,6 +1212,12 @@ class InstallRequest(BaseModel):
 @app.delete("/marketplace/{did}")
 def marketplace_uninstall(did: str):
     from deal_radar.registry import uninstall
+    if did in BUILTIN_IDS:
+        off = disabled_drivers()
+        off.add(did)
+        store.setting_set("disabled_drivers", __import__("json").dumps(sorted(off)))
+        registry.unregister(did)
+        return {"ok": True, "uninstalled": did, "note": "core driver disabled — reinstall anytime"}
     out = uninstall(did)
     if not out.get("ok"):
         return JSONResponse(out, status_code=404)
@@ -1083,7 +1240,13 @@ def marketplace_install(req: InstallRequest):
     entry = next((d for d in idx.get("drivers", []) if d["id"] == req.id), None)
     if not entry:
         return JSONResponse({"ok": False, "error": f"unknown marketplace id: {req.id}"}, status_code=404)
-    if entry.get("source") == "builtin":
+    if entry.get("source") == "builtin" or req.id in BUILTIN_IDS:
+        off = disabled_drivers()
+        if req.id in off:
+            off.discard(req.id)
+            store.setting_set("disabled_drivers", __import__("json").dumps(sorted(off)))
+            load_drivers()
+            return {"ok": True, "installed": req.id, "note": "core driver re-enabled"}
         return {"ok": True, "installed": req.id, "note": "built in — enable per search"}
     from deal_radar.registry import install, load_driver_module
     out = install(entry)

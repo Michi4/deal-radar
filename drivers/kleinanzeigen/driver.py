@@ -165,6 +165,12 @@ class KleinanzeigenDriver(MarketplaceDriver):
         items: list[dict] = []
         seen_urls: set[str] = set()
         for _page in range(query.max_pages or 10**9):  # walk to exhaustion (breaks when no next-page link); sequential + polite, never concurrent from one IP
+            from deal_radar.cancel import pause_gate as _pg
+            from deal_radar.cancel import should_stop as _ss
+            if _ss(query.sid):
+                break
+            if await _pg(query.sid):
+                break
             try:
                 cards, nxt = await self._fetch_page(url)
             except RuntimeError:

@@ -673,3 +673,24 @@ def test_open_old_search_serves_snapshot_instantly():
             m.store.delete_search(sid)
         except Exception:
             pass
+
+
+def test_secrets_set_clear_never_leaks():
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    keys = [s["key"] for s in c.get("/settings/secrets").json()["secrets"]]
+    assert "EBAY_OAUTH_TOKEN" in keys and "LOGIN_PASSWORD" in keys
+    assert c.post("/settings/secrets", json={"key": "NOPE", "value": "x"}).status_code == 400
+    r = c.post("/settings/secrets", json={"key": "EBAY_MARKETPLACE", "value": "EBAY_DE"}).json()
+    assert r["ok"] and r["configured"] and r["live"]
+    import os
+    assert os.getenv("EBAY_MARKETPLACE") == "EBAY_DE"
+    body = c.get("/settings/secrets").text
+    assert "EBAY_DE" not in body
+    r2 = c.post("/settings/secrets", json={"key": "EBAY_MARKETPLACE", "value": ""}).json()
+    assert r2["ok"]
+    assert os.getenv("EBAY_MARKETPLACE", "") == ""
+    assert c.get("/settings/secrets").json()

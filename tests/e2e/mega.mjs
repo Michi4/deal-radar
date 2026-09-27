@@ -44,8 +44,8 @@ check('favorite persists', favs.length > 0);
 
 // compare pick-2
 await page.evaluate(() => {
-  const bxs = [...document.querySelectorAll('#results .card input[type=checkbox]')];
-  bxs[0].click(); document.querySelectorAll('#results .card input[type=checkbox]')[1].click();
+  const btns = [...document.querySelectorAll('#results .card button[data-act="cmpTgl"]')];
+  btns[0].click(); document.querySelectorAll('#results .card button[data-act="cmpTgl"]')[1].click();
 });
 await page.waitForTimeout(800);
 await page.evaluate(() => cmp());
