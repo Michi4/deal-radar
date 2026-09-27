@@ -332,6 +332,13 @@ def nl_fallback(text: str) -> dict:
     for cue in re.finditer(r"(?:ohne|kein(?:e|er)?|nicht|ausschlie[ßs]en|without|with\s+no|exclud(?:e|ing)|minus|no)\s+([a-zäöüß\- ]{2,30}?)(?:,| und | oder | and | or |$)", tl):
         blacklist.append({"fields": ["title", "description"], "op": "not_contains",
                           "value": cue.group(1).strip()})
+    # AI-suggested exclusions: model-specific queries almost never want accessories.
+    # Shown as chips in the UI; user can delete any of them before/after search.
+    if re.search(r"(iphone|galaxy|pixel|xperia|thinkpad|elitebook|macbook|ipad|ideapad|probook|\b\d{3,}[a-z]*)", tl):
+        for junk in ("case", "cover", "hülle", "huelle", "sleeve", "tasche", "pouch",
+                     "schutzhülle", "bumper", "etui"):
+            blacklist.append({"fields": ["title", "description"], "op": "not_contains",
+                              "value": junk, "ai_suggested": True})
     attrs: dict = {}
     if re.search(r"usb[\s\-]?c", tl):
         attrs["connector"] = "usb-c"
@@ -340,12 +347,28 @@ def nl_fallback(text: str) -> dict:
         attrs["display"] = "oled"
     if "lightning" in tl:
         attrs["connector"] = "lightning"
+    # category browse intent ("alle laptops", "everything in phones", "autos unter 5000")
+    category = ""
+    cat_words = {"laptop": "laptops", "laptops": "laptops", "notebook": "laptops",
+                 "notebooks": "laptops",
+                 "handy": "phones", "handys": "phones", "phone": "phones", "phones": "phones",
+                 "smartphone": "phones", "smartphones": "phones",
+                 "auto": "cars", "autos": "cars", "car": "cars", "cars": "cars",
+                 "wagen": "cars", "bett": "furniture", "betten": "furniture", "bed": "furniture",
+                 "beds": "furniture", "möbel": "furniture", "moebel": "furniture",
+                 "furniture": "furniture", "sofa": "furniture", "sofas": "furniture",
+                 "couch": "furniture"}
+    mcat = re.search(r"(?:alle|alles|everything|entire|whole|full|complete|kategorie|category)\s+(?:in\s+|der\s+|die\s+|das\s+|the\s+)?([a-zäöüß]+)", tl)
+    if mcat and mcat.group(1) in cat_words:
+        category = cat_words[mcat.group(1)]
     # core keywords: strip price/exclusion/connector clauses
     kw = re.sub(r"(unter|under|below|max|bis|über|over|above|min|ab)\s*\d[\d\.\s]*\s*€?", " ", tl)
     kw = re.sub(r"(ohne|keine?r?|nicht|ausschlie[ßs]en|without|with\s+no|exclud(?:e|ing)|minus)\s+[a-zäöüß\- ]{2,30}?(,| und | oder | and | or |$)", " ", kw)
     kw = re.sub(r"(welche[rs]?|mit|mit einem|der|die|das|ein(?:e|er|em)?|und|oder|zum|für|to|with|a|an|the|that|uses?|use|which|charge[sd]?|plug|to)\b", " ", kw)
     kw = re.sub(r"\s+", " ", kw).strip()
-    return {"keywords": kw or tl[:80], "category": "", "hard": hard, "blacklist": blacklist,
+    if category:
+        kw = ""
+    return {"keywords": kw if category else (kw or tl[:80]), "category": category, "hard": hard, "blacklist": blacklist,
             "whitelist": [], "attributes": attrs, "risk": {}, "enrich": True, "limit": 20}
 
 

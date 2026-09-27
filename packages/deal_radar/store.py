@@ -87,6 +87,8 @@ class Store:
                                 (l.id, now, "images", json.dumps(old_imgs[:5]), json.dumps(l.images[:5])))
             if old_title != l.title:
                 events.append({"kind": "title", "old": old_title, "new": l.title})
+                self.db.execute("INSERT INTO observations(listing_id,ts,kind,old_value,new_value) VALUES(?,?,?,?,?)",
+                                (l.id, now, "title", (old_title or "")[:500], (l.title or "")[:500]))
             self.db.execute("UPDATE listings SET url=?,title=?,price=?,last_seen=?,data=? WHERE id=?",
                             (l.url, l.title, l.price, now, data, l.id))
         self.db.commit()
@@ -234,7 +236,7 @@ class Store:
         if lids:
             ph = ",".join("?" * len(lids))
             for r in self.db.execute(
-                    f"SELECT id, title, price, currency, url, last_seen FROM listings WHERE id IN ({ph})",
+                    f"SELECT id, title, price, currency, url, last_seen, data FROM listings WHERE id IN ({ph})",
                     lids).fetchall():
                 rows[r[0]] = r
             for o in self.db.execute(
@@ -244,9 +246,19 @@ class Store:
         for lid, ts, note in favs:
             row = rows.get(lid)
             obs = obss.get(lid, [])
+            desc: str = ""
+            imgs: list = []
+            if row:
+                try:
+                    import json as _jj
+                    _d = _jj.loads(row[6] if len(row) > 6 else "{}")
+                    desc, imgs = _d.get("description", "") or "", _d.get("images", []) or []
+                except Exception:
+                    pass
             out.append({"listing_id": lid, "saved_at": ts, "note": note,
                         "title": row[1] if row else None, "price": row[2] if row else None,
                         "currency": row[3] if row else None, "url": row[4] if row else None,
                         "last_seen": row[5] if row else None,
+                        "description": desc, "images": imgs,
                         "history": [{"ts": o[0], "kind": o[1], "old": o[2], "new": o[3]} for o in obs]})
         return out

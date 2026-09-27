@@ -154,6 +154,24 @@ def install(entry: dict, index_source: str = "") -> dict:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
 
+def uninstall(did: str) -> dict:
+    """Remove a community-installed driver (builtins are protected)."""
+    if not _ID_RE.match(did or ""):
+        return {"ok": False, "error": "invalid id"}
+    for base in {COMMUNITY, LAB_DRIVERS}:
+        dest = base / did
+        try:
+            if dest.is_symlink() or dest.is_file():
+                dest.unlink()
+                return {"ok": True, "uninstalled": did}
+            if dest.is_dir() and os.path.realpath(dest).startswith(os.path.realpath(base)):
+                shutil.rmtree(dest)
+                return {"ok": True, "uninstalled": did}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    return {"ok": False, "error": "not installed (or builtin — cannot uninstall)"}
+
+
 def main(argv: list[str]) -> int:
     cmd = argv[1] if len(argv) > 1 else "list"
     if cmd == "list":

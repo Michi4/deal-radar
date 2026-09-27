@@ -40,10 +40,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                      store=None, notifier=None) -> dict[str, Any]:
     t0 = time.time()
     sources: list[str] = intent.get("sources", registry.ids())
+    _lim = intent.get("limit", None)
     q = SearchQuery(keywords=intent.get("keywords", ""), category=intent.get("category", ""),
                     max_price=(intent.get("hard") or {}).get("max_price"),
                     min_price=(intent.get("hard") or {}).get("min_price"),
-                    limit=int(intent.get("limit", 20)),
+                    limit=int(_lim) if _lim else 1000000,
                     max_pages=int(intent["max_pages"]) if intent.get("max_pages") else None)
     hard = intent.get("hard", {}) or {}
     if isinstance(hard, list):  # model sometimes returns bare rules list
@@ -124,7 +125,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             r0 = assess_risk(l, median)
             _tc0 = total_cost(l.price, l.shipping_cost, l.distance_km,
                               float(intent.get("cost_per_km", 0) or 0))
-            if len(flagged) < 1000:
+            if len(flagged) < 5000:
                 flagged.append(ScoredListing(
                     listing=l, match_score=h["match"],
                     deal_dna={"match": h["match"], "value": 0.5,

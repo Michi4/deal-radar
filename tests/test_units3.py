@@ -88,6 +88,13 @@ def test_nl_fallback_paths():
     assert fb4["hard"].get("max_price") == 700
     assert any("defect" in b.get("value", "") for b in fb4["blacklist"])
     assert "without" not in fb4["keywords"] and "700" not in fb4["keywords"]
+    assert any(b.get("value") == "case" and b.get("ai_suggested") for b in fb4["blacklist"])
+    fb5 = D.nl_fallback("holzstuhl gebraucht")
+    assert not any(b.get("ai_suggested") for b in fb5["blacklist"])
+    fb6 = D.nl_fallback("alle laptops")
+    assert fb6["category"] == "laptops" and fb6["keywords"] == ""
+    fb7 = D.nl_fallback("autos unter 5000")
+    assert fb7["category"] == "" and fb7["hard"].get("max_price") == 5000
 
 
 def test_priceless_listing_never_kills_search():
@@ -737,3 +744,77 @@ def test_total_cost_dna():
         reg, None, None))
     tots = {r["listing"]["id"]: r["deal_dna"]["total_cost"] for r in out["results"]}
     assert tots == {"t:1": 110.0, "t:2": 105.0}
+
+
+def test_flagged_kept_with_reasons():
+    import asyncio
+    import os
+    import tempfile
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+    from deal_radar.store import Store
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [CanonicalListing(id="t:x", source="t", native_id="x", url="https://t/x",
+                                     title="ThinkPad T14", description="good laptop",
+                                     price=500, images=[], seller=Seller(name="s"))]
+
+    reg = DriverRegistry()
+    reg.register(F())
+    st = Store(os.path.join(tempfile.mkdtemp(), "flag.db"))
+    out = asyncio.run(run_search(
+        {"keywords": "thinkpad", "sources": ["t"], "limit": 5,
+         "blacklist": [{"fields": ["title"], "op": "contains", "value": "zzz-no-match"}],
+         "required": [{"fields": ["title"], "op": "contains", "value": "impossible-word"}],
+         "risk": {}, "enrich": False, "ocr": False, "benchmarks": False, "vision": False,
+         "details": False}, reg, st, None))
+    assert out["results"] == [] and out["filtered_out"] >= 1
+    assert out["filtered"] and "hidden" in out["filtered"][0]["lane"]
+    assert "required" in out["filtered"][0]["why"][0] or "hidden" in out["filtered"][0]["why"][0]
+    st.close()
+
+
+def test_registry_uninstall_roundtrip():
+    import tempfile
+    from pathlib import Path
+
+    import deal_radar.registry as R
+    tmp = Path(tempfile.mkdtemp())
+    with patch.object(R, "COMMUNITY", tmp), patch.object(R, "LAB_DRIVERS", tmp):
+        src = tmp / "seed"
+        src.mkdir()
+        (src / "driver.py").write_text(
+            "from deal_radar.driver_sdk import MarketplaceDriver, DriverManifest, SearchQuery\n"
+            "class GoneDriver(MarketplaceDriver):\n"
+            "    manifest = DriverManifest(id='gone', display_name='Gone', capabilities=['search'])\n"
+            "    async def search(self, query: SearchQuery):\n        return []\n")
+        assert R.install({"id": "gone", "version": "1", "source": f"path:{src}"})["ok"]
+        assert R.uninstall("gone")["ok"] and not (tmp / "gone").exists()
+        assert not R.uninstall("gone")["ok"]
+        assert not R.uninstall("../evil")["ok"]
+        assert not R.uninstall("builtin-x")["ok"]
+
+
+def test_store_jobs_lifecycle():
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "jobs.db"))
+    st.job_upsert("s1", "running", 1, 4, {"keywords": "t"})
+    st.save_search("s1", {"keywords": "t", "sources": ["t"]}, total=42)
+    rows = st.list_searches()
+    assert rows[0]["results"] == 42 and rows[0]["job"]["status"] == "running"
+    assert st.job_interrupt_stale() == 1
+    assert st.list_searches()[0]["job"]["status"] == "interrupted"
+    st.close()

@@ -164,6 +164,56 @@ async def _run_cached(intent: dict, force: bool = False) -> dict:
 
 from deal_radar.notify_rules import rules_ok as _rules_ok
 
+FAV_POLL_S = int(os.getenv("FAV_POLL_S", "1800"))
+_last_fav_poll = 0.0
+
+
+async def _track_favorites() -> None:
+    """Snoty-style product tracking: re-fetch every saved product, version all changes."""
+    global _last_fav_poll
+    if time.time() - _last_fav_poll < FAV_POLL_S:
+        return
+    _last_fav_poll = time.time()
+    try:
+        favs = store.favorites_with_history()
+    except Exception:
+        return
+    for f in favs:
+        lid = f.get("listing_id")
+        url = f.get("url") or ""
+        try:
+            row = store.db.execute("SELECT source, url FROM listings WHERE id=?", (lid,)).fetchone()
+        except Exception:
+            continue
+        if not row:
+            continue
+        src, durl = row[0], row[1] or url
+        d = registry.get(src)
+        if d is None or "fetch_detail" not in (d.manifest.capabilities or []):
+            continue
+        try:
+            det = await d.fetch_detail(durl)
+        except Exception:
+            metrics.inc("favtrack_errors")
+            continue
+        if not det:
+            continue
+        det.id = lid  # keep stable id so history accumulates on the saved item
+        try:
+            for c in store.upsert(det):
+                ev = {"kind": ("fav_" + c["kind"]), "listing_id": lid, "url": durl,
+                      "title": det.title, "price": det.price}
+                EVENT_LOG.append(ev)
+                try:
+                    await notifier.send(
+                        f"Tracked change ({c['kind']}): {(det.title or '')[:60]}",
+                        f"{c['kind']}: {str(c.get('old'))[:80]} → {str(c.get('new'))[:80]}\n{durl}",
+                        {"url": durl})
+                except Exception:
+                    pass
+        except Exception:
+            continue
+
 
 async def _watcher() -> None:
     """Live loop: re-poll watched searches, push new-match events to SSE + notifiers."""
@@ -199,6 +249,10 @@ async def _watcher() -> None:
                             f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n{r['listing']['url']}",
                             {"url": r["listing"]["url"]})
                 EVENT_LOG.extend(out.get("events", []))  # price notifies are sent (rule-gated) by the orchestrator itself
+            try:
+                await _track_favorites()
+            except Exception:
+                metrics.inc("watcher_errors")
         except Exception as e:
             metrics.inc("watcher_errors")
             print(f"[watcher] {type(e).__name__}: {e}", flush=True)
@@ -269,10 +323,10 @@ class SearchIntent(BaseModel):
     ranking: dict | None = None
     enrich: bool = True
     enrich_top_n: int = Field(default=150, ge=0, le=1000)  # deep OCR/bench for top-N only
-    limit: int = Field(default=200, ge=1, le=5000)
+    limit: int | None = Field(default=None, ge=1, le=100000)  # None = unlimited
     max_pages: int | None = Field(default=None, ge=1, le=50)  # per-source page cap; empty = walk to exhaustion
     watch: bool = False
-    poll_interval_s: int = Field(default=300, ge=45, le=86400)
+    poll_interval_s: int = Field(default=1800, ge=60, le=604800)
     notify_on: list[str] = ["new_top", "price_drop"]
     notify_rules: list[dict] = Field(default=[], max_length=20)  # e.g. {"kind":"price_drop","min_drop_pct":15},{"kind":"new_match","max_risk":0.2}
     max_distance_km: float | None = Field(default=None, ge=0, le=20000)
@@ -396,11 +450,12 @@ def logout(request: Request):
 
 class NLQuery(BaseModel):
     text: str = Field(max_length=2000)
+    category: str = Field(default="", max_length=100)
     enrich_top_n: int = Field(default=150, ge=0, le=1000)
     sources: list[str] | None = Field(default=None, max_length=10)
     watch: bool = False
-    poll_interval_s: int = Field(default=300, ge=45, le=86400)
-    limit: int = Field(default=200, ge=1, le=5000)
+    poll_interval_s: int = Field(default=1800, ge=60, le=604800)
+    limit: int | None = Field(default=None, ge=1, le=100000)  # None = unlimited
     max_pages: int | None = Field(default=None, ge=1, le=50)
     ocr: bool = True
     benchmarks: bool = True
@@ -412,6 +467,9 @@ class NLQuery(BaseModel):
 async def create_nl_search(q: NLQuery):
     from deal_radar.decision import nl_to_intent
     parsed = await nl_to_intent(q.text)
+    if (q.category or "").strip():
+        parsed["category"] = q.category.strip().lower()
+        parsed["keywords"] = ""
     models = (parsed.get("models", []) or [])[:6]  # bound fan-out
     queries = models or [parsed.get("keywords", q.text)]
     intents = []
@@ -425,7 +483,7 @@ async def create_nl_search(q: NLQuery):
                         "required": parsed.get("required", []),
                         "enrich": True, "enrich_top_n": q.enrich_top_n, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
                         "vision": q.vision, "details": q.details,
-                        "limit": max(6, q.limit // max(1, len(queries))),
+                        "limit": None if q.limit is None else max(6, q.limit // max(1, len(queries))),
                         "watch": False, "poll_interval_s": q.poll_interval_s,
                         "notify_on": ["new_top", "price_drop"]})
     base = {"keywords": parsed.get("keywords", q.text), "category": parsed.get("category", ""),
@@ -442,7 +500,7 @@ async def create_nl_search(q: NLQuery):
                                       "limit": q.limit, "watch": q.watch})
 
 
-def _merge_outs(outs: list[dict], limit: int) -> dict:
+def _merge_outs(outs: list[dict], limit: int | None) -> dict:
     import statistics as _st
     seen: set[str] = set()
     merged: list[dict] = []
@@ -461,11 +519,12 @@ def _merge_outs(outs: list[dict], limit: int) -> dict:
                 merged.append(r)
         for r in o.get("filtered", []):
             lid = r["listing"]["id"]
-            if lid not in seen and len(flagged) < 1000:
+            if lid not in seen and len(flagged) < 5000:
                 seen.add(lid)
                 flagged.append(r)
     merged.sort(key=lambda r: r.get("final_score", 0), reverse=True)
-    merged = merged[:limit]
+    if limit:
+        merged = merged[:limit]
     _mp = sorted(r["listing"]["price"] for r in merged if r["listing"].get("price") is not None)
     return {"results": merged, "filtered": flagged, "events": events, "driver_errors": errors,
             "filtered_out": filt, "median": _st.median(_mp) if len(_mp) >= 3 else None}
@@ -488,6 +547,34 @@ async def _start_job(intents: list[dict], meta: dict) -> dict:
     return {"id": sid, "status": "running", "total": len(intents)}
 
 
+_WATCH_KINDS = {"description": "desc_change", "images": "image_change",
+                "title": "title_change", "seller": "seller_change"}
+
+
+async def _notify_watch_changes(intent: dict, merged: dict) -> None:
+    """Extra watch triggers beyond new_top/price_drop: desc/image/title/seller edits."""
+    from deal_radar.notify_rules import rules_ok as _rules_ok
+    want = set(intent.get("notify_on", []))
+    if not (want & set(_WATCH_KINDS.values())):
+        return
+    for ev in merged.get("events", []):
+        kind = _WATCH_KINDS.get(ev.get("kind", ""))
+        if not kind or kind not in want:
+            continue
+        try:
+            if not _rules_ok(intent.get("notify_rules", []), kind, ev=ev):
+                continue
+        except Exception:
+            pass
+        try:
+            await notifier.send(
+                f"{kind}: {(ev.get('title') or '')[:60]}",
+                f"{ev.get('kind')} changed: {str(ev.get('old'))[:80]} → {str(ev.get('new'))[:80]}\n{ev.get('url', '')}",
+                {"url": ev.get("url", "")})
+        except Exception:
+            pass
+
+
 async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
     try:
         outs = []
@@ -499,10 +586,12 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
                 pass
             outs.append(await _run_cached(data, force=True))
         JOBS[sid]["done"] = len(intents)
-        merged = _merge_outs(outs, meta.get("limit", 20))
+        merged = _merge_outs(outs, meta.get("limit", None))
         base = meta.get("base", intents[0] if intents else {})
         SEARCHES[sid] = base
         store.save_search(sid, base, len(merged["results"]))
+        if base.get("watch"):
+            _notify_watch_changes(base, merged)
         LAST_RUN[sid] = time.time()
         SEEN_IDS[sid] = {r["listing"]["id"] for r in merged["results"]}
         store.save_results(sid, merged["results"])
@@ -542,6 +631,13 @@ async def create_search(intent: SearchIntent):
     if data.get("require_shipping"):
         rules.append({"field": "shipping_available", "op": "equals", "value": True})
     data["hard"] = {**(data.get("hard") or {}), "rules": rules}
+    cats = [c.strip().lower() for c in str(data.get("category", "") or "").split(",") if c.strip()][:4]
+    if len(cats) > 1 and not [p for p in (data.get("keywords", "") or "").split(";") if p.strip()][1:]:
+        intents = [{**data, "category": c} for c in cats]
+        return await _start_job(intents, {"base": {**data, "watch": data.get("watch", False)},
+                                          "subqueries": [f"cat:{c}" for c in cats],
+                                          "limit": data.get("limit"), "watch": data.get("watch", False),
+                                          "notify_done": True})
     # multi-query: "rtx 4080; rtx 4070 ti super" -> parallel sub-searches, merged
     parts = [p.strip() for p in (data.get("keywords", "") or "").split(";") if p.strip()]
     if len(parts) > 1:
@@ -551,6 +647,34 @@ async def create_search(intent: SearchIntent):
                                           "watch": data.get("watch", False), "notify_done": True})
     return await _start_job([data], {"base": data, "limit": data.get("limit", 20),
                                      "watch": data.get("watch", False), "notify_done": True})
+
+
+class WatchClone(BaseModel):
+    poll_interval_s: int = Field(default=1800, ge=60, le=604800)
+    notify_on: list[str] = ["new_top", "price_drop"]
+    notify_rules: list[dict] = Field(default=[], max_length=20)
+
+
+@app.post("/searches/{sid}/watch")
+async def watch_clone(sid: str, w: WatchClone):
+    from copy import deepcopy
+    intent = SEARCHES.get(sid)
+    if intent is None:
+        try:
+            row = store.db.execute("SELECT intent FROM searches WHERE id=?", (sid,)).fetchone()
+            import json as _j
+            intent = _j.loads(row[0]) if row else None
+        except Exception:
+            intent = None
+    if not intent:
+        return JSONResponse({"error": "unknown search id"}, status_code=404)
+    data = deepcopy(intent)
+    data["watch"] = True
+    data["poll_interval_s"] = w.poll_interval_s
+    data["notify_on"] = w.notify_on
+    data["notify_rules"] = w.notify_rules
+    return await _start_job([data], {"base": data, "limit": data.get("limit", 20),
+                                     "watch": True, "notify_done": True})
 
 
 @app.get("/searches")
@@ -598,7 +722,7 @@ async def get_search(sid: str):
         return JSONResponse({"error": "unknown search id"}, status_code=404)
     out = await _run_cached(intent)
     EVENT_LOG.extend(out.get("events", []))
-    return {"id": sid, "status": "done", "cached": True, **out}
+    return {"id": sid, "status": "done", "cached": True, "intent": intent, **out}
 
 
 @app.get("/stream")
@@ -698,6 +822,20 @@ def marketplace():
 
 class InstallRequest(BaseModel):
     id: str = Field(default="", pattern="^[a-z0-9][a-z0-9-]{0,40}$")
+
+
+@app.delete("/marketplace/{did}")
+def marketplace_uninstall(did: str):
+    from deal_radar.registry import uninstall
+    out = uninstall(did)
+    if not out.get("ok"):
+        return JSONResponse(out, status_code=404)
+    try:
+        if did in registry._drivers:
+            del registry._drivers[did]
+    except Exception:
+        pass
+    return out
 
 
 @app.post("/marketplace/install")

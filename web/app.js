@@ -7,7 +7,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),resetFilters:()=>resetFilters(),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -24,6 +24,8 @@ const cmp=e.target.closest('[data-cmp]');if(cmp){e.stopPropagation();cmpTgl(cmp.
 const os=e.target.closest('[data-osearch]');if(os){openSearch(os.dataset.osearch);return}
 const rs=e.target.closest('[data-rsearch]');if(rs){redoSearch(rs.dataset.rsearch);return}
 const ds=e.target.closest('[data-dsearch]');if(ds){delSearch(ds.dataset.dsearch);return}
+const ws=e.target.closest('[data-wsearch]');if(ws){watchTile(ws.dataset.wsearch);return}
+const sn=e.target.closest('[data-snap]');if(sn){const [i,t]=sn.dataset.snap.split('|');viewSnap(i,t);return}
 const hh=e.target.closest('[data-hist]');if(hh){$('nl').value=hh.dataset.hist;runNL();return}
 const op=e.target.closest('[data-open]');if(op){openD(op.dataset.open)}});
 function setView(v){VIEW=v;localStorage.setItem('drv',v);const g=$('vgrid'),l=$('vlist');if(g)g.classList.toggle('active',v==='grid');if(l)l.classList.toggle('active',v==='list');render()}
@@ -92,7 +94,7 @@ if(bl.some(w=>t.includes(w)))return false;if(rq.length&&!rq.every(w=>t.includes(
 function render(){const active=($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value||$('hideRisk').checked||HIDEKIND.want||HIDEKIND.parts||HIDEKIND.acc)?1:0;
 const fd=$('fdot');if(fd)fd.style.display=active?'inline-block':'none';
 const arr=refined(filtered());
-$('refinebar').style.display=SEARCHED?'':'none';const tb=$('toolbar');if(tb)tb.style.display=SEARCHED?'flex':'none';const pp=PERPAGE;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
+$('refinebar').style.display=SEARCHED?'':'none';const _tb=$('toolbar');if(_tb)_tb.style.display='flex';const pp=PERPAGE;const pages=Math.max(1,Math.ceil(arr.length/pp));PAGE=Math.min(PAGE,pages-1);
 drawSegs();
 const slice=arr.slice(PAGE*pp,PAGE*pp+pp);
 $('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${slice.map((s,i)=>card(s,i)).join('')}</div>`:slice.map((s,i)=>card(s,i)).join('');
@@ -101,14 +103,14 @@ $('pager').style.display=pages>1?'flex':'none';$('pinfo').textContent=`${PAGE+1}
 const hn=$('hidN');if(hn)hn.textContent=HIDDEN.length;
 if(SHOWHID&&HIDDEN.length){const hc=HIDDEN.slice(0,100).map(s=>{const l=s.listing;return `<div class="card hid" data-open="${esc(l.id)}"><div class="body"><h4>${esc(l.title)||'(no title)'}</h4><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span></div><div class="lane">hidden · match ${((s.match_score??0)*100).toFixed(0)}% · ${esc(l.source)}</div><div class="hidreason">${esc((s.why||[]).join('; ').slice(0,160))}</div></div></div>`}).join('');
 $('results').innerHTML+=`<div class="ptitle" style="margin-top:1rem"><h2>Hidden by filters</h2><small>unhide by loosening filters above · showing ${Math.min(100,HIDDEN.length)} of ${HIDDEN.length}</small></div><div class="rgrid">${hc}</div>`}}
-function page(d){PAGE+=d;render();window.scrollTo(0,0)}
+function page(d){PAGE+=d;render();const r=$('results');if(r)r.scrollIntoView({block:'start',behavior:'smooth'})}
 function skel(n){$('results').innerHTML=VIEW==='grid'?`<div class="rgrid">${'<div class="skel"></div>'.repeat(n)}</div>`:'<div class="skel"></div>'.repeat(3)}
 function status(t){$('status').innerHTML=t?`<div class="panel"><small>${t}</small></div>`:''}
 function pushHist(q){HIST=[q,...HIST.filter(x=>x!==q)].slice(0,8);localStorage.setItem('drh',JSON.stringify(HIST));drawHist()}
 function drawHist(){$('hist').innerHTML=HIST.map(h=>`<button class="ghost chip" data-hist="${esc(h)}">${esc(h.slice(0,30))}</button>`).join('')}
 function intent(){const wm=+$('wMatch').value||0,wv=+$('wValue').value||0,wr=+$('wRisk').value||0,wc=+$('wComp').value||0;
 const _s=wm+wv+wr+wc||1;const ranking={match:wm/_s,value:wv/_s,risk:wr/_s,completeness:wc/_s};
-return{ranking,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
+return{ranking,category:$('catSel').value,blacklist:$('black').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'not_contains',value:w.trim()})),risk:{warning_threshold:+$('warnT').value/100,block_threshold:+$('blockT').value/100,hard_filter_enabled:$('hideRisk').checked},ocr:$('fOcr').checked,benchmarks:$('fBench').checked,vision:$('fVision').checked,details:$('fDet').checked,limit:30,require_pickup:$('fPick').checked,require_shipping:$('fShip').checked}}
 async function showApplied(p,subs){if(!p||!p.keywords){$('applied').style.display='none';return}
 const chip=t=>'<span class="chip">'+esc(t)+'</span>';
 let h='<div class="eyebrow">AI understood</div><div style="font-weight:700">'+esc(p.keywords)+'</div>';
@@ -131,40 +133,67 @@ h+='<div class="mt-2 text-sm opacity-70"><small>Filtered automatically — adjus
 $('applied').innerHTML=h;$('applied').style.display='';
 // mirror AI filters into advanced inputs so they are visibly applied
 try{
-if(bl.length&&!$('black').value)$('black').value=bl.slice(0,12).join(', ');
-if(rq.length&&!$('req').value)$('req').value=rq.slice(0,12).join(', ');
-if(p.hard&&p.hard.max_price&&!$('max').value)$('max').value=p.hard.max_price;
-if(p.hard&&p.hard.min_price&&!$('min').value)$('min').value=p.hard.min_price;
+if(bl.length)$('black').value=bl.slice(0,12).join(', ');
+if(rq.length)$('req').value=rq.slice(0,12).join(', ');
+if(p.hard&&p.hard.max_price!=null)$('max').value=p.hard.max_price;
+if(p.hard&&p.hard.min_price!=null)$('min').value=p.hard.min_price;
+mirrorRefine();
 }catch(e){}
 }
 async function authKick(){try{const a=await(await fetch('/auth/status')).json();const lo=$('logoutbtn');if(lo)lo.style.display=(a.login_required&&a.logged_in)?'':'none'}catch(e){}}
-async function poll(sid,onDone){for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
+let LASTDUR=0;
+async function poll(sid,onDone){const t0=Date.now();for(;;){const res=await fetch('/searches/'+sid);if(res.status===401){location.href='/login';return}const r=await res.json();
 if(r.status==='running'){status(`<small>working… ${r.done||0}/${r.total||'?'} sub-searches (you can keep browsing — toast on finish)</small>`);await new Promise(x=>setTimeout(x,3000));continue}
-SEARCHED=true;HIDDEN=r.filtered||[];onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
+SEARCHED=true;HIDDEN=r.filtered||[];LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
 async function run(){if($('searchbtn').disabled)return;const sel=[...SRCS];
-const limN=+$('limitN').value||200,deepV=+$('deepN').value;
+const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
 const req=$('req').value.split(',').filter(Boolean).map(w=>({fields:['title','description'],op:'contains',value:w.trim()}));
 const mp=+$('maxpages').value||undefined;
-const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:Math.max(1,Math.min(5000,limN)),...intent()};
+const body={keywords:$('q').value,sources:sel,hard,required:req,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV)),limit:limN,...intent()};
 if(mp)body.max_pages=mp;
 $('searchbtn').disabled=true;$('searchbtn').innerHTML='<span class="spin"></span>';skel(6);status('Search started in background …');PAGE=0;
 try{const j=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
-pushHist($('q').value);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
+pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)});}catch(e){status(`<div class="err">search failed: ${e}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){if($('askbtn').disabled)return;const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
-const limN=+$('limitN').value||200,deepV=+$('deepN').value;
+const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepV=+$('deepN').value;
 $('askbtn').disabled=true;$('askbtn').innerHTML='<span class="spin"></span>';skel(6);status('AI is resolving products for: '+t+' …');PAGE=0;
-try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,limit:Math.max(1,Math.min(5000,limN)),enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})})).json();
-pushHist(t);await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
+try{const j=await(await fetch('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})})).json();
+pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)});}catch(e){status(`<div class="err">NL search failed: ${e}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
-async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();status('');try{const f=await(await fetch('/favorites')).json();
+let FAVMAP={};
+async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await(await fetch('/favorites')).json();FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
 $('pageview').innerHTML=ptitle('Saved',f.length+' favorites · price & change history tracked')+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 async function unfavWrap(){}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
+const DEFF={black:'',req:'',min:'',max:'',minMatch:12,catSel:'',fOcr:1,fBench:1,fVision:1,fDet:1,warnT:35,blockT:85,hideRisk:0,fPick:0,fShip:0,wMatch:35,wValue:35,wRisk:20,wComp:10,maxpages:'',limitN:'',deepN:150};
+function advState(){const g=id=>{const e=$(id);return e?(e.type==='checkbox'?(e.checked?1:0):e.value):''};
+return {black:g('black'),req:g('req'),min:g('min'),max:g('max'),minMatch:g('minMatch'),fOcr:g('fOcr'),fBench:g('fBench'),fVision:g('fVision'),fDet:g('fDet'),warnT:g('warnT'),blockT:g('blockT'),hideRisk:g('hideRisk'),fPick:g('fPick'),fShip:g('fShip'),wMatch:g('wMatch'),wValue:g('wValue'),wRisk:g('wRisk'),wComp:g('wComp'),maxpages:g('maxpages'),limitN:g('limitN'),deepN:g('deepN'),catSel:g('catSel'),sort:SORT,perpage:PERPAGE,sources:[...SRCS],kinds:{...HIDEKIND}}}
+function applyAdvState(f){if(!f)return;const s=id=>$(id);const put=(id,v)=>{const e=s(id);if(e==null||v==null)return;if(e.type==='checkbox')e.checked=!!+v;else e.value=v};
+for(const k of ['black','req','min','max','minMatch','warnT','blockT','wMatch','wValue','wRisk','wComp','maxpages','deepN','catSel'])put(k,f[k]);
+for(const k of ['fOcr','fBench','fVision','fDet','hideRisk','fPick','fShip'])put(k,f[k]);
+if(f.limitN!=null){const el=s('limitN');if(el&&![...el.options].some(o=>o.value==String(f.limitN))){const o=document.createElement('option');o.value=o.textContent=String(f.limitN);el.appendChild(o)}put('limitN',f.limitN)}
+if(f.sort)SORT=f.sort;if(f.perpage)PERPAGE=+f.perpage||20;
+if(f.sources&&f.sources.length)SRCS=new Set(f.sources);
+if(f.kinds)HIDEKIND={want:!!f.kinds.want,parts:!!f.kinds.parts,acc:!!f.kinds.acc};
+paintChecks();drawSegs();mirrorRefine()}
+function saveFilters(){try{localStorage.setItem('drf',JSON.stringify(advState()))}catch(e){}}
+function loadFilters(){try{const f=JSON.parse(localStorage.getItem('drf')||'null');if(f)applyAdvState(f)}catch(e){}}
+function resetFilters(){try{localStorage.removeItem('drf')}catch(e){}applyAdvState({...DEFF});SORT='score';PDIR=1;PERPAGE=20;HIDEKIND={want:true,parts:true,acc:true};HIDELANES=new Set();paintChecks();drawSegs();render();toast('filters reset to defaults')}
+function valList(rules){return (rules||[]).map(r=>r.value||r).filter(Boolean).join(', ')}
+function applyIntent(it){if(!it)return;const put=(id,v)=>{const e=$(id);if(e&&v!=null)e.value=v};
+$('black').value=valList(it.blacklist);$('req').value=valList(it.required);
+const hd=it.hard||{};put('min',hd.min_price);put('max',hd.max_price);
+if(hd.min_match!=null)$('minMatch').value=Math.round(hd.min_match*100);
+if(it.max_pages!=null)put('maxpages',it.max_pages);
+if(it.limit!=null){const el=$('limitN');if(el&&![...el.options].some(o=>o.value==String(it.limit))){const o=document.createElement('option');o.value=o.textContent=String(it.limit);el.appendChild(o)}put('limitN',it.limit)}
+if(it.enrich_top_n!=null)put('deepN',it.enrich_top_n);if(it.category!=null)put('catSel',it.category);
+if(it.sources&&it.sources.length){SRCS=new Set(it.sources)}
+paintChecks();drawSegs();mirrorRefine()}
 function mirrorRefine(){try{$('rMin').value=$('min').value;$('rMax').value=$('max').value;$('rBlack').value=$('black').value;$('rReq').value=$('req').value}catch(e){}}
 function hideSearchChrome(){for(const id of ['toolbar','refinebar','pagertop','pager']){const e=$(id);if(e)e.style.display='none'}}
 function markActive(t){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t))}
@@ -180,21 +209,26 @@ try{const r=await(await fetch('/lab/build',{method:'POST',headers:{'Content-Type
 $('labout').innerHTML=r.ok?`<div>✅ <b>${r.id}</b> built, checked, hot-loaded.<br/><small>${JSON.stringify(r.checks).slice(0,300)}</small></div>`:`<div class="err">failed: ${r.error}<br/><small>${(r.code||'').slice(0,500)}</small></div>`}catch(e){$('labout').innerHTML=`<div class="err">${e}</div>`}
 $('labbtn').disabled=false}
 async function showWatches(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading watches…</div>';
-$('pageview').innerHTML=ptitle('Watches','auto re-polled · survive restarts · notify on new hits & drops')+`<div class="panel"><form id="wform"><label class="fld"><span>watch query</span><input id="wq" class="inp" placeholder="e.g. ThinkPad X1 under &euro;800"/></label><div class="fgrid4" style="margin-top:.5rem"><label class="fld"><span>max &euro;</span><input id="wmax" class="inp" placeholder="no max" type="number"/></label><label class="fld"><span>drop % &ge;</span><input id="nDrop" class="inp" placeholder="any" type="number" title="only notify drops of at least this %"/></label><label class="fld"><span>risk &le; %</span><input id="nRisk" class="inp" placeholder="any" type="number" title="only notify new matches below this risk %"/></label><label class="fld"><span>&nbsp;</span><button type="submit" class="btn btn-primary">+ Watch (5 min)</button></label></div><div class="row mt-2"><label class="ck"><input type="checkbox" id="nNew" checked/> new hits</label><label class="ck"><input type="checkbox" id="nPrice" checked/> price drops</label></div></form><div id="wlist"></div><div id="nstat"></div></div>`;const wf=$('wform');if(wf)wf.addEventListener('submit',e=>{e.preventDefault();mkWatch()});paintChecks();refreshWatches();
+$('pageview').innerHTML=ptitle('Watches','auto re-polled · survive restarts · notify on new hits & drops')+`<div class="panel"><form id="wform"><label class="fld"><span>watch query</span><input id="wq" class="inp" placeholder="e.g. ThinkPad X1 under &euro;800"/></label><div class="fgrid4" style="margin-top:.5rem"><label class="fld"><span>max &euro;</span><input id="wmax" class="inp" placeholder="no max" type="number"/></label><label class="fld"><span>drop % &ge;</span><input id="nDrop" class="inp" placeholder="any" type="number" title="only notify drops of at least this %"/></label><label class="fld"><span>risk &le; %</span><input id="nRisk" class="inp" placeholder="any" type="number" title="only notify new matches below this risk %"/></label>
+<label class="fld"><span>re-check every (min)</span><input id="wIntMin" class="inp" type="number" value="30" min="1" title="Poll interval in minutes"/></label><label class="fld"><span>&nbsp;</span><button type="submit" class="btn btn-primary">+ Watch (5 min)</button></label></div><div class="row mt-2"><label class="ck"><input type="checkbox" id="nNew" checked/> new hits</label><label class="ck"><input type="checkbox" id="nPrice" checked/> price drops</label><label class="ck"><input type="checkbox" id="nDesc"/> desc changes</label><label class="ck"><input type="checkbox" id="nImg"/> image changes</label><small id="wDurHint" style="opacity:.6"></small></div></form><div id="wlist"></div><div id="nstat"></div></div>`;const wf=$('wform');if(wf)wf.addEventListener('submit',e=>{e.preventDefault();mkWatch()});paintChecks();if(LASTDUR>0){const el=$('wIntMin');if(el)el.value=Math.max(30,Math.ceil(LASTDUR/60));const dh=$('wDurHint');if(dh)dh.textContent=`last search took ${LASTDUR}s`}refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){const m=await(await fetch('/metrics.json')).json();$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
 async function mkWatch(){const sel=[...SRCS];
+if(LASTDUR>0){const el=$('wIntMin');if(el&&(+el.value*60<LASTDUR)){el.value=Math.max(1,Math.ceil(LASTDUR/60));toast(`interval raised to last search duration (${LASTDUR}s)`)}}
+const mins=Math.max(1,+$('wIntMin')?.value||30);
 const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
+if($('nDesc')?.checked)no.push('desc_change');if($('nImg')?.checked)no.push('image_change');
 const rules=[];const dp=+$('nDrop')?.value||0,rk=+$('nRisk')?.value||0;
 if($('nPrice')?.checked&&dp>0)rules.push({kind:'price_drop',min_drop_pct:dp});
 if($('nNew')?.checked&&rk>0)rules.push({kind:'new_match',max_risk:rk/100});
-const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:300,notify_on:no,notify_rules:rules};
+const body={keywords:$('wq').value||$('q').value,sources:sel,hard:$('wmax').value?{max_price:+$('wmax').value}:{},...intent(),watch:true,poll_interval_s:mins*60,notify_on:no,notify_rules:rules};
 const r=await(await fetch('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}
 async function showStore(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await(await fetch('/marketplace')).json();
-const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>':`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
+const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.source&&x.source!=='builtin'?` <button class="btn btn-ghost" data-act="uninstallX" data-kind="${kind}" data-arg="${esc(x.id)}">uninstall</button>`:''):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
 $('pageview').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
+async function uninstallX(kind,id){if(!confirm('uninstall '+id+'?'))return;const r=await(await fetch('/marketplace/'+encodeURIComponent(id),{method:'DELETE'})).json();toast(r.ok?'✓ uninstalled '+id:'✗ '+(r.error||'failed'));showStore()}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');const r=await(await fetch('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}
 async function showHistory(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading…</div>';
 try{const r=await(await fetch('/searches')).json();
@@ -203,14 +237,15 @@ const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading=
 const jb=s.job||null;
 const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':'<span class="jobpill">done</span>'):'';
 const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
-return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button></div></div>'};
+return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+s.sources.map(esc).join('+')+' · '+esc(s.results)+' results</small>'+bar+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button><button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button></div></div>'};
 const tiles=(r.searches||[]).map(tile).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},5000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
-async function openSearch(id){const r=await(await fetch('/searches/'+id)).json();
+async function openSearch(id){const r=await(await fetch('/searches/'+id)).json();if(r.intent)applyIntent(r.intent);
 if(r.status==='running'){toast('still running…');return}LAST=r.results||[];SID=id;PAGE=0;render();tab('search')}
 async function redoSearch(id){const r=await(await fetch('/searches/'+id+'/redo',{method:'POST'})).json();toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()})}
 async function delSearch(id){await fetch('/searches/'+id,{method:'DELETE'});showHistory()}
+async function watchTile(id){const r=await(await fetch('/searches/'+id+'/watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json();toast(r.id?`watching every 30 min: ${id}`:`watch failed: ${r.error||'?'}`);showHistory()}
 async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CMP.size>=2){showPage(false);return cmpSel()}if(!SID){showPage(false);$('pageview').innerHTML=ptitle('Compare','run a search first, then tick 2+ listings');return}showPage(false);status('Comparing…');
 const r=await(await fetch('/searches/'+SID+'/compare')).json();
 $('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
@@ -232,16 +267,32 @@ $('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" data-act="c
 <h4>Risk evidence</h4><small>${(s.risk.reasons||[]).map(esc).join('<br/>')||'none'}${(s.risk.counter_evidence||[]).length?'<br/>counter: '+s.risk.counter_evidence.map(esc).join(', '):''}</small>`;
 $('drawer').classList.add('open');window._ci=0;window._lid=l.id;loadHist(l.id)}
 function cgo(d){if(!CAR.length)return;window._ci=(window._ci+d+CAR.length)%CAR.length;$('carimg').src=safeUrl(CAR[window._ci])||'';$('carcnt').textContent=(window._ci+1)+'/'+CAR.length}
+function viewSnap(id,ts){ts=+ts;const s=(LAST||[]).find(x=>x.listing.id===id);const base=s?s.listing:FAVMAP[id];
+if(!base)return toast('snapshot unavailable');
+fetch('/listings/'+encodeURIComponent(id)+'/history').then(r=>r.json()).then(h=>{
+const snap={title:base.title,price:base.price,currency:base.currency||'',description:base.description||'',images:base.images||[]};
+const seen={};
+[...(h.history||[])].sort((a,b)=>b.ts-a.ts).forEach(o=>{if(o.ts<=ts&&!seen[o.kind]){seen[o.kind]=1;
+if(o.kind==='price')snap.price=isNaN(+o.new)?o.new:+o.new;
+else if(o.kind==='title')snap.title=o.new;else if(o.kind==='description')snap.description=o.new;
+else if(o.kind==='images'){try{const im=JSON.parse(o.new);if(Array.isArray(im))snap.images=im}catch(e){}}}});
+const u=safeUrl(base.url);
+$('sheet').innerHTML=`<div class="panel" style="border-color:var(--acc)"><div class="eyebrow">snapshot · ${new Date(ts*1000).toLocaleString()} · read-only</div>`
++`<div class="row"><button class="btn btn-ghost" data-act="closeD">← back to live</button>${u?`<a href="${u}" target="_blank" rel="noopener"><button class="btn btn-primary">open original ↗</button></a>`:''}</div>`
++`<h3>${esc(snap.title)||'(no title)'}</h3><div><span class="price">${esc(snap.price??'?')} ${esc(snap.currency)}</span></div>`
++(snap.images[0]?`<div class="car" style="margin:10px 0"><img src="${safeUrl(snap.images[0])}"/></div>`:'')
++`<p style="white-space:pre-wrap;font-size:14px">${esc((snap.description||'no description').slice(0,3000))}</p>`;
+window.scrollTo(0,0)}).catch(e=>toast('snapshot failed'))}
 async function setCpu(){const v=$('cpuin').value.trim();if(!v)return;const s=LAST.find(x=>x.listing.id===window._lid);if(!s)return toast('re-run search first');
 await fetch('/listings/'+encodeURIComponent(s.listing.id)+'/facts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({field:'cpu',value:v})});toast('CPU set — re-running search to AI-check it');run()}
-async function loadHist(id){try{const h=await(await fetch('/listings/'+encodeURIComponent(id)+'/history')).json();$('vhist').innerHTML=(h.history||[]).map(x=>'<div class="hist"><b>'+esc(x.kind)+'</b> · '+new Date(x.ts*1000).toLocaleString()+'<br/><small>'+esc((x.old||'').slice(0,120))+' → '+esc((x.new||'').slice(0,120))+'</small></div>').join('')||'<small>no changes tracked yet</small>'}catch(e){$('vhist').innerHTML='<small>history unavailable</small>'}}
+async function loadHist(id){try{const h=await(await fetch('/listings/'+encodeURIComponent(id)+'/history')).json();$('vhist').innerHTML=(h.history||[]).map(x=>'<div class="hist"><b>'+esc(x.kind)+'</b> · '+new Date(x.ts*1000).toLocaleString()+' <button class="btn btn-ghost" data-snap="'+esc(id)+'|'+x.ts+'">view</button><br/><small>'+esc((x.old||'').slice(0,120))+' → '+esc((x.new||'').slice(0,120))+'</small></div>').join('')||'<small>no changes tracked yet</small>'}catch(e){$('vhist').innerHTML='<small>history unavailable</small>'}}
 function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
 async function init(){try{const d=await(await fetch('/drivers')).json();
 d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});
 $('sources').innerHTML='<div class="pills">'+d.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" ${ok?'':''} data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}catch(e){}
-drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();authKick();
+drawHist();loadFavs();setView(VIEW);paintChecks();paintDeck();loadFilters();authKick();
 const bind=(id,fn)=>{const f=$(id);if(f)f.addEventListener('submit',e=>{e.preventDefault();fn()})};
 bind('nlform',runNL);bind('qform',run);bind('refineform',()=>render());
 for(const id of ['rRisk','rScore']) {const el=$(id);if(el)el.addEventListener('input',()=>{paintDeck();FRISK=+$('rRisk').value;FSCORE=+$('rScore').value;PAGE=0;render()})}

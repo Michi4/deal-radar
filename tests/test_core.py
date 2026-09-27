@@ -529,3 +529,33 @@ def test_simple_login_flow():
     finally:
         del os.environ["LOGIN_PASSWORD"]
         importlib.reload(m)
+
+
+def test_watch_clone_and_change_triggers():
+    import asyncio
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    assert c.post("/searches/nope/watch", json={}).status_code == 404
+    # change-trigger fan-out calls notifier only for opted-in kinds
+    sent = []
+
+    class FakeN:
+        async def send(self, *a, **k):
+            sent.append(a)
+
+    old = m.notifier
+    m.notifier = FakeN()
+    try:
+        intent = {"keywords": "t", "notify_on": ["desc_change"], "notify_rules": []}
+        merged = {"events": [
+            {"kind": "description", "listing_id": "x", "url": "https://t/x",
+             "title": "ThinkPad", "old": "a", "new": "b"},
+            {"kind": "images", "listing_id": "x", "url": "https://t/x",
+             "title": "ThinkPad", "old": "1", "new": "2"}]}
+        asyncio.run(m._notify_watch_changes(intent, merged))
+        assert len(sent) == 1 and sent[0][0].startswith("desc_change")
+    finally:
+        m.notifier = old

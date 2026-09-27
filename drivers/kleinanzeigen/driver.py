@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import ClassVar
 
 from deal_radar.contracts import CanonicalListing, Seller
 from deal_radar.driver_sdk import DriverManifest, MarketplaceDriver, SearchQuery
@@ -150,9 +151,17 @@ class KleinanzeigenDriver(MarketplaceDriver):
         r.raise_for_status()
         return parse_cards(r.text, 100), next_page_url(r.text)
 
+    # verified category slugs (live 2026-09-27): browse whole categories, no keywords needed
+    CATEGORIES: ClassVar[dict] = {"laptops": "s-notebooks", "phones": "s-handys",
+                                  "cars": "s-autos", "furniture": "s-moebel-wohnen"}
+
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
         import asyncio as _aio
-        url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
+        cat = (query.category or "").strip().lower()
+        if cat and not (query.keywords or "").strip() and cat in self.CATEGORIES:
+            url = f"https://www.kleinanzeigen.de/{self.CATEGORIES[cat]}/k0"
+        else:
+            url = f"https://www.kleinanzeigen.de/s-{slugify(query.keywords)}/k0"
         items: list[dict] = []
         seen_urls: set[str] = set()
         for _page in range(query.max_pages or 40):  # until no next-page link; sequential + polite, never concurrent from one IP
