@@ -23,10 +23,17 @@ print('HTML balance OK')
 "
 echo "== no-emoji gate =="
 if grep -rPn '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' web/index.html web/app.js web/admin.html web/admin.js 2>/dev/null > /tmp/opencode/emoji_hits.txt; then head -n 5 /tmp/opencode/emoji_hits.txt; echo "FAIL: emoji/pictographs in web/"; exit 1; else echo "no-emoji OK"; fi
+if grep -rPn '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' web-v2/src web-v2/index.html 2>/dev/null > /tmp/opencode/emoji_hits2.txt; then head -n 5 /tmp/opencode/emoji_hits2.txt; echo "FAIL: emoji/pictographs in web-v2/"; exit 1; else echo "no-emoji v2 OK"; fi
 if command -v node >/dev/null 2>&1; then
   node --check web/app.js && node --check web/admin.js && echo "JS OK"
 else
   echo "SKIP: node missing (E2E covers this in CI)"
+fi
+echo "== web-v2 build/typecheck =="
+if [ -d web-v2/node_modules ]; then
+  (cd web-v2 && (npm run build > /tmp/opencode/v2build.log 2>&1 || (tail -n 20 /tmp/opencode/v2build.log; exit 1))) && echo "v2 OK"
+else
+  echo "SKIP: web-v2 deps not installed (npm install in web-v2)"
 fi
 echo "== compile all =="
 .venv/bin/python -m compileall -q packages drivers apps/api

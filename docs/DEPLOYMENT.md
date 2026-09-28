@@ -17,14 +17,19 @@ cd ~/docker/deal-radar/app && git pull && cd .. && docker compose up -d --build
 - Off-host copy: AI host `~/bin/pull_dealradar_backup.sh` (cron 04:05) pulls newest nightly
   over WG to `~/backups/dealradar/<date>/`, 14-day retention. Restore drill 2026-09-28:
   copied to /tmp, `integrity_check=ok`, tables readable (2 searches/60 results/19 jobs), cleaned.
-- Server `.env` (never git): EBAY_OAUTH_TOKEN(empty), CLOUD_API_KEY=openrouter, KEV_URL=http://10.9.9.1:8001/..., LOCAL_API_URL=http://192.0.2.172:11434/v1, SIGNAL_* (account unlinked), LAB_ENABLED=1, API_KEY unset (relies on Authelia).
+- Server `.env` (never git): EBAY_OAUTH_TOKEN(empty), CLOUD_API_URL=https://tokenharbor.ai/v1,
+  CLOUD_API_KEY=(temp TokenHarbor key, prod .env only), CLOUD_MODELS=qwen+mimo+deepseek free flashes,
+  KEV_URL=http://10.9.9.1:8001/..., LOCAL_API_URL=http://192.0.2.172:11434/v1, SIGNAL_* (account unlinked), LAB_ENABLED=1, API_KEY unset (relies on Authelia).
 
-## AI backends (order: local → OpenRouter-free → heuristics)
+## AI backends (order: local → TokenHarbor cloud free → heuristics)
+- TokenHarbor (OpenAI-compatible) is the cloud backend since 2026-09-28: qwen3.8-flash primary
+  (clean JSON, frugal), mimo-v2.6-flash fallback (fenced JSON), deepseek-v4.1-flash last
+  (reasoning-bloated, empty content — verified live). See DECISIONS.md for the shootout.
 - AI host Kev: `systemctl --user status kev` (must have `loginctl enable-linger ubuntu`).
 - AI host Ollama: STOPPED/DISABLED on purpose (co-hosting thrashed 2 vCPUs — see DECISIONS.md).
 - Laptop Ollama: systemd `ollama` service with `OLLAMA_HOST=0.0.0.0:11434` override.
 
 ## What degrades without what
-- No laptop on LAN: NL falls back to OpenRouter-free (congested evenings) → keyword fallback; vision checks skip fast (breaker).
+- No laptop on LAN: NL falls back to TokenHarbor-free (congested evenings) → keyword fallback; vision checks skip fast (breaker).
 - No AI host: Stage B skipped (heuristics stand).
-- No OpenRouter key: same as above, fully offline-capable.
+- No cloud key: same as above, fully offline-capable.

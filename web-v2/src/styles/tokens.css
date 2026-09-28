@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Design tokens: single emerald accent, 4/8 spacing, type scale (min 12px body) */
+  --acc: #10b981;
+  --acc-d: #047857;
+  --acc-soft: #d1fae5;
+  --bg: #ffffff;
+  --bg2: #f8fafc;
+  --card: #ffffff;
+  --line: #e2e8f0;
+  --ink: #0f172a;
+  --mut: #64748b;
+  --fs-xs: 0.75rem;   /* 12px floor */
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.2rem;
+  --fs-xl: 1.4rem;
+  --tap: 44px;        /* min tap target */
+}
+.dark {
+  --bg: #020617;
+  --bg2: #0b1220;
+  --card: #0f172a;
+  --line: #1e293b;
+  --ink: #e2e8f0;
+  --mut: #94a3b8;
+  --acc-soft: #064e3b;
+}
+html { font-size: 16px; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+small { font-size: var(--fs-xs); max-width: 100%; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  min-height: var(--tap); padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem; font-size: var(--fs-sm); font-weight: 600;
+  border: 1px solid transparent; cursor: pointer;
+  background: var(--bg2); color: var(--ink); border-color: var(--line);
+}
+.btn-primary { background: var(--acc); border-color: var(--acc); color: #fff; }
+.btn-ghost { background: transparent; }
+.btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid var(--acc); outline-offset: 2px;
+}
+.inp {
+  min-height: var(--tap); border-radius: 0.625rem; padding: 0.625rem 0.75rem;
+  font-size: var(--fs-sm); border: 2px solid var(--line);
+  background: var(--card); color: var(--ink); width: 100%;
+}
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 0.75rem; overflow: hidden;
+}
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1rem; }
+.eyebrow { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.5rem; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: var(--fs-xs); font-weight: 700; }
+.lane { font-size: var(--fs-xs); opacity: 0.65; }
+.price { font-weight: 800; font-size: 1.05rem; color: var(--acc-d); }
+.dark .price { color: var(--acc); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

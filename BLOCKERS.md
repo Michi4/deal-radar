@@ -1,5 +1,10 @@
 # BLOCKERS.md — external items this agent cannot clear alone. Everything else keeps moving.
 
+- [ ] TokenHarbor key is TEMPORARY (user-supplied 2026-09-28): lives in prod
+  `~/docker/deal-radar/.env` (app host) + chat history only — never in repo/docs.
+  Needed: permanent key → replace CLOUD_API_KEY in prod .env, then revoke the temp one.
+  Key rotation hygiene: `grep -r REDACTED_` must stay empty across the repo (CI-greppable).
+
 - [ ] eBay live proof: client-credentials mint implemented + unit-tested (mocked token + search),
   App ID/Cert ID fields in Secrets UI, but no real eBay developer credentials to mint against.
   Needed: EBAY_APP_ID + EBAY_CERT_ID (developer.ebay.com self-serve) pasted in Admin -> Secrets,

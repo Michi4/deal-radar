@@ -427,6 +427,19 @@ for _sid, _intent in store.load_searches().items():
 static_dir = Path(__file__).resolve().parents[2] / "web"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+v2_dir = Path(__file__).resolve().parents[2] / "web-v2" / "dist"
+if (v2_dir / "assets").exists():
+    app.mount("/v2assets", StaticFiles(directory=str(v2_dir)), name="v2assets")
+
+
+@app.get("/v2", response_class=HTMLResponse)
+@app.get("/v2/{path:path}", response_class=HTMLResponse)
+def v2_spa(path: str = ""):
+    """Vue rebuild preview (same backend, same auth). Cutover to / when journeys pass."""
+    idx = Path(__file__).resolve().parents[2] / "web-v2" / "dist" / "index.html"
+    if not idx.exists():
+        return HTMLResponse("<h1>v2 not built yet (npm run build in web-v2)</h1>", status_code=503)
+    return HTMLResponse(idx.read_text(), headers={"Cache-Control": "no-store"})
 
 
 class SearchIntent(BaseModel):

@@ -42,6 +42,20 @@ generic mix, verticals need per-shape parsers, robots.txt expressly forbids auto
 incl. /webapi/), willhaben categories stay keyword-only until a tolerated path exists
 (official API or explicit permission). kleinanzeigen remains the reference implementation.
 
+## 2026-09-28 (cloud AI → TokenHarbor, model shootout)
+User supplied a temp TokenHarbor key (OpenAI-compatible) and asked for cloud-first with
+the best-fitting model. Live shootout 2026-09-28, same USB-C/iPhone JSON task:
+- qwen3.8-flash:free — bare valid JSON (15→16e), ~100 tokens. PRIMARY.
+- mimo-v2.6-flash:free — correct JSON in ```json fence (pipeline strips fences), 145 tokens. FALLBACK 1.
+- deepseek-v4.1-flash:free — reasoning-bloated (1536 tokens), EMPTY content even at
+  max_tokens=600, finish=length. LAST resort only.
+Order: CLOUD_MODELS=qwen,mimo,deepseek. App already speaks /chat/completions with
+response_format json_object + fence/reasoning fallbacks — no code change needed.
+Prod .env switched (URL+models+key) + container restarted; NL parse verified
+in-container (USB-C → iPhone 15/15+/Pro/Pro Max). Local dev: per-session env
+(~/.config/deal-radar/tokenharbor.env holds URL+models; temp key NOT persisted —
+rotate to a permanent key on TokenHarbor, then store it in prod .env only).
+
 ## 2026-09-28 (Lab sandbox — execution isolated, import stays gated)
 Generated enricher code now fires in `deal_radar.lab_sandbox.run_in_sandbox` BEFORE any
 in-process import: subprocess with secret-scrubbed env, RLIMIT_CPU/AS, socket egress
