@@ -833,7 +833,8 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             JOBS[sid]["done"] = i
             JOBS[sid]["detail"] = f"sub-search {i + 1}/{len(intents)}: {str(data.get('keywords', ''))[:60]}"
             try:
-                store.job_upsert(sid, "running", i, len(intents))
+                store.job_upsert(sid, "running", i, len(intents),
+                                 summary="", detail=JOBS[sid]["detail"])
             except Exception:
                 pass
             data["_sid"] = sid

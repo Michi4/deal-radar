@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS observations(id INTEGER PRIMARY KEY AUTOINCREMENT, li
 CREATE TABLE IF NOT EXISTS favorites(listing_id TEXT PRIMARY KEY, ts REAL, note TEXT);
 CREATE TABLE IF NOT EXISTS searches(id TEXT PRIMARY KEY, ts REAL, intent TEXT);
 CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, ts REAL, status TEXT, done INTEGER,
-  total INTEGER, intent TEXT, summary TEXT);
+  total INTEGER, intent TEXT, summary TEXT, detail TEXT DEFAULT "");
 CREATE TABLE IF NOT EXISTS geocache(place TEXT PRIMARY KEY, lat REAL, lon REAL, ts REAL);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_id TEXT, title TEXT,
@@ -47,11 +47,12 @@ class Store:
         self.db.execute("PRAGMA wal_autocheckpoint=1000")
         with self._lock:
             self.db.executescript(SCHEMA)
-            for ddl in ("ALTER TABLE searches ADD COLUMN total INTEGER DEFAULT 0",
-                        "ALTER TABLE searches ADD COLUMN snapshot BLOB",
-                        "ALTER TABLE searches ADD COLUMN filtered_out INTEGER DEFAULT 0"):
+            for _ddl in ("ALTER TABLE searches ADD COLUMN total INTEGER DEFAULT 0",
+                         "ALTER TABLE searches ADD COLUMN filtered_out INTEGER DEFAULT 0",
+                         "ALTER TABLE searches ADD COLUMN snapshot BLOB",
+                         "ALTER TABLE jobs ADD COLUMN detail TEXT DEFAULT \"\""):
                 try:
-                    self.db.execute(ddl)
+                    self.db.execute(_ddl)
                 except Exception:
                     pass
 
@@ -197,15 +198,23 @@ class Store:
             self.db.commit()
 
     def job_upsert(self, sid: str, status: str, done: int, total: int,
-                   intent: dict | None = None, summary: str = "") -> None:
+                   intent: dict | None = None, summary: str = "", detail: str = "") -> None:
         import time as _t
         with self._lock:
-            if intent is None:
-                self.db.execute("UPDATE jobs SET status=?, done=?, total=?, summary=? WHERE id=?",
-                                (status, done, total, summary, sid))
-            else:
-                self.db.execute("INSERT OR REPLACE INTO jobs VALUES(?,?,?,?,?,?,?)",
-                                (sid, _t.time(), status, done, total, json.dumps(intent), summary))
+            try:
+                if intent is None:
+                    self.db.execute("UPDATE jobs SET status=?, done=?, total=?, summary=?, detail=? WHERE id=?",
+                                    (status, done, total, summary, detail, sid))
+                else:
+                    self.db.execute("INSERT OR REPLACE INTO jobs VALUES(?,?,?,?,?,?,?,?)",
+                                    (sid, _t.time(), status, done, total, json.dumps(intent), summary, detail))
+            except Exception:
+                if intent is None:
+                    self.db.execute("UPDATE jobs SET status=?, done=?, total=?, summary=? WHERE id=?",
+                                    (status, done, total, summary, sid))
+                else:
+                    self.db.execute("INSERT OR REPLACE INTO jobs(id, ts, status, done, total, intent, summary) VALUES(?,?,?,?,?,?,?)",
+                                    (sid, _t.time(), status, done, total, json.dumps(intent), summary))
             self.db.commit()
 
     def reset_all_data(self) -> dict:
@@ -233,10 +242,18 @@ class Store:
     def list_searches(self) -> list[dict]:
         out = []
         try:
-            rows = self.db.execute(
-                "SELECT s.id, s.ts, s.intent, COALESCE(s.total, 0), COALESCE(s.filtered_out, 0), "
-                "j.status, j.done, j.total FROM searches s LEFT JOIN jobs j ON j.id=s.id "
-                "ORDER BY s.ts DESC LIMIT 60").fetchall()
+            try:
+                rows = self.db.execute(
+                    "SELECT s.id, s.ts, s.intent, COALESCE(s.total, 0), COALESCE(s.filtered_out, 0), "
+                    "j.status, j.done, j.total, j.detail FROM searches s LEFT JOIN jobs j ON j.id=s.id "
+                    "ORDER BY s.ts DESC LIMIT 60").fetchall()
+                rows = [r if len(r) == 9 else (*r[:7], None) for r in rows]
+            except Exception:
+                rows = self.db.execute(
+                    "SELECT s.id, s.ts, s.intent, COALESCE(s.total, 0), COALESCE(s.filtered_out, 0), "
+                    "j.status, j.done, j.total FROM searches s LEFT JOIN jobs j ON j.id=s.id "
+                    "ORDER BY s.ts DESC LIMIT 60").fetchall()
+                rows = [(*r, None) for r in rows]
             sids = [r[0] for r in rows]
             counts: dict[str, int] = {}
             thumbs: dict[str, list] = {}
@@ -251,7 +268,7 @@ class Store:
                         f"AND image IS NOT NULL ORDER BY search_id, rank", sids).fetchall():
                     if len(thumbs.setdefault(sid, [])) < 4:
                         thumbs[sid].append(img)
-            for sid, ts, intent, total, fout, st, dn, tt in rows:
+            for sid, ts, intent, total, fout, st, dn, tt, det in rows:
                 try:
                     import json as _j
                     intent = _j.loads(intent)
@@ -261,7 +278,7 @@ class Store:
                             "watch": bool(intent.get("watch")), "sources": intent.get("sources") or [],
                             "results": total or counts.get(sid, 0), "filtered_out": fout or 0, "thumbs": thumbs.get(sid, []),
                             "job": {"status": st or "done", "done": dn or 0,
-                                    "total": tt or 0} if st else None})
+                                    "total": tt or 0, "detail": det or ""} if st else None})
         except Exception:
             pass
         return out

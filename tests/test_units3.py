@@ -1259,3 +1259,79 @@ def test_notifiers_send_and_from_env(monkeypatch):
     assert len(posted) == 4
     multi = N.notifier_from_env({"NOTIFIERS_JSON": '[{"type": "log"}]', "SIGNAL_NUMBER": "x"})
     assert asyncio.run(multi.send("t", "b")) is True
+
+
+def test_job_detail_roundtrip():
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "jobdet.db"))
+    st.job_upsert("sj", "running", 2, 5, {"keywords": "t"}, detail="sub-search 3/5: foo")
+    st.save_search("sj", {"keywords": "t", "sources": ["t"]}, total=0)
+    rows = st.list_searches()
+    assert rows[0]["job"]["detail"] == "sub-search 3/5: foo"
+    assert rows[0]["job"]["done"] == 2
+    st.close()
+
+
+def test_cpu_gpu_extract_and_benchmark_parsers():
+    from deal_radar.benchmarks import (
+        closest_known_cpu,
+        parse_gpu_list,
+        parse_passmark_detail,
+    )
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.scoring import enrich_cpu, enrich_gpu, extract_cpu, extract_gpu
+
+    cpu, conf, _src = extract_cpu("ThinkPad with Ryzen 5 PRO 5650U notebook")
+    assert cpu and "ryzen" in cpu and conf > 0
+    assert extract_cpu("plain wooden chair")[0] is None
+    gpu, _gconf, _ = extract_gpu("laptop with GeForce RTX 4060 graphics")
+    assert gpu and "4060" in gpu
+    mk = lambda t: CanonicalListing(id="x", source="t", native_id="x", url="u", title=t,
+                                    description="d", price=100, images=[], seller=Seller(name="s"))
+    assert any(e.field == "cpu" for e in enrich_cpu(mk("Ryzen 5 PRO 5650U inside")))
+    assert enrich_gpu(mk("RTX 4060 inside")) != []
+    assert parse_passmark_detail("<html>no numbers here</html>") == (None, None)
+    assert parse_gpu_list("<html></html>") == {}
+    alt, score = closest_known_cpu("definitely not a real cpu xyz 123")
+    assert alt is None or isinstance(score, float)
+
+
+def test_real_ocr_reads_generated_image():
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    from deal_radar import vision as V
+    img = Image.new("RGB", (600, 120), "white")
+    d = ImageDraw.Draw(img)
+    d.text((20, 30), "ThinkPad T14 Garantie 2026", fill="black")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    text = V.ocr_bytes(buf.getvalue())
+    assert "ThinkPad" in text and "Garantie" in text, text
+    assert V.ocr_bytes(b"") == ""
+    assert V.ocr_bytes(b"not-an-image") == ""
+
+
+def test_imgdup_hash_and_hamming():
+    from io import BytesIO
+
+    from PIL import Image
+
+    from deal_radar import imgdup as I
+    a = Image.new("RGB", (64, 64), "white")
+    b = Image.new("RGB", (64, 64), "white")
+    from PIL import ImageDraw as _D
+    _D.Draw(b).rectangle([0, 0, 31, 63], fill="black")
+    ba, bb = BytesIO(), BytesIO()
+    a.save(ba, format="PNG")
+    b.save(bb, format="PNG")
+    ha, hb = I.ahash(ba.getvalue()), I.ahash(bb.getvalue())
+    assert ha is not None and hb is not None and ha != hb
+    assert I.hamming(ha, ha) == 0
+    assert I.hamming(ha, hb) > 0
+    assert I.ahash(b"junk") is None
+    assert I.image_hash("https://127.0.0.1:9/none.png") is None
