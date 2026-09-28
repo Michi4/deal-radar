@@ -1,5 +1,18 @@
 # BLOCKERS.md — external items this agent cannot clear alone. Everything else keeps moving.
 
+- [ ] eBay live proof: client-credentials mint implemented + unit-tested (mocked token + search),
+  App ID/Cert ID fields in Secrets UI, but no real eBay developer credentials to mint against.
+  Needed: EBAY_APP_ID + EBAY_CERT_ID (developer.ebay.com self-serve) pasted in Admin -> Secrets,
+  then run live search once. (Old EBAY_OAUTH_TOKEN path kept as explicit override.)
+- [ ] Shpock deep pagination (2026-09-28, 4 polite attempts, first-page SSR ~60 stands):
+  (1) ?page=2/&offset=40/&o=40 all return page 1 (same itemSearch key, ~60 summaries);
+  (2) results page chunk has no query doc; (3) 3 shared data chunks hold only the Apollo
+  client lib; (4) build-manifest maps the results page to ~29 chunks — too many to pull
+  politely. The itemSearch persisted-query hash + variable shape (pagination/od cursor)
+  remain unknown. Needed: the persisted hash (from a real browser devtools capture by Michi:
+  Network -> graphql -> extensions.persistedQuery.sha256Hash + variables) or official API
+  access. Fallback active: first page + honest per-search status. Idea logged: price-band
+  slicing per FINISH cap-workaround rule.
 - [x] AUTH (audit HIGH, 2026-09-27): simple password login shipped (`LOGIN_PASSWORD`,
   HttpOnly SameSite session cookie 30d, /login page + JSON, 5/min brute-force bucket,
   extendable to users/OTP later). Enabled on prod 2026-09-27 (password in server .env,
@@ -7,10 +20,9 @@
 - [ ] spare host (203.0.113.88) unreachable: `ubuntu` + `root` key auth both denied, no password known.
   Tried 2026-09-25 (ssh BatchMode). Needed: working user/key to use it for Kev/Ollama offload.
   Fallback active: AI host (11GB RAM) hosts Kev-0.8B + Ollama; laptop keeps dev copies.
-- [ ] eBay driver: no `EBAY_OAUTH_TOKEN`. Driver implemented, reports clean error, excluded from default searches.
-  Needed: eBay developer Browse API credentials to enable.
-  (No-token scraping REFUSED on purpose: eBay serves decoy template cards to bots — verified
-  2026-09-25 with TLS impersonation + cookies. Free self-serve token: developer.ebay.com.)
+- [x] eBay driver auth: client-credentials mint shipped 2026-09-28 (App ID + Cert ID in
+  Secrets UI, auto token mint/cache/refresh, unit-tested; explicit EBAY_OAUTH_TOKEN kept as
+  override; keyless scraping still refused — decoy cards). Live proof pending creds (see top).
 - [ ] External enrichment sources bot-walled (probed 2026-09-25, single gentle requests each):
   videocardbenchmark 403/404, geekbench 403, gsmarena search Cloudflare-Turnstile, geizhals JS app-shell,
   heureka 403. Working: PassMark CPU detail pages. Needed: official APIs/keys or tolerated source.

@@ -65,10 +65,11 @@ class ShpockDriver(MarketplaceDriver):
                               regions=["at", "de"], capabilities=["search", "images", "shipping"],
                               access_mode="public_web", automation_permission="unknown", rate_limit_rpm=20)
 
-    # NOTE (2026-09-27): first SSR page only (~60 items). Deep pagination lives behind
-    # POST /graphql itemSearch (persisted queries) — URL params (offset/page/o) verified
-    # to return page 1. Captured via real-browser scroll; only telemetry ops observed.
-    # TODO: map the persisted itemSearch query for true exhaustion.
+    # NOTE (2026-09-28): first SSR page only (~60 items). Deep pagination lives behind
+    # POST /graphql itemSearch (persisted queries) — 4 polite attempts logged in BLOCKERS.md
+    # (?page/offset/o params return page 1; hash not in results/shared chunks; ~29 candidate
+    # chunks too many to pull). Paste the sha256Hash+variables from a real browser devtools
+    # capture to unlock exhaustion. Until then: first page + honest status.
     async def search(self, query: SearchQuery) -> list[CanonicalListing]:
         url = f"https://www.shpock.com/de/search?q={quote_plus(query.keywords)}"
         r = await self.transport.get(url, headers=HEADERS)
