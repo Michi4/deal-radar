@@ -1,6 +1,11 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- PROXY FAILOVER PROVEN: tiny CONNECT relay on AI host (WG-only) + local tunnel;
+  kleinanzeigen search returned 5 results through it (targets logged server-side),
+  dead-first RotatingProxyTransport failed over cleanly. Encoded as live tests
+  (skip without tunnel). Transport kind now in `/drivers` (no secrets). Relay killed
+  after the drill. Deployed.
 - FULL GATE GREEN vs production: `./scripts/journeys.sh` exit 0 (layout audit 224 PASS
   across 7 pages x 4 viewports x 2 themes + smoke 10/10 fresh-profile).
 - LAB SANDBOX SHIPPED: generated enrichers fire in a locked-down subprocess (scrubbed env,
