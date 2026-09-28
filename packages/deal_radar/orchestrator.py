@@ -45,7 +45,14 @@ from deal_radar.cancel import pause_gate as _pause_gate
 
 
 async def run_search(intent: dict[str, Any], registry: DriverRegistry,
-                     store=None, notifier=None) -> dict[str, Any]:
+                     store=None, notifier=None, progress=None) -> dict[str, Any]:
+    """progress(kind, payload): optional sync callback for live partials.
+
+    kinds: "fetched" {driver_fetched, driver_errors, n} after driver fan-out;
+    "scored" {results[:200], n} after cheap scoring, before slow enrichment
+    (stage B / details / vision / benchmarks). UI renders these in seconds
+    while costly passes grind on.
+    """
     t0 = time.time()
     sources: list[str] = intent.get("sources", registry.ids())
     _lim = intent.get("limit", None)
@@ -86,6 +93,13 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     all_listings = [l for _, ls, _ in results for l in ls]
     driver_errors = {src: e for src, _, e in results if e}
     metrics.inc("listings_fetched", len(all_listings))
+    if progress:
+        try:
+            progress("fetched", {"driver_fetched": dict(driver_fetched),
+                                 "driver_errors": dict(driver_errors),
+                                 "n": len(all_listings)})
+        except Exception:
+            pass
 
     # market median for risk/value context
     prices = sorted(l.price for l in all_listings if l.price)
@@ -416,6 +430,12 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                                 f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
+    if progress:
+        try:
+            progress("scored", {"results": [s.model_dump() for s in scored[:200]],
+                                "filtered": [], "n_results": len(scored)})
+        except Exception:
+            pass
     # Stage B concurrent pass (cap: most uncertain first; sem bounds slow-model load)
     if _stageb_queue:
         _stageb_queue.sort(key=lambda t: abs(t[1].get("match", 0.5) - 0.55))

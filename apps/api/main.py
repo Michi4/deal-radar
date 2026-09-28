@@ -217,14 +217,14 @@ def _cache_evict() -> None:
         JOBS[k].pop("partial", None)
 
 
-async def _run_cached(intent: dict, force: bool = False) -> dict:
+async def _run_cached(intent: dict, force: bool = False, progress=None) -> dict:
     key = _intent_key(intent)
     now = time.time()
     if not force and key in RESULT_CACHE and now - RESULT_CACHE[key][0] < CACHE_TTL:
         metrics.inc("cache_hits")
         return RESULT_CACHE[key][1]
     metrics.inc("cache_miss")
-    out = await run_search(intent, registry, store, notifier)
+    out = await run_search(intent, registry, store, notifier, progress=progress)
     RESULT_CACHE[key] = (now, out)
     return out
 
@@ -877,8 +877,26 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             except Exception:
                 pass
             data["_sid"] = sid
+
+            def _prog(kind, payload, _sid=sid):
+                try:
+                    if kind == "fetched":
+                        JOBS[_sid]["detail"] = (
+                            f"fetched {payload.get('n', 0)} listings "
+                            f"({', '.join(f'{k}:{v}' for k, v in (payload.get('driver_fetched') or {}).items())})"
+                            " — scoring…")
+                    elif kind == "scored":
+                        JOBS[_sid]["detail"] = (
+                            f"enriching top results ({payload.get('n_results', 0)} scored)…")
+                        JOBS[_sid]["partial"] = {
+                            "results": payload.get("results", [])[:200],
+                            "filtered": [], "n_results": payload.get("n_results", 0),
+                            "n_filtered": 0}
+                except Exception:
+                    pass
+
             try:
-                outs.append(await _run_cached(data, force=True))
+                outs.append(await _run_cached(data, force=True, progress=_prog))
             finally:
                 data.pop("_sid", None)
             # progressive partials: UI renders these while the job continues
