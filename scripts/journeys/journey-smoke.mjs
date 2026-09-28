@@ -32,7 +32,9 @@ try {
   const adv = await page.$('details:not([open]) summary');
   if (adv) await adv.click();
   const limit = await page.$('#limitN');
-  if (limit) await page.selectOption('#limitN', '10');
+  if (limit) await page.selectOption('#limitN', '50');
+  const mp = await page.$('#maxpages');
+  if (mp) await page.fill('#maxpages', '1');
   await page.click('#searchbtn');
   await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0,
     null, { timeout: 240000 });

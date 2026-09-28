@@ -33,10 +33,18 @@ for (const width of VIEWPORTS) {
     const cerr = [];
     page.on('console', (m) => { if (m.type() === 'error') cerr.push(m.text().slice(0, 140)); });
     page.on('pageerror', (e) => cerr.push('pageerror: ' + String(e).slice(0, 140)));
+    page.on('response', (r) => { if (r.status() >= 400) cerr.push(`${r.status()} ${r.url().slice(-80)}`); });
+    const goWithRetry = async (fn) => {
+      try { await fn(); } catch (e) {
+        await page.waitForTimeout(4000);
+        await fn();
+      }
+    };
     for (const pg of PAGES) {
       const tag = `${pg.name}-${width}-${theme}`;
+      cerr.length = 0;
       try {
-        await pg.go(page);
+        await goWithRetry(() => pg.go(page));
         // theme: app defaults dark unless localStorage says light; force via class
         await page.evaluate((t) => {
           document.documentElement.classList.toggle('dark', t === 'dark');
