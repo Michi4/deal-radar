@@ -508,6 +508,36 @@ def drivers(include_disabled: int = 0):
     return out
 
 
+@app.get("/drivers/{did}/categories")
+async def driver_categories(did: str, parent: str = ""):
+    """Category tree per driver for the UI chooser.
+
+    Static CATEGORIES (kleinanzeigen slugs, willhaben top-19) return instantly.
+    Willhaben sub-trees drill live into the site's own facet navigators (one polite
+    cached fetch per parent, 7d disk cache); unknown drivers 404 with a reason.
+    """
+    d = registry.get(did)
+    if d is None:
+        return JSONResponse({"error": f"driver '{did}' not installed"}, status_code=404)
+    if did == "willhaben" and parent.strip():
+        try:
+            return await d.fetch_categories(parent.strip())
+        except Exception as e:
+            return JSONResponse({"error": f"willhaben category drill failed: {e}",
+                                 "categories": []}, status_code=502)
+    cats = getattr(d, "CATEGORIES", None) or {}
+    if did == "willhaben" and not cats:
+        try:
+            return await d.fetch_categories(None)
+        except Exception as e:
+            return JSONResponse({"error": f"willhaben categories unavailable: {e}",
+                                 "categories": []}, status_code=502)
+    if not cats:
+        return JSONResponse({"error": f"driver '{did}' exposes no category tree",
+                             "categories": []}, status_code=404)
+    return {"categories": [{"label": v, "id": k} for k, v in dict(cats).items()]}
+
+
 @app.get("/metrics")
 def metrics_ep():
     return PlainTextResponse(metrics.prometheus())

@@ -1,6 +1,13 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- WILLHABEN CATEGORIES SOLVED (was the top blocker): facet navigators in __NEXT_DATA__
+  give the real tree (19 top + drill-down, ATTRIBUTE_TREE param). Backend: driver support,
+  `GET /drivers/{id}/categories`, real fixture, 5 unit + 2 live tests green. UI dropdown
+  deferred to frontend rebuild. verify.sh GREEN.
+- One flaky red seen this session: test_job_stop_pause_resume KeyError 'ok' in a full run;
+  passes in isolation (3/3) and in two subsequent full runs (131 passed) — timing flake in
+  the job-control test, not the feature. Watching.
 - Merged FINISH directive into AGENTS.md (supremacy rules); rebuilt ACCEPTANCE.md from the
   40-item register (all unchecked, evidence-required).
 - Replaced every emoji/pictograph glyph in web/ with Lucide-style inline SVG icons

@@ -62,8 +62,10 @@ def parse_next_data(html: str, limit: int = 30) -> tuple[list[dict], int | None]
                 imgs.append(u if u.startswith("http") else f"https:{u}")
         body = at.get("BODY_DYN", "") or ad.get("description", "")
         loc = at.get("LOCATION", "") or at.get("ADDRESS", "")
+        tree_ids = str(at.get("categorytreeids", "") or at.get("CATEGORYTREEIDS", ""))
         out.append({
             "id": str(ad.get("id", "")),
+            "category_tree_ids": tree_ids,
             "title": str(at.get("HEADING", ""))[:300],
             "url": url,
             "price": price,
@@ -87,6 +89,36 @@ def parse_dom_fallback(html: str, limit: int = 30) -> list[dict]:
         if len(out) >= limit:
             break
     return out
+
+
+def parse_navigators(sr: dict) -> dict:
+    """Category/facet tree the site itself embeds (navigatorGroups).
+
+    Returns {"categories": [{"label", "id", "param"}], "selected": [{"param", "value", "label"}]}.
+    Category filter param is ATTRIBUTE_TREE (numeric tree id); attribute facets use treeAttributes.
+    """
+    cats: list[dict] = []
+    selected: list[dict] = []
+    for g in (sr.get("navigatorGroups") or []):
+        for nav in (g.get("navigatorList") or []):
+            for v in (nav.get("selectedValues") or []):
+                for u in (v.get("urlParamRepresentationForValue") or []):
+                    selected.append({"param": u.get("urlParameterName"),
+                                     "value": u.get("value"), "label": v.get("label")})
+            if nav.get("id") != "category":
+                continue
+            groups = nav.get("groupedPossibleValues") or []
+            vals = list(nav.get("possibleValues") or [])
+            for gg in groups:
+                vals.extend(gg.get("possibleValues") or [])
+            for v in vals:
+                ups = v.get("urlParamRepresentationForValue") or []
+                if not ups:
+                    continue
+                cats.append({"label": str(v.get("label") or ""),
+                             "id": str(ups[0].get("value") or ""),
+                             "param": str(ups[0].get("urlParameterName") or "")})
+    return {"categories": [c for c in cats if c["id"]], "selected": selected}
 
 
 def parse_detail(html: str) -> dict:
@@ -124,6 +156,25 @@ HEADERS = {"Accept-Language": "de-AT,de;q=0.9,en;q=0.8",
            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"}
 
 
+def _cat_cache_read(path: str) -> dict:
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _cat_cache_write(path: str, cache: dict) -> None:
+    try:
+        import os as _os
+        _os.makedirs(_os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(cache, f)
+    except Exception:
+        pass
+
+
 class WillhabenDriver(MarketplaceDriver):
     manifest = DriverManifest(id="willhaben", version="0.3.0", display_name="Willhaben",
                               regions=["at"], capabilities=["search", "fetch_detail", "images", "location", "seller"],
@@ -137,18 +188,100 @@ class WillhabenDriver(MarketplaceDriver):
                              "salzburg": "5", "steiermark": "6", "tirol": "7",
                              "vorarlberg": "8", "wien": "900", "vienna": "900"}
 
-    async def search(self, query: SearchQuery) -> list[CanonicalListing]:
-        import asyncio as _aio
+    # Top-level marktplatz category tree, read live 2026-09-28 from the site's own
+    # navigatorGroups facet (ATTRIBUTE_TREE=<id>). id -> label; sub-trees via fetch_categories().
+    CATEGORIES: ClassVar[dict] = {
+        "6941": "Antiquitäten / Kunst", "3928": "Baby / Kind",
+        "3076": "Beauty / Gesundheit / Wellness", "5007823": "Boote / Yachten / Jetskis",
+        "387": "Bücher / Filme / Musik", "5824": "Computer / Software",
+        "537": "Dienstleistungen", "6462": "Freizeit / Instrumente / Kulinarik",
+        "2785": "Games / Konsolen", "3541": "Haus / Garten / Werkstatt",
+        "6808": "Kameras / TV / Multimedia", "6142": "KFZ-Zubehör / Motorradteile",
+        "3275": "Mode / Accessoires", "2691": "Smartphones / Telefonie",
+        "5136": "Spielen / Spielzeug", "4390": "Sport / Sportgeräte",
+        "4915": "Tiere / Tierbedarf", "2409": "Uhren / Schmuck",
+        "5387": "Wohnen / Haushalt / Gastronomie"}
+    # Known sub-categories (verified live 2026-09-28 by drilling ATTRIBUTE_TREE).
+    SUBCATEGORIES: ClassVar[dict] = {
+        "5825": "Adapter / Kabel", "5828": "Computer / Tablets",
+        "5836": "Drucker / Monitore / Lautsprecher", "5852": "Eingabe- / Lesegeräte",
+        "5867": "Festplatten / Speicherkarten", "5871": "Netzwerke",
+        "5878": "PC-Komponenten", "5891": "Software", "5901": "USB-Zubehör",
+        "2692": "Handyservices", "2764": "Organizer / PDAs",
+        "2722": "Smartphones / Handys", "2771": "Smartwatches", "2772": "Tablets",
+        "2765": "Telefonie / Fax", "2750": "Zubehör Handy / Telefonie"}
+    CATEGORY_CACHE_TTL_S: ClassVar[int] = 7 * 24 * 3600
+
+    @classmethod
+    def resolve_category(cls, value: str | None) -> str | None:
+        """Numeric tree id passes through; labels resolve via the known tree. None if unknown."""
+        v = (value or "").strip()
+        if not v:
+            return None
+        if v.isdigit():
+            return v
+        low = v.lower()
+        for cid, label in {**cls.CATEGORIES, **cls.SUBCATEGORIES}.items():
+            if label.lower() == low:
+                return cid
+        return None
+
+    def search_url(self, query: SearchQuery) -> str:
         base = (f"https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
                 f"?keyword={quote_plus(query.keywords)}&rows=90&sort=1")
         # NOTE: lowercase `keyword` — uppercase KEYWORD silently returns the UNFILTERED
         # marketplace (13M rows). Verified live 2026-09-26.
         if query.max_price:
             base += f"&PRICE_TO={int(query.max_price)}"
+        # category: per-driver override wins, then generic category (id or label)
+        cat = self.resolve_category((query.cat_map or {}).get("willhaben", "") or query.category)
+        if cat:
+            base += f"&ATTRIBUTE_TREE={cat}"
         # geo: Bundesland-level (?areaId=), cities/postcodes fall back to keywords
         loc = (query.location or "").strip().lower()
         if loc and loc in self.AREAS:
             base += f"&areaId={self.AREAS[loc]}"
+        return base
+
+    def category_cache_path(self) -> str:
+        import os as _os
+        return _os.path.join("data", "wh_categories.json")
+
+    async def fetch_categories(self, parent: str | None = None) -> dict:
+        """Live category (sub-)tree from the site's own navigators, disk-cached 7d.
+
+        parent=None -> top 19 (static snapshot, no fetch). parent=<tree id> -> one polite
+        fetch of a filtered search page, returns selected + sub-categories + rowsFound.
+        """
+        import json as _json
+        import time as _t
+        if not parent:
+            return {"categories": [{"label": v, "id": k, "param": "ATTRIBUTE_TREE"}
+                                   for k, v in self.CATEGORIES.items()]}
+        cp = self.category_cache_path()
+        cache: dict = _cat_cache_read(cp)
+        hit = (cache.get("parents") or {}).get(str(parent))
+        if hit and _t.time() - hit.get("ts", 0) < self.CATEGORY_CACHE_TTL_S:
+            return hit["data"]
+        url = ("https://www.willhaben.at/iad/kaufen-und-verkaufen/marktplatz"
+               f"?rows=5&sort=1&ATTRIBUTE_TREE={quote_plus(str(parent))}")
+        r = await self.transport.get(url, headers=HEADERS)
+        r.raise_for_status()
+        m = __import__("re").search(
+            r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', r.text, __import__("re").DOTALL)
+        if not m:
+            raise RuntimeError("willhaben category drill: no __NEXT_DATA__ (blocked or markup changed)")
+        sr = _json.loads(m.group(1)).get("props", {}).get("pageProps", {}).get("searchResult", {})
+        nav = parse_navigators(sr)
+        data = {"selected": nav["selected"], "categories": nav["categories"],
+                "rowsFound": sr.get("rowsFound")}
+        cache.setdefault("parents", {})[str(parent)] = {"ts": _t.time(), "data": data}
+        _cat_cache_write(cp, cache)
+        return data
+
+    async def search(self, query: SearchQuery) -> list[CanonicalListing]:
+        import asyncio as _aio
+        base = self.search_url(query)
         max_pages = query.max_pages or 10**9  # walk to exhaustion (breaks on empty page)
         items: list[dict] = []
         seen: set[str] = set()
@@ -198,7 +331,9 @@ class WillhabenDriver(MarketplaceDriver):
             out.append(CanonicalListing(
                 id=f"willhaben:{it['id'] or abs(hash(it['url'])) % 10**10}", source="willhaben",
                 native_id=str(it["id"] or it["url"]), url=it["url"], title=it["title"],
-                description=it["description"], price=it["price"], location=it["location"],
+                description=it["description"], price=it["price"],
+                attributes={"category_tree_ids": it.get("category_tree_ids", "")},
+                location=it["location"],
                 postcode=it["postcode"], images=it["images"],
                 seller=Seller(name=it["seller"]), shipping="",
                 pickup_available=pickup, shipping_available=shipping))

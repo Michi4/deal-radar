@@ -41,3 +41,19 @@ throws SecurityError (bot-walled document). Combined with earlier findings (slug
 generic mix, verticals need per-shape parsers, robots.txt expressly forbids automation
 incl. /webapi/), willhaben categories stay keyword-only until a tolerated path exists
 (official API or explicit permission). kleinanzeigen remains the reference implementation.
+
+## 2026-09-28 (willhaben categories SOLVED via facet navigators — supersedes above)
+Polite single-GET probes of the public marktplatz search page show `__NEXT_DATA__`
+`searchResult.navigatorGroups` already embeds the full facet tree the site itself uses:
+`category` navigator with `urlParamRepresentationForValue` = ATTRIBUTE_TREE=<numeric id>.
+Top 19 verified live (Smartphones/Telefonie=2691, Computer/Software=5824, ...); drill-down
+verified (2722 Smartphones/Handys with 29k rowsFound; 9 subs under Computer). No slug
+guessing, no session/CSRF, no webapi — one plain search GET, same as the driver already does.
+- `SearchQuery.category` now carries tree-id-or-label; per-driver `cat_map` override wins;
+  willhaben appends `&ATTRIBUTE_TREE=<id>` in `search_url()`.
+- Ads keep `categorytreeids` in `CanonicalListing.attributes` for client-side fallback filtering.
+- `GET /drivers/{id}/categories[?parent=]` serves the chooser (static top-19, live cached
+  drill 7d in data/wh_categories.json). `/drivers` already exposes static CATEGORIES.
+- UI dropdown deferred to the frontend rebuild (port-every-page push); backend+tests+live done.
+- Rate discipline: top-level = zero fetches (static snapshot of a real capture); drill = 1 GET
+  per parent per 7 days; live tests = 2 requests total.
