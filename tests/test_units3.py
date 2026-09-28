@@ -1382,6 +1382,13 @@ def test_accessory_demotions_prod_titles():
         assert r["kind"] == "accessory" and r["match"] <= 0.30, (t, r)
     r = h("iPhone 17 Pro Max 256GB Neuwertig", "", 900, "iphone 17")
     assert r["kind"] == "offer" and r["match"] >= 0.8, r
+    for t2 in ["Screen Protektor für iPhone 17 Pro",
+               "iPhone 13,14,15,16,17 Pocket 40cm in schwarz",
+               "Buch iPhone 17 einmal gelesen",
+               "IPHONE LCD & AUSTAUSCH ! SOFORT",
+               "Originalverpackt - Apple Iphone Battery Pack"]:
+        r2 = h(t2, "", 50, "iphone 17")
+        assert r2["kind"] == "accessory" and r2["match"] <= 0.30, (t2, r2)
 
 
 def test_accessory_round2_and_flagship_risk():
