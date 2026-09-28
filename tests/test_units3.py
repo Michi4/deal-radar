@@ -1369,3 +1369,16 @@ def test_clone_contradiction_and_kind_reasons():
     assert not any("clone" in x for x in r2.reasons)
     assert h("Coque iPhone 17 Rinoshield", "", 20, "iphone 17")["kind"] == "accessory"
     assert h("Boîte iPhone 17 Pro", "", 10, "iphone 17")["kind"] == "accessory"
+
+
+def test_accessory_demotions_prod_titles():
+    from deal_radar.decision import heuristic_decide as h
+    for t in ["Schutzgläser/ Schutzdisplays Kamera-Modul für IPhone 17 Pro Max",
+              "Kameralinsen Schutz mit OVP",
+              "Glitzernder Linsenschutz iPhone 17 pro",
+              "se noglass - Das Original iPhone 17 Pro Max",
+              "iPhone 17 Pro Max - Heute holen, später zahlen!"]:
+        r = h(t, "", 50, "iphone 17")
+        assert r["kind"] == "accessory" and r["match"] <= 0.30, (t, r)
+    r = h("iPhone 17 Pro Max 256GB Neuwertig", "", 900, "iphone 17")
+    assert r["kind"] == "offer" and r["match"] >= 0.8, r
