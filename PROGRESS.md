@@ -1,6 +1,18 @@
-# PROGRESS.md — 2026-09-27 audit + UI session (Michi4 authorship)
+# PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
-## Verified state
+## What changed since last report
+- Merged FINISH directive into AGENTS.md (supremacy rules); rebuilt ACCEPTANCE.md from the
+  40-item register (all unchecked, evidence-required).
+- Replaced every emoji/pictograph glyph in web/ with Lucide-style inline SVG icons
+  (star, compare, check, x, pause, play, stop, arrows, chevrons, pin, keyboard, sparkles,
+  loader, external-link, theme) + `.ic` CSS. Toasts use plain words (text-only element).
+- Fixed no-emoji gate pipefail/SIGPIPE bug (grep|head always mis-reported); gate now writes
+  hits to a file and correctly FAILs. verify.sh GREEN (ruff+mypy+85.50% coverage+gate+JS+API).
+- Playwright proofs vs local server: SVG in tabs/sort/geoloc, 0 console errors, card/job/
+  drawer templates render 9 SVGs no broken `'+IC_` literals, grid overlap audit 0 pairs.
+- Coverage: added tests/test_coverage_fill.py (12 tests, notify/cancel/enrich/risk/scoring/imgdup).
+
+## Verified state (prior, kept)
 - verify.sh GREEN (ruff+mypy+pytest, coverage TOTAL 85% = gate, JS syntax, API import).
 - Playwright mega.mjs 11/11 PASS (×3 runs), xss.mjs 4/4 PASS (×3), manual NL→drawer journey clean.
 - Prod `4b7b150` deployed, container healthy; edge = Authelia 302 as designed.
@@ -130,7 +142,7 @@ fails → killsrv first; USER app needs chown -R app:app /data on legacy root vo
 - Price rises everywhere. Tracking interval adjustable. Login env-toggled, off on prod.
 - verify GREEN (93 passed), mega/xss/parallel green, screenshots clean. Deployed healthy.
 
-## Next (needs human — do NOT shutdown)
+## Next
 1. AUTH DECISION (audit HIGH): API_KEY unset everywhere → app fully open behind Authelia only.
 Options: (a) auto-generate+persist API_KEY on first boot [recommended], (b) document fork risk,
 (c) per-user tokens + owner columns. Needed before "prod-ready" sign-off.

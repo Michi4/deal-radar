@@ -142,3 +142,27 @@ The current UI is bordered dark boxes with no hierarchy, cramped controls, raw J
 - [ ] README quickstart works from a genuinely clean clone with no homelab-specific knowledge assumed; clearly separates required vs. optional env vars and states what degrades gracefully without each optional one (Kev/Jev, Signal, eBay token, proxies).
 - [ ] A short "what's configured on Michi's deployment specifically" doc kept separate from the general README, so the public repo stays generic while the real deployment notes still exist somewhere for you.
 - [ ] LICENSE present and correct given any AGPL-derived code if you ever pull in pieces of AI Marketplace Monitor or similar — confirm licensing compatibility if you borrow from it, don't just copy silently.
+
+---
+
+## FINISH directive (supreme over everything above on conflict)
+A standing FINISH message may arrive that restates the mission. When it does:
+- It wins over this file, `ACCEPTANCE.md`, and `MASTER_TODO.md` on any conflict. Merge its
+  rules here immediately so they survive context resets.
+- Never end a turn with text only — every turn ends with a tool call until the finish gate
+  passes. No progress summaries or permission questions in chat; progress goes to `PROGRESS.md`.
+- Blocked is not stopped: try at least 3 genuinely different approaches per blocker, log each
+  in `BLOCKERS.md` with what is needed, build behind an interface with a working fallback.
+- No emojis anywhere in the app UI — real SVG icons only (Lucide-style inline SVG). A CI grep
+  over `web/` fails the build on emoji/pictograph characters.
+- Never hammer sites: polite limits, caching, small samples. No anti-bot/captcha evasion.
+  Blocked drivers are marked blocked with reasons + legitimate options, never faked.
+- Do NOT shut down, suspend, or power off the laptop; never write shutdown talk into any file,
+  commit, or doc. Purge it from history if found (authorized).
+- Secrets never enter the repo, docs, commits, logs, or screenshots (values redacted, locations
+  noted). Scan history for user-pasted keys/passwords; purge if found and list rotations in
+  `BLOCKERS.md`.
+- Authorship must be `Michi4 <82534353+Michi4@users.noreply.github.com>` everywhere including
+  rewritten history; remote verified clean.
+- `scripts/journeys.sh` holds the mandatory Playwright journeys + layout audit and must exit 0
+  against production. `verify.sh` and CI must stay green together.
