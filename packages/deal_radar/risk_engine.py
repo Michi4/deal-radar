@@ -48,6 +48,12 @@ def assess_risk(listing: CanonicalListing, market_median: float | None = None) -
             b in _brand for b in ("apple", "iphone")):
         score += 0.35
         reasons.append(f"claims iPhone/Apple but brand is '{_brand[:30]}' — likely clone")
+    # flagship-tier title at accessory price (fake minis, empty boxes, bait)
+    import re as _re2
+    if listing.price is not None and listing.price < 150 and _re2.search(
+            r"pro\s*max|ultra|s24\s*ultra|s25\s*ultra|fold|flip|titan", _title):
+        score += 0.40
+        reasons.append(f"flagship-tier title at €{listing.price} — likely fake/case/bait")
     # counter-evidence (keeps calibration honest, feeds rescue lane)
     if listing.seller and (listing.seller.rating or 0) >= 4.5:
         counter.append(f"seller rating {listing.seller.rating} is high")

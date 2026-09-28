@@ -1382,3 +1382,20 @@ def test_accessory_demotions_prod_titles():
         assert r["kind"] == "accessory" and r["match"] <= 0.30, (t, r)
     r = h("iPhone 17 Pro Max 256GB Neuwertig", "", 900, "iphone 17")
     assert r["kind"] == "offer" and r["match"] >= 0.8, r
+
+
+def test_accessory_round2_and_flagship_risk():
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.decision import heuristic_decide as h
+    from deal_radar.risk_engine import assess_risk
+    mk = lambda t, p: CanonicalListing(
+        id="x", source="t", native_id="x", url="u", title=t, description="d",
+        price=p, images=[], seller=Seller(name="s"))
+    for t in ["dbrand Prism 2.0 iPhone 17 Pro Max Screen Protector",
+              "cellularline Camera Lens Protection Iphone 17 Pro Max",
+              "Ideal of Sweden Kombipaket für IPhone 17 Pro"]:
+        assert h(t, "", 30, "iphone 17")["kind"] == "accessory", t
+    r = assess_risk(mk("IPhone 17 Pro Max Mini DOYODA", 49))
+    assert r.score >= 0.4 and any("flagship" in x for x in r.reasons)
+    r2 = assess_risk(mk("iPhone 17 Pro Max 256GB", 900))
+    assert not any("flagship" in x for x in r2.reasons)
