@@ -14,6 +14,9 @@ cd ~/docker/deal-radar/app && git pull && cd .. && docker compose up -d --build
 ```
 - URL: https://app.example.net (Authelia; LAN bypass per authelia config)
 - Data volume: `dealradar-data` (/data/dealradar.db + /data/lab-*). Backup: `~/bin/backup_dealradar.sh` (cron 03:17).
+- Off-host copy: AI host `~/bin/pull_dealradar_backup.sh` (cron 04:05) pulls newest nightly
+  over WG to `~/backups/dealradar/<date>/`, 14-day retention. Restore drill 2026-09-28:
+  copied to /tmp, `integrity_check=ok`, tables readable (2 searches/60 results/19 jobs), cleaned.
 - Server `.env` (never git): EBAY_OAUTH_TOKEN(empty), CLOUD_API_KEY=openrouter, KEV_URL=http://10.9.9.1:8001/..., LOCAL_API_URL=http://192.0.2.172:11434/v1, SIGNAL_* (account unlinked), LAB_ENABLED=1, API_KEY unset (relies on Authelia).
 
 ## AI backends (order: local → OpenRouter-free → heuristics)
