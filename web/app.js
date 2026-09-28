@@ -7,6 +7,27 @@ let LAST=[],SID=null,VIEW=localStorage.getItem('drv')||'grid',PAGE=0,SEARCHED=fa
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl=u=>{try{const p=new URL(String(u||''),location.href);return (p.protocol==='http:'||p.protocol==='https:')?p.href:''}catch(e){return ''}};
+const SVG_O='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const P_CHECK='<path d="M20 6 9 17l-5-5"/>';
+const P_X='<path d="M18 6 6 18"/><path d="m6 6 12 12"/>';
+const P_PAUSE='<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+const P_PLAY='<polygon points="6 3 20 12 6 21 6 3"/>';
+const P_STOP='<rect x="5" y="5" width="14" height="14" rx="2"/>';
+const P_UP='<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>';
+const P_DOWN='<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>';
+const P_LEFT='<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>';
+const P_RIGHT='<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>';
+const P_EXT='<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>';
+const P_LOADER='<path d="M21 12a9 9 0 1 1-6.219-8.56"/>';
+const P_CMP='<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 21H4"/>';
+const P_CHL='<path d="m15 18-6-6 6-6"/>';
+const P_CHR='<path d="m9 18 6-6-6-6"/>';
+const P_CKC='<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>';
+function ic(p){return SVG_O+p+'</svg>'}
+const IC_CHECK=ic(P_CHECK),IC_X=ic(P_X),IC_PAUSE=ic(P_PAUSE),IC_PLAY=ic(P_PLAY),IC_STOP=ic(P_STOP),IC_UP=ic(P_UP),IC_DOWN=ic(P_DOWN),IC_LEFT=ic(P_LEFT),IC_RIGHT=ic(P_RIGHT),IC_EXT=ic(P_EXT),IC_LOADER=ic(P_LOADER),IC_CMP=ic(P_CMP),IC_CHL=ic(P_CHL),IC_CHR=ic(P_CHR),IC_CKC=ic(P_CKC);
+const IC_STAR='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+const IC_STARF='<svg class="ic" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+
 const ACT={tab:a=>tab(a),showFavs:()=>showFavs(),cmp:()=>cmp(),page:a=>page(+a),
 gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;const _rd2=$('rDist');if(_rd2)_rd2.value='';RDIST=null;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
@@ -83,17 +104,17 @@ function toast(t){const box=$('toasts');while(box.children.length>2)box.lastChil
 function benchOf(s){const b=(s.enrichments||[]).find(e=>e.field==='cpu_benchmark')||(s.enrichments||[]).find(e=>e.field==='gpu_benchmark');return b?b.value:0}
 function perfEur(s){const b=benchOf(s);return (b&&s.listing.price)?b/s.listing.price:0}
 function thumb(l,idx){const imgs=l.images||[];if(!imgs.length)return '';const i=idx||0;
-return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${safeUrl(imgs[i%imgs.length])}" data-rm="1">${imgs.length>1?`<button class="thumbnav l" data-cyc="${esc(l.id)}" data-d="-1">‹</button><button class="thumbnav r" data-cyc="${esc(l.id)}" data-d="1">›</button>`:''}</div>`}
+return `<div class="thumbwrap"><img class="thumb" loading="lazy" src="${safeUrl(imgs[i%imgs.length])}" data-rm="1">${imgs.length>1?`<button class="thumbnav l" data-cyc="${esc(l.id)}" data-d="-1" aria-label="previous photo">${IC_CHL}</button><button class="thumbnav r" data-cyc="${esc(l.id)}" data-d="1" aria-label="next photo">${IC_CHR}</button>`:''}</div>`}
 function cyc(btn,d,id){const s=LAST.find(x=>x.listing.id===id);if(!s||!(s.listing.images||[]).length)return;const n=s.listing.images.length;let i=((+btn.parentElement.dataset.i||0)+d+n)%n;btn.parentElement.dataset.i=i;btn.parentElement.querySelector('img').src=s.listing.images[i]}
 let CMP=new Set();
 function cmpTgl(id){CMP.has(id)?CMP.delete(id):CMP.add(id);drawTray();const c=$('cmpn');if(c){c.textContent=CMP.size;c.style.display=CMP.size?'':'none'}render()}
 function drawTray(){const t=$('cmptray');if(!t)return;if(!CMP.size){t.style.display='none';return}t.style.display='flex';$('cmpcnt').textContent=CMP.size+(CMP.size===1?' picked — pick more':' picked')}
 function cmpSel(){const rows=[...CMP].map(id=>LAST.find(x=>x.listing.id===id)).filter(Boolean);if(rows.length<2)return toast('pick 2 listings');const cols=rows.map(s=>{const l=s.listing;const en={};(s.enrichments||[]).forEach(e=>en[e.field]=e.value);return '<td><b>'+esc(l.title)+'</b><br/>'+esc(l.price??'?')+' '+esc(l.currency||'')+'<br/>'+esc(l.source)+'<br/>risk '+(s.risk.score*100).toFixed(0)+'%<br/>score '+esc(s.final_score)+'<br/>cpu '+esc(en.cpu||'—')+'<br/>bench '+esc(en.cpu_benchmark||en.gpu_benchmark||'—')+'</td>'}).join('');$('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+'<div class="panel"><div class="tscroll"><table class="cmp"><tr>'+cols+'</tr></table></div>';$('pager').style.display='none'}
-function card(s,idx){const l=s.listing;const best=(idx===0&&(SORT==='ppe'||SORT==='gpe'))?'<span class="best-badge">best value</span><br/>':'';const fav=isFav(l.id)?'★':'☆';const picked=CMP.has(l.id);
+function card(s,idx){const l=s.listing;const best=(idx===0&&(SORT==='ppe'||SORT==='gpe'))?'<span class="best-badge">best value</span><br/>':'';const fav=isFav(l.id)?IC_STARF:IC_STAR;const picked=CMP.has(l.id);
 const inner=`${thumb(l)}<div class="body">${best}<h4>${esc(l.title)||'(no title)'}</h4>
 <div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span></div>
 <div class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)} · ${esc(l.location||'')}${l.distance_km!=null?` · ${Math.round(l.distance_km)} km`:''}</div>
-<div style="margin-top:6px"><button class="btn ${picked?'btn-primary':'btn-ghost'}" data-act="cmpTgl" data-arg="${esc(l.id)}" aria-pressed="${picked}">⇄ ${picked?'picked ✓':'compare'}</button> <button class="btn btn-ghost" data-fav="${esc(l.id)}" aria-label="save favorite">${fav}</button></div></div>`;
+<div style="margin-top:6px"><button class="btn ${picked?'btn-primary':'btn-ghost'}" data-act="cmpTgl" data-arg="${esc(l.id)}" aria-pressed="${picked}">${IC_CMP} ${picked?'picked '+IC_CHECK:'compare'}</button> <button class="btn btn-ghost" data-fav="${esc(l.id)}" aria-label="save favorite">${fav}</button></div></div>`;
 return VIEW==='grid'?`<div class="card" data-open="${esc(l.id)}">${inner}</div>`
 :`<div class="listrow" data-open="${esc(l.id)}">${(l.images&&l.images[0])?`<img loading="lazy" src="${safeUrl(l.images[0])}" data-rm="1">`:''}<div><b>${esc(l.title)||'(no title)'}</b><br/><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}%</span> <span class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)} · ${esc(l.source)}</span> <button class="btn btn-ghost" data-fav="${esc(l.id)}">${fav}</button></div></div>`}
 let FAVS=new Set();
@@ -126,7 +147,7 @@ el.innerHTML=Object.entries(map).map(([k,l])=>`<button class="${HIDEKIND[k]?'act
 function drawSegs(){drawKinds();paintSources();const sg=$('sortsel');if(sg){const av=sortAvail();
 if(!SORTS.some(o=>o.id===SORT&&(!o.need||av[o.need])))SORT='score';
 sg.innerHTML=SORTS.map(o=>{const off=o.need&&!av[o.need];return `<option value="${o.id}" ${o.id===SORT?'selected':''} ${off?'disabled':''}>${o.label}${off?' (re-run with '+(o.need==='gpu'?'GPU benchmarks':'benchmarks')+')':''}</option>`}).join('');
-const dd=$('sortdir');if(dd)dd.textContent=(SORTS.find(o=>o.id===SORT).dir*PDIR===1)?'↑':'↓';}
+const dd=$('sortdir');if(dd)dd.innerHTML=(SORTS.find(o=>o.id===SORT).dir*PDIR===1)?IC_UP:IC_DOWN;}
 const pg=$('pageseg');if(pg)pg.innerHTML=[20,50,100,'all'].map(n=>{const v=n==='all'?100000:n;return `<button class="${PERPAGE===v?'active':''}" data-act="setPP" data-arg="${v}">${n}</button>`}).join('');
 const ln=$('lanes');if(ln)ln.innerHTML=[...new Set(LAST.map(s=>s.lane))].map(l=>`<button class="${HIDELANES.has(l)?'':'active'}" data-act="toggleLane" data-arg="${esc(l)}">${l}</button>`).join('');
 const fdot=$('fdot');if(fdot)fdot.style.display=(($('rMin').value||$('rMax').value||$('rBlack').value||$('rReq').value)?'inline-block':'none')}
@@ -148,7 +169,7 @@ const t=((l.title||'')+' '+(l.description||'')).toLowerCase();
 if(bl.some(w=>t.includes(w)))return false;if(rq.length&&!rq.every(w=>t.includes(w)))return false;return true})}
 function jobTiles(){
   return [...ACTIVEJOBS.entries()].map(([id,a])=>{const lbl=esc(String((a&&a.label)||id).slice(0,50));const det=esc(String((a&&a.detail)||'starting').slice(0,90));const pct=(a&&a.total&&+a.total)?Math.min(100,Math.round(100*(+a.done||0)/+a.total)):8;
-  const ctrls=`<div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}">❚❚</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}">▶</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}">■</button></div>`;
+  const ctrls=`<div class="row"><button class="btn btn-primary" data-act="openLive" data-arg="${esc(id)}">open</button><button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(id)}" aria-label="pause">${IC_PAUSE}</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(id)}" aria-label="resume">${IC_PLAY}</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(id)}" aria-label="stop">${IC_STOP}</button></div>`;
   return VIEW==='grid'?`<div class="card jobtile"><div class="jobart"></div><div class="body"><h4>${lbl}</h4><div class="lane">${det}</div><div class="pbar"><i style="width:${pct}%"></i></div>${ctrls}</div></div>`
   :`<div class="listrow jobtile"><div style="flex:1"><b>${lbl}</b><br/><span class="lane">${det}</span><div class="pbar"><i style="width:${pct}%"></i></div>${ctrls}</div></div>`}).join('');
 }
@@ -224,18 +245,18 @@ if(mp)body.max_pages=mp;
 $('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
 try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},0);
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
-status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)},$('q').value);}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
+status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`done: ${LAST.length} results`)},$('q').value);}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=liveSources();
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));
 $('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await api('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})},0);
 pushHist(t);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
-const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`✓ NL done: ${LAST.length} results`)},'AI: '+t);}catch(e){status(`<div class="err">NL search failed: ${esc(netMsg(e))}</div>`)}
+const p=r.parsed||{};showApplied(p,r.subqueries||[]);status(`<small>${LAST.length} results · subqueries: ${(r.subqueries||[]).length}</small>`);toast(`done: ${LAST.length} results`)},'AI: '+t);}catch(e){status(`<div class="err">NL search failed: ${esc(netMsg(e))}</div>`)}
 $('askbtn').disabled=false;$('askbtn').textContent='Ask'}
 let FAVMAP={};
 async function showFavs(){hideSearchChrome();markActive('favs');hideChrome();showPage(false);status('');try{const f=await api('/favorites',{},1);FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);
-$('pageview').innerHTML=ptitle('Saved',f.length+' favorites')+`<div class="panel"><div class="eyebrow">Track a link from the marketplace</div><div class="row"><input id="trackurl" class="inp" style="flex:2;min-width:200px" placeholder="paste willhaben / kleinanzeigen link…" inputmode="url"/><button class="btn btn-primary" data-act="trackUrl">track</button></div><small style="opacity:.6">Saves it to favorites and watches every change (price, text, photos).</small></div>`+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}">✕</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}${h.kind==='price'?chg(h.old,h.new):''}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap ☆ on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
+$('pageview').innerHTML=ptitle('Saved',f.length+' favorites')+`<div class="panel"><div class="eyebrow">Track a link from the marketplace</div><div class="row"><input id="trackurl" class="inp" style="flex:2;min-width:200px" placeholder="paste willhaben / kleinanzeigen link…" inputmode="url"/><button class="btn btn-primary" data-act="trackUrl">track</button></div><small style="opacity:.6">Saves it to favorites and watches every change (price, text, photos).</small></div>`+f.map(x=>{const u=safeUrl(x.url);return `<div class="card" style="padding:10px"><b>${esc(x.title)||esc(x.listing_id)}</b><br/><span class="price">${esc(x.price??'?')}</span> · ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:'<small>no link</small>'} <button class="btn btn-ghost" data-unfav="${esc(x.listing_id)}" aria-label="remove">${IC_X}</button>${x.note?`<br/><small>note: ${esc(x.note)}</small>`:''}<div class="hist">${(x.history||[]).map(h=>`<div>${esc(h.kind)}: ${esc(h.old)} → ${esc(h.new)}${h.kind==='price'?chg(h.old,h.new):''}</div>`).join('')||'no changes tracked yet'}</div></div>`}).join('')||`<div class="empty">No favorites yet — tap the star on any result.</div>`;$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 const ptitle=(t,sb)=>'<div class="ptitle"><h2>'+t+'</h2>'+(sb?'<small>'+sb+'</small>':'')+'</div>';
 const DEFF={black:'',req:'',min:'',max:'',minMatch:12,catSel:'',catKa:'',catAuto:1,locQ:'',locR:'',fOcr:1,fBench:1,fVision:1,fDet:1,warnT:35,blockT:100,fPick:0,fShip:0,wMatch:35,wValue:35,wRisk:20,wComp:10,maxpages:'',limitN:'',deepN:150};
 function advState(){const g=id=>{const e=$(id);return e?(e.type==='checkbox'?(e.checked?1:0):e.value):''};
@@ -272,7 +293,7 @@ function tab(t){markActive(t);LABLIVE=null;if(HISTT){clearInterval(HISTT);HISTT=
 async function showLab(){hideSearchChrome();hideChrome();let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
 $('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>Tip: coding agents read <b>docs/DRIVER_AUTHORING.md</b> (interfaces, categories, pagination contract) — just describe what you want.</small><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px" aria-label="plugin kind"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3" aria-label="build instruction"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 const LABSTAGES=['prompting','waiting_model','validating','saving','contract_check','done'];
-function labStageHtml(job){return LABSTAGES.map(s=>{const done=(job.log||[]).some(l=>l.stage===s);const cur=job.stage===s&&job.status==='running';return `<span class="chip ${done?'active':''}">${cur?'⏳ ':''}${s.replace('_',' ')}</span>`}).join(' ')}
+function labStageHtml(job){return LABSTAGES.map(s=>{const done=(job.log||[]).some(l=>l.stage===s);const cur=job.stage===s&&job.status==='running';return `<span class="chip ${done?'active':''}">${cur?IC_LOADER+' ':''}${s.replace('_',' ')}</span>`}).join(' ')}
 async function followLab(){const jid=$('labjid').value,fw=$('labfu').value.trim();if(!jid||!fw)return toast('write a follow-up first');$('labbtn').disabled=true;
 try{const r=await api('/lab/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jid,followup:fw})},0);followLabJob(r.id)}catch(e){$('labout').innerHTML=`<div class="err">${esc(String(e))}</div>`;$('labbtn').disabled=false}}
 let LABLIVE=null;
@@ -280,7 +301,7 @@ async function followLabJob(jid){LABLIVE=jid;if(!jid){$('labout').innerHTML='<di
 const log=(r.log||[]).map(l=>`<div><small>${esc(l.stage)} — ${esc(l.msg)}</small></div>`).join('');
 let tail='';
 if(r.status==='done'||r.status==='failed'||r.status==='error'){const ok=r.status==='done';const res=r.result||{};
-tail=(ok?`<div>✅ <b>${esc(res.id||'')}</b> built, checked, hot-loaded.<br/><small>${esc(JSON.stringify(res.checks||{}).slice(0,300))}</small></div>`:`<div class="err">failed: ${esc(res.error||r.status)}<br/><small>${esc((res.code||'').slice(0,500))}</small></div>`)
+tail=(ok?`<div>${IC_CKC} <b>${esc(res.id||'')}</b> built, checked, hot-loaded.<br/><small>${esc(JSON.stringify(res.checks||{}).slice(0,300))}</small></div>`:`<div class="err">failed: ${esc(res.error||r.status)}<br/><small>${esc((res.code||'').slice(0,500))}</small></div>`)
 +`<div class="row mt-2"><input id="labfu" class="inp" style="flex:2" aria-label="follow-up instruction" placeholder="step in: fix, change, extend… (e.g. also flag empty boxes)"/><button class="btn btn-primary" data-act="followLab">send follow-up</button></div><input id="labjid" type="hidden" value="${jid}"/>`;
 $('labbtn').disabled=false}
 $('labout').innerHTML=`<div class="mt-2">${labStageHtml(r)}</div><div class="mt-2">${log}</div><div class="mt-2">${tail}</div>`;
@@ -307,10 +328,10 @@ try{const r=await api('/searches',{method:'POST',headers:{'Content-Type':'applic
 toast('Watch created: '+body.keywords);LAST=r.results||[];SID=r.id;render()}catch(e){toast('watch failed: '+netMsg(e))}}
 async function showStore(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading store…</div>';
 try{const r=await api('/marketplace',{},1);
-const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.disabled?` <span class="jobpill joberr">disabled</span> <button class="btn btn-ghost" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">enable</button>`:` <button class="btn btn-ghost" data-act="uninstallX" aria-live="polite" data-kind="${kind}" data-arg="${esc(x.id)}">${(x.source&&x.source!=='builtin')?'uninstall':'disable'}</button>`):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?' ✓':' ✗'}</small>`:''}</div>`;
+const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name||x.id}</b> <small>v${x.version||'?'} · ${x.author||''} · ${x.license||''}</small><br/><small>${(x.capabilities||[]).join(', ')}</small><br/>${x.installed?'<span class="badge risk-low">installed</span>'+(x.disabled?` <span class="jobpill joberr">disabled</span> <button class="btn btn-ghost" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">enable</button>`:` <button class="btn btn-ghost" data-act="uninstallX" aria-live="polite" data-kind="${kind}" data-arg="${esc(x.id)}">${(x.source&&x.source!=='builtin')?'uninstall':'disable'}</button>`):`<button class="btn btn-primary" data-act="installX" data-kind="${kind}" data-arg="${esc(x.id)}">install</button>`}${x.requires?`<br/><small>needs: ${x.requires.join(', ')}${x.configured?IC_CHECK:IC_X}</small>`:''}</div>`;
 $('pageview').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
-async function uninstallX(kind,id,el){if(!el||!el.dataset.armed){if(el){el.dataset.armed='1';el.textContent='sure?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='uninstall'}},8000)}toast('click again to confirm uninstall');return}try{const r=await api('/marketplace/'+encodeURIComponent(id),{method:'DELETE'},0);toast(r.ok?'✓ uninstalled '+id:'✗ '+(r.error||'failed'));showStore()}catch(e){toast('uninstall failed: '+netMsg(e))}}
-async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');try{const r=await api('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})},0);toast(r.ok?'✓ installed '+id:'✗ '+(r.error||r.note||'failed'));showStore()}catch(e){toast('install failed: '+netMsg(e))}}
+async function uninstallX(kind,id,el){if(!el||!el.dataset.armed){if(el){el.dataset.armed='1';el.textContent='sure?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='uninstall'}},8000)}toast('click again to confirm uninstall');return}try{const r=await api('/marketplace/'+encodeURIComponent(id),{method:'DELETE'},0);toast(r.ok?'ok: uninstalled '+id:'fail: '+(r.error||'failed'));showStore()}catch(e){toast('uninstall failed: '+netMsg(e))}}
+async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');try{const r=await api('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})},0);toast(r.ok?'ok: installed '+id:'fail: '+(r.error||r.note||'failed'));showStore()}catch(e){toast('install failed: '+netMsg(e))}}
 async function showHistory(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading…</div>';
 try{const r=await api('/searches',{},1);
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
@@ -326,7 +347,7 @@ if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInte
 async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+encodeURIComponent(id))}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}
 if(r.error&&!(r.results||[]).length){status(`<div class="err">${esc(r.error)} <button class="btn btn-primary" data-act="redoId" data-arg="${esc(id)}">re-run now</button></div>`);return}
 if(r.intent)applyIntent(r.intent);
-if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');if(ACTIVEJOBS.has(id)){claim(id);tab('search');return}await poll(id,x=>{LAST=x.results||[];SID=id;render();mirrorRefine();status(`<small>${LAST.length} results · subqueries: ${(x.subqueries||[]).length}</small>`);toast(`✓ search done: ${LAST.length} results`)});return}
+if(r.status==='running'){SID=id;PAGE=0;LAST=[];HIDDEN=[];SEARCHED=true;toast('following live search…');if(ACTIVEJOBS.has(id)){claim(id);tab('search');return}await poll(id,x=>{LAST=x.results||[];SID=id;render();mirrorRefine();status(`<small>${LAST.length} results · subqueries: ${(x.subqueries||[]).length}</small>`);toast(`done: ${LAST.length} results`)});return}
 LAST=r.results||[];HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;SID=id;PAGE=0;render();tab('search');if(r.snapshot)toast('opened saved snapshot — re-run for fresh results');if(r.reconstructed)toast('rebuilt from saved rows (limited detail) — re-run for full analysis')}
 async function redoSearch(id){let r;try{r=await api('/searches/'+encodeURIComponent(id)+'/redo',{method:'POST'},0)}catch(e){toast('re-run failed: '+netMsg(e));return}toast('re-running: '+id);await poll(r.id,x=>{LAST=x.results||[];SID=x.id;render()},'re-run '+id.slice(-6))}
 async function delSearch(id){try{await api('/searches/'+encodeURIComponent(id),{method:'DELETE'})}catch(e){toast('delete failed: '+netMsg(e))}showHistory()}
@@ -340,10 +361,10 @@ const dna=Object.entries(s.deal_dna||{}).map(([k,v])=>`${esc(k)}<div class="bar"
 const fmtv=(f,v)=>{if(typeof v!=='number')return esc(v);const pct=/discount|risk|rate|ratio/.test(f);return pct?(v*100).toFixed(1)+'%':(+v.toFixed(2)).toString()};
 const en=(s.enrichments||[]).map(e=>`<div>${esc(e.field)}: <b>${fmtv(e.field,e.value)}</b> <small>(${(e.confidence*100).toFixed(0)}% · ${esc(e.status)})</small></div>`).join('');
 const durl=safeUrl(l.url);
-$('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" data-act="closeD">← back</button><button class="btn btn-ghost" data-fav="${esc(l.id)}" data-close="1">${isFav(l.id)?'★ saved':'☆ save'}</button>${durl?`<a href="${durl}" target="_blank" rel="noopener"><button class="btn btn-primary">open original ↗</button></a>`:''}</div>
+$('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" data-act="closeD">${IC_LEFT} back</button><button class="btn btn-ghost" data-fav="${esc(l.id)}" data-close="1">${isFav(l.id)?IC_STARF+' saved':IC_STAR+' save'}</button>${durl?`<a href="${durl}" target="_blank" rel="noopener"><button class="btn btn-primary">${IC_EXT} open original</button></a>`:''}</div>
 <h3>${esc(l.title)||'(no title)'}</h3><div><span class="price">${esc(l.price??'?')} ${esc(l.currency||'')}</span> <span class="badge risk-${s.risk.severity}">${(s.risk.score*100).toFixed(0)}% risk</span> <span class="lane">${esc(s.lane)} · ${(s.final_score??0).toFixed(2)}</span></div>
 <div class="car" style="margin:10px 0">${CAR.length?`<img id="carimg" src="${safeUrl(CAR[0])}"/>`:''}${CAR.length>1?`<button class="prev" data-act="cgo" data-arg="-1">‹</button><button class="next" data-act="cgo" data-arg="1">›</button><span class="cnt" id="carcnt">1/${CAR.length}</span>`:''}</div>
-<div class="lane">${esc(l.location||'')} · ${esc(l.source)} · seller: ${esc(l.seller?.name||'—')} · pickup ${l.pickup_available?'✓':'—'} · shipping ${l.shipping_available?'✓':'—'}</div>
+<div class="lane">${esc(l.location||'')} · ${esc(l.source)} · seller: ${esc(l.seller?.name||'—')} · pickup ${l.pickup_available?IC_CHECK:'—'} · shipping ${l.shipping_available?IC_CHECK:'—'}</div>
 <p style="white-space:pre-wrap;font-size:14px">${esc((l.description||'no description').slice(0,3000))}</p>
 <h4>Deal DNA</h4>${dna}${en?'<h4>Specs</h4>'+en:''}
 <div class="row" style="margin:8px 0"><input id="cpuin" class="inp" placeholder="correct CPU, e.g. Ryzen 5 PRO 5650U" style="flex:2"/><button class="btn btn-ghost" data-act="setCpu">set CPU</button></div>
@@ -352,7 +373,7 @@ $('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" data-act="c
 <h4>Risk evidence</h4><small>${(s.risk.reasons||[]).map(esc).join('<br/>')||'none'}${(s.risk.counter_evidence||[]).length?'<br/>counter: '+s.risk.counter_evidence.map(esc).join(', '):''}</small>`;
 $('drawer').classList.add('open');window._ci=0;window._lid=l.id;loadHist(l.id)}
 function cgo(d){if(!CAR.length)return;window._ci=(window._ci+d+CAR.length)%CAR.length;$('carimg').src=safeUrl(CAR[window._ci])||'';$('carcnt').textContent=(window._ci+1)+'/'+CAR.length}
-function chg(o,n){const a=+o,b=+n;if(!isFinite(a)||!isFinite(b)||!a)return '';const p=Math.round((b-a)/a*100);if(!p)return '';return ' <b>'+(p<0?'▼':'▲')+Math.abs(p)+'%</b>'}
+function chg(o,n){const a=+o,b=+n;if(!isFinite(a)||!isFinite(b)||!a)return '';const p=Math.round((b-a)/a*100);if(!p)return '';return ' <b>'+(p<0?IC_DOWN:IC_UP)+Math.abs(p)+'%</b>'}
 async function viewSnap(id,ts){ts=+ts;let s=(LAST||[]).find(x=>x.listing.id===id);let base=s?s.listing:FAVMAP[id];
 if(!base){try{const f=await api('/favorites',{},1);FAVMAP={};f.forEach(x=>FAVMAP[x.listing_id]=x);base=FAVMAP[id]}catch(e){}}
 if(!base)return toast('snapshot unavailable');
@@ -365,7 +386,7 @@ else if(o.kind==='title')snap.title=o.new;else if(o.kind==='description')snap.de
 else if(o.kind==='images'){try{const im=JSON.parse(o.new);if(Array.isArray(im))snap.images=im}catch(e){}}}});
 const u=safeUrl(base.url);
 $('sheet').innerHTML=`<div class="panel" style="border-color:var(--acc)"><div class="eyebrow">snapshot · ${new Date(ts*1000).toLocaleString()} · read-only</div>`
-+`<div class="row"><button class="btn btn-ghost" data-act="closeD">← back to live</button>${u?`<a href="${u}" target="_blank" rel="noopener"><button class="btn btn-primary">open original ↗</button></a>`:''}</div>`
++`<div class="row"><button class="btn btn-ghost" data-act="closeD">${IC_LEFT} back to live</button>${u?`<a href="${u}" target="_blank" rel="noopener"><button class="btn btn-primary">${IC_EXT} open original</button></a>`:''}</div>`
 +`<h3>${esc(snap.title)||'(no title)'}</h3><div><span class="price">${esc(snap.price??'?')} ${esc(snap.currency)}</span></div>`
 +(snap.images[0]?`<div class="car" style="margin:10px 0"><img src="${safeUrl(snap.images[0])}"/></div>`:'')
 +`<p style="white-space:pre-wrap;font-size:14px">${esc((snap.description||'no description').slice(0,3000))}</p>`;
@@ -393,7 +414,7 @@ for(const id of ['wMa','wVa','wRi','wCo']) {const el=$(id);if(el)el.addEventList
 const _rd=$('rDist');if(_rd)_rd.addEventListener('change',()=>{RDIST=_rd.value===''?null:+_rd.value;const lb=$('rDistV');if(lb)lb.textContent=_rd.value===''?'any':_rd.value+' km';PAGE=0;render()});
 const sh=$('showHidden');if(sh)sh.addEventListener('change',()=>{SHOWHID=sh.checked;render()});
 try{let esT=0,esBack=5000;const esConnect=()=>{try{esT++;const es=new EventSource('/stream');
-es.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.kind!=='new_match'&&m.kind!=='search_done'&&m.kind!=='price')return;toast('⚡ '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){}};
+es.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.kind!=='new_match'&&m.kind!=='search_done'&&m.kind!=='price')return;toast('update: '+(m.kind||'update')+': '+(m.title||m.listing_id||'').slice(0,80))}catch(_){}};
 es.onopen=()=>{esBack=5000};
 es.onerror=()=>{try{es.close()}catch(_){}if(!window._esToast||Date.now()-window._esToast>60000){window._esToast=Date.now();toast('live feed reconnecting…')}esBack=Math.min(60000,esBack*2);setTimeout(()=>{if(esT<50)esConnect()},esBack)}}catch(e){}};
 esConnect()}catch(e){}}

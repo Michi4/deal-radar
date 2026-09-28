@@ -1,3 +1,4 @@
+const SVG_O='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';const P_CHECK='<path d="M20 6 9 17l-5-5"/>';const P_X='<path d="M18 6 6 18"/><path d="m6 6 12 12"/>';function ic(p){return SVG_O+p+'</svg>'};const IC_CHECK=ic(P_CHECK),IC_X=ic(P_X);
 document.documentElement.classList.toggle('dark', (localStorage.getItem('drt') || 'dark') !== 'light');
 document.getElementById('themebtn').onclick = () => {
   const r = document.documentElement;
@@ -47,7 +48,7 @@ async function tick() {
     for (const [k, v] of Object.entries(drv)) healthById[k] = v;
     document.getElementById('drivers').innerHTML = '<table><tr><th>driver</th><th>state</th><th>failures</th><th>last error</th><th></th></tr>' +
       allD.map(x => { const h = healthById[x.id] || {}; const dis = !!x.disabled;
-        return `<tr><td>${esc(x.display_name || x.id)}${dis ? ' <small>(disabled)</small>' : ''}${x.configured === false ? ' <small>(needs setup)</small>' : ''}</td><td>${dis ? '—' : (h.ok ? '✓' : '✗')}</td>` +
+        return `<tr><td>${esc(x.display_name || x.id)}${dis ? ' <small>(disabled)</small>' : ''}${x.configured === false ? ' <small>(needs setup)</small>' : ''}</td><td>${dis ? '—' : (h.ok ? IC_CHECK : IC_X)}</td>` +
         `<td>${h.consecutive_failures ?? 0}</td><td>${esc((h.last_error || '').slice(0, 100))}</td>` +
         `<td><button class="btn btn-ghost" data-drv="${esc(x.id)}">${dis ? 'enable' : 'disable'}</button></td></tr>`; }).join('') + '</table>';
     document.querySelectorAll('#drivers [data-drv]').forEach(b => b.addEventListener('click', async () => {

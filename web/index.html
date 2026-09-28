@@ -178,7 +178,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .dark .ck{border-color:#334155}
 .ck input{width:1.1rem;height:1.1rem;accent-color:var(--acc);margin:0}
 .ck.on{border-color:var(--acc);background:var(--acc-soft)}
-</style>
+.ic{width:1.05em;height:1.05em;vertical-align:-.18em;flex:none}.thumbnav .ic{width:18px;height:18px;vertical-align:middle}</style>
 </head><body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen">
 <header class="sticky top-0 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 safe-top">
 <div class="max-w-6xl mx-auto px-3 grid items-center gap-2" style="grid-template-columns:1fr auto 1fr" id="topnav">
@@ -212,7 +212,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <div class="mx-auto w-full" style="max-width:46rem" id="searchpanel">
 <div class="panel" id="searchhero">
 <div class="seg" role="tablist" aria-label="search mode" id="modeseg">
-<button role="tab" data-mode="nl" class="active">✨ Natural</button><button role="tab" data-mode="kw">⌨ Keywords</button>
+<button role="tab" data-mode="nl" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.6 5.6 1.9-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg> Natural</button><button role="tab" data-mode="kw"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg> Keywords</button>
 </div>
 <form class="flex gap-2 flex-wrap items-center mt-2 nlrow" id="nlform">
 <label class="sr-only" for="nl">Natural language search</label>
@@ -269,7 +269,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <div class="fsec"><span class="flabel">location</span><div class="fgrid3">
 <label class="fld"><span>near city / postcode</span><input id="locQ" class="inp" placeholder="e.g. Wien, 1010" title="kleinanzeigen: postcode+city radius search; willhaben: Bundesland (e.g. Wien)"/></label>
 <label class="fld"><span>radius km</span><input id="locR" class="inp" type="number" min="1" max="1000" placeholder="50" title="Search radius in km"/></label>
-<label class="fld"><span>&nbsp;</span><button type="button" class="btn btn-ghost" data-act="geoloc" title="Use browser location (via OpenStreetMap reverse-geocode, cached)">📍 locate me</button></label>
+<label class="fld"><span>&nbsp;</span><button type="button" class="btn btn-ghost" data-act="geoloc" title="Use browser location (via OpenStreetMap reverse-geocode, cached)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> locate me</button></label>
 </div><small style="opacity:.6">Server-side geo where supported. Browser location is reverse-geocoded locally-cached via OpenStreetMap.</small></div>
 <div class="fsec"><span class="flabel">delivery</span><div class="flex gap-2 flex-wrap items-center">
 <label class="ck"><input type="checkbox" id="fPick" title="Only listings where pickup is possible"/> pickup possible</label>
@@ -319,13 +319,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <div id="status" role="status" aria-live="polite"></div>
 <div class="flex gap-3 flex-wrap items-center mt-2" id="toolbar">
 <select id="sortsel" class="inp" style="max-width:190px" aria-label="sort results"></select>
-<button id="sortdir" class="btn btn-ghost" data-act="toggleDir" aria-label="toggle sort direction" title="ascending / descending">↓</button>
+<button id="sortdir" class="btn btn-ghost" data-act="toggleDir" aria-label="toggle sort direction" title="ascending / descending" aria-label="toggle sort direction"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
 <div class="seg" role="group" aria-label="results per page" id="pageseg"></div>
 <div class="seg" role="group" aria-label="view"><button id="vgrid" data-act="setView" data-arg="grid" aria-label="grid view" title="Grid view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button><button id="vlist" data-act="setView" data-arg="list" aria-label="list view" title="List view"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></button></div>
 <span id="lanes" class="pills"></span></div>
-<div class="flex gap-2 items-center justify-center my-3 pager" id="pagertop" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfotop" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button><input id="goto" class="inp" placeholder="page #" type="number" style="max-width:80px"/><button class="btn btn-ghost" data-act="gotoPage">go</button></div>
+<div class="flex gap-2 items-center justify-center my-3 pager" id="pagertop" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1" aria-label="previous page"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button><span id="pinfotop" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1" aria-label="next page"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button><input id="goto" class="inp" placeholder="page #" type="number" style="max-width:80px"/><button class="btn btn-ghost" data-act="gotoPage">go</button></div>
 <div id="results"></div>
-<div class="flex gap-2 items-center justify-center my-3 pager" id="pager" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1">←</button><span id="pinfo" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1">→</button></div>
+<div class="flex gap-2 items-center justify-center my-3 pager" id="pager" style="display:none"><button class="btn btn-ghost" data-act="page" data-arg="-1" aria-label="previous page"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button><span id="pinfo" class="text-sm"></span><button class="btn btn-ghost" data-act="page" data-arg="1" aria-label="next page"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button></div>
 </div>
 </div>
 <div id="pageview" class="mx-auto w-full" style="display:none;max-width:46rem"></div>
