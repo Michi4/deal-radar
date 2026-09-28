@@ -415,18 +415,37 @@ def heuristic_decide(title: str, description: str, price: float | None,
     # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
     want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch|tausch\w*)\b|[\s(](gesucht|ankauf|tausch\w*)\b", hay))
     parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
-    accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|box|schachtel|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff)\b", hay))
+    _acc_stems = ("hülle", "huelle", "case", "cover", "folie", "panzerglas", "schutzglas",
+                  "kameraschutz", "displayschutz", "leerverkauf", "leer ", " leer", "ovp leer",
+                  "empty box", "box only", "nur ovp", "nur verpackung", "verpackung", "schachtel",
+                  "karton", "bumper", "armband", "wallet", "geldbörse", "geldboerse",
+                  "ladekabel", "ladegerät", "ladegeraet", "charger", "netzteil", "kabel",
+                  "powerbank", "power bank", "magazin", "akku tausch", "akkutausch",
+                  "halterung", "halter", "ständer", "staender", "standfuss", "cage", "käfig",
+                  "display glas", "displayglas", "glashülle", "glashuelle", "coque",
+                  "boîte", "boite", "hoesje", "hoesjes", "custodia", "funda",
+                  "gimbal", "stativ", "tripod", "dock", "ladestation", "hub", "adapter",
+                  "rucksack", "tasche", "sleeve", "mäppchen", "maeppchen", "etui", "beutel",
+                  "umhängetasche", "pouch", "vertrag", "tarif", "allnet",
+                  "monatlich", "abo ", " abo", "ratenzahlung", "teilzahlung", "leasing",
+                  "gewinnspiel", "verlosung", "reparatur", "werkstatt",
+                  "express service", "soforthilfe")
+    _title = (title or "").lower()
+    accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff)\b", hay)) \
+        or any(s in _title for s in _acc_stems)
     if want_ad:
         match = round(match * 0.3, 3)
-    elif parts_ad or accessory_ad:
-        match = round(match * 0.5, 3)
+    elif parts_ad:
+        match = round(match * 0.4, 3)
+    elif accessory_ad:
+        match = round(match * 0.25, 3)
     # kind caps: non-offers can never outrank real offers, no matter the keyword hits
     if want_ad:
         match = min(match, 0.30)
     elif parts_ad:
-        match = min(match, 0.55)
-    elif accessory_ad:
         match = min(match, 0.45)
+    elif accessory_ad:
+        match = min(match, 0.30)
     low_info = len(description or "") < 40
     kind = "want" if want_ad else ("parts" if parts_ad else ("accessory" if accessory_ad else "offer"))
     # condition from text signals (replaces placeholder 0.5)

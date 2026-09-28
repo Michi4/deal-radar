@@ -41,6 +41,13 @@ def assess_risk(listing: CanonicalListing, market_median: float | None = None) -
     if listing.seller and listing.seller.account_age_days is not None and listing.seller.account_age_days < 14:
         score += 0.12
         reasons.append(f"new seller account ({listing.seller.account_age_days}d)")
+    # brand contradiction: title claims Apple/iPhone but structured brand says Android & co
+    _title = (listing.title or "").lower()
+    _brand = str((listing.attributes or {}).get("Marke", listing.attributes.get("Brand", ""))).lower()
+    if ("iphone" in _title or "apple" in _title) and _brand and not any(
+            b in _brand for b in ("apple", "iphone")):
+        score += 0.35
+        reasons.append(f"claims iPhone/Apple but brand is '{_brand[:30]}' — likely clone")
     # counter-evidence (keeps calibration honest, feeds rescue lane)
     if listing.seller and (listing.seller.rating or 0) >= 4.5:
         counter.append(f"seller rating {listing.seller.rating} is high")

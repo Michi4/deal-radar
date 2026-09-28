@@ -1335,3 +1335,37 @@ def test_imgdup_hash_and_hamming():
     assert I.hamming(ha, hb) > 0
     assert I.ahash(b"junk") is None
     assert I.image_hash("https://127.0.0.1:9/none.png") is None
+
+
+def test_accessory_demotions_and_compounds():
+    from deal_radar.decision import heuristic_decide as h
+    # German compounds must classify as accessory despite keyword hits
+    for t in ["iPhone 17 Pro Max Handyhülle", "Handyhülle iPhone 17 Pro",
+              "Iphone 17 Pro Screen protector - Schutzfolie",
+              "INIU Power Bank für iPhone 17 16 Pro",
+              "Sofort Teilzahlung - IPhone 17 Pro Max 512Gb"]:
+        r = h(t, "", 50, "iphone 17")
+        assert r["kind"] == "accessory" and r["match"] <= 0.30, (t, r)
+    # real phones + legit offers untouched
+    r = h("Iphone 17 pro max 256gb", "", 900, "iphone 17")
+    assert r["kind"] == "offer" and r["match"] >= 0.8, r
+    r = h("Sony PlayStation 5 Slim", "", 400, "iphone 17")
+    assert r["kind"] == "offer", r
+    r = h("iPhone 12 Pro [Verkauf/Tausch] Top", "", 500, "iphone 17")
+    assert r["kind"] == "offer", r
+
+
+def test_clone_contradiction_and_kind_reasons():
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.decision import heuristic_decide as h
+    from deal_radar.risk_engine import assess_risk
+    mk = lambda t, brand="": CanonicalListing(
+        id="x", source="t", native_id="x", url="u", title=t, description="d",
+        price=400, images=[], seller=Seller(name="s"),
+        attributes={"Marke": brand} if brand else {})
+    r = assess_risk(mk("iPhone 17 pro Max", "Android"))
+    assert r.score >= 0.35 and any("clone" in x for x in r.reasons)
+    r2 = assess_risk(mk("iPhone 17 pro Max", "Apple"))
+    assert not any("clone" in x for x in r2.reasons)
+    assert h("Coque iPhone 17 Rinoshield", "", 20, "iphone 17")["kind"] == "accessory"
+    assert h("Boîte iPhone 17 Pro", "", 10, "iphone 17")["kind"] == "accessory"

@@ -92,7 +92,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         metrics.set_gauge("market_median", median)
 
     seen: set[str] = set()
+    seen_title_price: set[tuple[str, str, float | None]] = set()  # identical reposts, per source
     scored: list[ScoredListing] = []
+    dupes_same = 0
     flagged: list[dict] = []  # kept (not dropped): client can unhide/re-filter post-search
     filtered_out = 0
     _etn = intent.get("enrich_top_n", 150)
@@ -107,6 +109,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
     _sid = intent.get("_sid")
     stopped = False
+    import re as _re6
     for _li, l in enumerate(all_listings):
         if _sid and (_sid in _STOP or _sid in _PAUSE) and _li % 16 == 0:
             if await _pause_gate(_sid):
@@ -120,6 +123,12 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             metrics.inc("duplicates")
             continue
         seen.add(key)
+        _tp = (l.source, _re6.sub(r"[^a-z0-9]+", "", (l.title or "").lower())[:60], l.price)
+        if _tp in seen_title_price:
+            dupes_same += 1
+            metrics.inc("duplicates")
+            continue
+        seen_title_price.add(_tp)
 
         freasons: list[str] = []
         fr = apply_filters(l, hard, blacklist, whitelist, intent.get("required", []))
@@ -365,6 +374,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         why = [*fr.reasons, *val_why, *attr_hits, *(f"risk: {x}" for x in r.reasons),
                *(f"ok: {x}" for x in r.counter_evidence)]
         why.extend(bn_why)
+        if h.get("kind", "offer") != "offer":
+            why.append(f"classified as {h['kind']} (hidden by kind toggle, unhide anytime)")
         if want_ad_note:
             why.append(want_ad_note)
 
