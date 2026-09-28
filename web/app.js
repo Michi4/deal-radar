@@ -234,6 +234,7 @@ if(r.status==='running'){const prev=ACTIVEJOBS.get(sid)||{};ACTIVEJOBS.set(sid,{
 await new Promise(x=>setTimeout(x,3000));continue}
 RUNNING=false;const mine=sid===FOLLOWED;const st=r.status,er=r.error;leave(sid);
 if(st==='error'||er){toast(`search failed: ${(er||'error').toString().slice(0,120)}`);if(mine)status(`<div class="err">search failed: ${esc(String(er||'error').slice(0,200))}</div>`);return}
+if(st==='stopped'){if(mine){SEARCHED=true;HIDDEN=r.filtered||[];LAST=r.results||[];SID=sid;render();status(`<small>stopped — ${LAST.length} partial results (re-run for full coverage)</small>`)}toast('search stopped');return}
 if(!mine){toast('background search finished');return}SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
 async function run(){const sel=liveSources();
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));

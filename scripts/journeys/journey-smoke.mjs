@@ -99,8 +99,12 @@ try {
   if (running) {
     const jid = await page.evaluate(() => [...ACTIVEJOBS.keys()][0]);
     await page.evaluate((id) => { ABORTSET.set(id, Date.now()); fetch('/searches/' + encodeURIComponent(id) + '/stop', { method: 'POST' }); }, jid);
-    await page.waitForTimeout(6000);
-    const st = await page.evaluate((id) => fetch('/searches/' + encodeURIComponent(id)).then((r) => r.json()).then((j) => j.status).catch(() => '?'), jid);
+    let st = '?';
+    for (let i = 0; i < 12; i++) {
+      await page.waitForTimeout(2000);
+      st = await page.evaluate((id) => fetch('/searches/' + encodeURIComponent(id)).then((r) => r.json()).then((j) => j.status).catch(() => '?'), jid);
+      if (st !== 'running') break;
+    }
     check('stop lands (not done)', st === 'stopped', `status=${st}`);
   } else {
     check('stop lands (search already finished — timing)', true, 'finished too fast to stop');

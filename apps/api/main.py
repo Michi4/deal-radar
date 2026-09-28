@@ -933,15 +933,27 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
         LAST_RUN[sid] = time.time()
         SEEN_IDS[sid] = {r["listing"]["id"] for r in merged["results"]}
         store.save_results(sid, merged["results"])
+        stopped = bool(merged.get("stopped")) or JOBS[sid].get("control") == "stop"
         try:
-            store.job_upsert(sid, "done", len(intents), len(intents),
+            store.job_upsert(sid, "stopped" if stopped else "done", len(intents), len(intents),
                              summary=f"{len(merged['results'])} results")
         except Exception:
             pass
         EVENT_LOG.extend(merged["events"])
-        EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
-                          "title": f"search finished: {len(merged['results'])} results"})
-        JOBS[sid].update({"status": "done", "result": merged})
+        if stopped:
+            merged["stopped"] = True
+            EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
+                              "title": f"search stopped: {len(merged['results'])} partial results"})
+            JOBS[sid].update({"status": "stopped", "result": merged})
+            try:
+                store.job_upsert(sid, "stopped", JOBS[sid].get("done", 0),
+                                 len(intents), summary=f"{len(merged['results'])} partial results")
+            except Exception:
+                pass
+        else:
+            EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
+                              "title": f"search finished: {len(merged['results'])} results"})
+            JOBS[sid].update({"status": "done", "result": merged})
         if base.get("watch") or meta.get("notify_done"):
             await notifier.send(f"Search done: {len(merged['results'])} results",
                                 f"{base.get('keywords', '')} :: {len(merged['results'])} hits, "
