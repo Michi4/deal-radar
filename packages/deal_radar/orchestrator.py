@@ -124,6 +124,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
     want_attrs: dict = intent.get("attributes", {}) or {}
 
     _sid = intent.get("_sid")
+    _halted = lambda: bool(_sid and _sid in _STOP)
     stopped = False
     import re as _re6
     for _li, l in enumerate(all_listings):
@@ -437,12 +438,16 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         except Exception:
             pass
     # Stage B concurrent pass (cap: most uncertain first; sem bounds slow-model load)
-    if _stageb_queue:
+    if _halted():
+        stopped = True
+    if not stopped and _stageb_queue:
         _stageb_queue.sort(key=lambda t: abs(t[1].get("match", 0.5) - 0.55))
         _sb_sem = asyncio.Semaphore(2)  # AI host Kev is 2 shared vCPUs — gentle
 
         async def _sb(item):
             sc, _h, keywords = item
+            if _halted():
+                return
             sb: dict = {}
             try:
                 async with _sb_sem:
@@ -480,9 +485,13 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                  _c if _c is not None else 0.5, intent.get("ranking", None))
             s.lane = apply_risk_policy(s.risk, s.value_score, intent.get("risk", {}))
         scored.sort(key=lambda s: s.final_score, reverse=True)
+    if _halted():
+        stopped = True
     # lazy detail enrichment: full description + seller age for top results (feeds risk + CPU extraction)
-    if intent.get("details", True):
+    if not stopped and intent.get("details", True):
         async def _det(s):
+            if _halted():
+                return
             d = registry.get(s.listing.source)
             if d is None or "fetch_detail" not in (d.manifest.capabilities or []):
                 return
@@ -520,11 +529,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
         await asyncio.gather(*(_det(s) for s in scored[:3]))
         scored.sort(key=lambda s: s.final_score, reverse=True)
+    if _halted():
+        stopped = True
     # concurrent vision pass over Stage-B candidates (each is slow on CPU — parallelize)
-    if _vision_queue:
+    if not stopped and _vision_queue:
         from .vision import vision_check
 
         async def _one(s):
+            if _halted():
+                return
             try:
                 async with _vision_sem:
                     vc = await vision_check(s.listing.images[0], s.listing.title, s.listing.description)
