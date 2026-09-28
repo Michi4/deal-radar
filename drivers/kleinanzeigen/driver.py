@@ -105,6 +105,11 @@ def next_page_url(html: str) -> str | None:
 def parse_detail(html: str) -> dict:
     """Ad detail page: full description, attributes, price, seller type, images."""
     out: dict = {"attributes": {}, "images": []}
+    tm = re.search(r'<h1[^>]*id="viewad-title"[^>]*>(.*?)</h1>', html, re.DOTALL)
+    if not tm:
+        tm = re.search(r"<title>(.*?)</title>", html, re.DOTALL)
+    if tm:
+        out["title"] = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", tm.group(1))).strip()[:300]
     m = re.search(r'<p id="viewad-description-text"[^>]*itemprop="description"[^>]*>(.*?)</p>', html, re.DOTALL)
     if m:
         out["description"] = re.sub(r"<[^>]+>", " ", m.group(1))
@@ -238,7 +243,8 @@ class KleinanzeigenDriver(MarketplaceDriver):
             return None
         adid = m.group(2) if m else url
         return CanonicalListing(id=f"kleinanzeigen:{adid}", source="kleinanzeigen", native_id=adid,
-                                url=url, description=d.get("description", ""),
+                                url=url, title=d.get("title", ""),
+                                description=d.get("description", ""),
                                 price=d.get("price"), location=d.get("location", ""),
                                 images=d.get("images", []),
                                 attributes=d.get("attributes", {}),

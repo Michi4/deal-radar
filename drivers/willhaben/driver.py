@@ -147,6 +147,7 @@ def parse_detail(html: str) -> dict:
         except ValueError:
             pass
     return {"description": str(ad.get("description", ""))[:4000], "price": price,
+            "title": str(at.get("HEADING", ""))[:300],
             "seller": str(sp.get("name", "")), "account_age_days": age,
             "location": str(sp.get("location", "")) or str(sp.get("district", ""))}
 
@@ -356,7 +357,7 @@ class WillhabenDriver(MarketplaceDriver):
         if not d:
             return None
         return CanonicalListing(id=f"willhaben:{m.group(1)}", source="willhaben",
-                                native_id=m.group(1), url=url,
+                                native_id=m.group(1), url=url, title=d.get("title", ""),
                                 description=d.get("description", ""), price=d.get("price"),
                                 location=d.get("location", ""),
                                 seller=Seller(name=d.get("seller", ""),

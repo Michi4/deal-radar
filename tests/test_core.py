@@ -354,6 +354,7 @@ def test_kleinanzeigen_detail():
     assert len(d.get("description", "")) > 200
     assert d.get("price") == 179.0
     assert len(d.get("images", [])) >= 1
+    assert len(d.get("title", "")) > 5
 
 
 def test_intent_key_and_default_sources():
