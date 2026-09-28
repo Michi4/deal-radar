@@ -151,7 +151,7 @@ const history = ref<string[]>(JSON.parse(localStorage.getItem('drh') || '[]'));
 const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[]; required?: string[]; category?: string; subs?: string[] } | null>(null);
 const statusLine = ref('');
 const driverNotes = ref('');
-const visibleIds = ref<string[]>([]);
+const visibleIds = computed(() => search.visibleIds);
 const byId = ref(new Map<string, Scored>());
 const scoreMin = computed({ get: () => search.minScore, set: (v: number) => { search.minScore = v; refilter(); } });
 const f = search.filters;
@@ -159,7 +159,7 @@ const f = search.filters;
 let worker: Worker | null = null;
 try {
   worker = new Worker(new URL('../workers/filter.ts', import.meta.url), { type: 'module' });
-  worker.onmessage = (e: MessageEvent<{ ids: string[] }>) => { visibleIds.value = e.data.ids; };
+  worker.onmessage = (e: MessageEvent<{ ids: string[] }>) => { search.visibleIds = e.data.ids; };
 } catch { worker = null; }
 
 const isValueSort = computed(() => search.sort === 'ppe');
@@ -196,8 +196,10 @@ function rerunHistory(h: string) {
 function refilter() {
   const items = [...search.results];
   byId.value = new Map(items.map((s) => [s.listing.id, s]));
+  // strip Vue reactivity (proxies are not structured-cloneable for the worker)
+  const plain: Scored[] = JSON.parse(JSON.stringify(items));
   const payload = {
-    items: items.map((s) => ({
+    items: plain.map((s) => ({
       listing: { id: s.listing.id, title: s.listing.title, description: s.listing.description, price: s.listing.price, source: s.listing.source, distance_km: s.listing.distance_km },
       risk: s.risk, final_score: s.final_score, lane: s.lane, why: s.why, deal_dna: s.deal_dna, enrichments: s.enrichments
     })),
@@ -219,7 +221,7 @@ function refilter() {
       if (((s.risk?.score ?? 0) * 100) > o.maxRisk) return false;
       return true;
     });
-    visibleIds.value = arr.map((s) => s.listing.id);
+    search.visibleIds = arr.map((s) => s.listing.id);
   }
   search.page = 0;
 }
@@ -341,6 +343,8 @@ onMounted(async () => {
     cats.ka = (ka?.categories || []).map((c: { label: string; id: string }) => ({ label: c.label, id: c.id }));
   } catch { /* offline */ }
   search.loadFavs();
+  byId.value = new Map(search.results.map((s) => [s.listing.id, s]));
+  if (search.results.length && !search.visibleIds.length) refilter();
   const open = route.query.open;
   if (typeof open === 'string' && open) {
     const r = await api<SearchResult>(`/searches/${encodeURIComponent(open)}`);

@@ -47,6 +47,7 @@ export const useSearch = defineStore('search', {
     maxDist: null as number | null,
     compare: new Set<string>(),
     favs: new Set<string>(),
+    visibleIds: [] as string[],
     statusHtml: '' as string,
     appliedNl: null as null | { keywords: string; models?: string[]; blacklist?: string[]; required?: string[]; category?: string; subs?: string[] }
   }),
