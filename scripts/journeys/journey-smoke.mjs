@@ -29,6 +29,8 @@ try {
     return f && getComputedStyle(f).display !== 'none';
   }, null, { timeout: 15000 });
   await page.fill('#q', 'ThinkPad X1');
+  const adv = await page.$('details:not([open]) summary');
+  if (adv) await adv.click();
   const limit = await page.$('#limitN');
   if (limit) await page.selectOption('#limitN', '10');
   await page.click('#searchbtn');
