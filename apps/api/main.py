@@ -201,6 +201,15 @@ def _intent_key(intent: dict) -> str:
     return hashlib.sha256(json.dumps(intent, sort_keys=True, default=str).encode()).hexdigest()[:32]
 
 
+def _log_event(ev: dict) -> None:
+    """In-memory tail + durable SQLite log (admin numbers survive restarts)."""
+    _bounded_append(ev)
+    try:
+        store.log_event(ev)
+    except Exception:
+        pass
+
+
 def _bounded_append(ev: dict) -> None:
     EVENT_LOG.append(ev)
     del EVENT_LOG[:-5000]
@@ -292,7 +301,7 @@ async def _track_favorites() -> None:
             for c in store.upsert(det):
                 ev = {"kind": ("fav_" + c["kind"]), "listing_id": lid, "url": durl,
                       "title": det.title, "price": det.price}
-                EVENT_LOG.append(ev)
+                _log_event(ev)
                 try:
                     await notifier.send(
                         f"Tracked change ({c['kind']}): {(det.title or '')[:60]}",
@@ -331,13 +340,14 @@ async def _watcher() -> None:
                         ev = {"kind": "new_match", "listing_id": r["listing"]["id"],
                               "title": r["listing"]["title"], "price": r["listing"]["price"],
                               "url": r["listing"]["url"], "score": r["final_score"]}
-                        EVENT_LOG.append(ev)
+                        _log_event(ev)
                         await notifier.send(
                             f"New match {r['final_score']:.2f}: {(r['listing']['title'] or '')[:80]}",
                             f"{r['listing']['price']} {r['listing']['currency']} @ {r['listing']['source']} "
                             f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n{r['listing']['url']}",
                             {"url": r["listing"]["url"]})
-                EVENT_LOG.extend(out.get("events", []))  # price notifies are sent (rule-gated) by the orchestrator itself
+                for _ev in (out.get("events", []) or []):  # price notifies are sent (rule-gated) by the orchestrator itself
+                    _log_event(_ev)
             try:
                 await _track_favorites()
             except Exception:
@@ -360,6 +370,11 @@ async def _start_watcher():
         n = store.job_interrupt_stale()
         if n:
             print(f"[startup] marked {n} stale running job(s) interrupted")
+    except Exception:
+        pass
+    try:
+        EVENT_LOG.extend(store.event_tail(200))
+        del EVENT_LOG[:-5000]
     except Exception:
         pass
     asyncio.create_task(_watcher())
@@ -579,8 +594,12 @@ def metrics_json():
     except Exception:
         watchlist = [{"id": sid, "keywords": i.get("keywords", ""), "watch": bool(i.get("watch", False)),
                       "sources": i.get("sources", [])} for sid, i in SEARCHES.items()]
+    try:
+        n_searches = len(store.list_searches()) or len(SEARCHES)
+    except Exception:
+        n_searches = len(SEARCHES)
     return {"metrics": metrics.snapshot(), "drivers": {d: registry.get(d).health.model_dump() for d in registry.ids()},
-            "searches": len(SEARCHES), "events": len(EVENT_LOG),
+            "searches": n_searches, "events": len(EVENT_LOG),
             "watchlist": watchlist,
             "events_tail": EVENT_LOG[-30:]}
 
@@ -959,10 +978,11 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
                              summary=f"{len(merged['results'])} results")
         except Exception:
             pass
-        EVENT_LOG.extend(merged["events"])
+        for _ev in (merged["events"] if isinstance(merged, dict) else []):
+            _log_event(_ev)
         if stopped:
             merged["stopped"] = True
-            EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
+            _log_event({"kind": "search_done", "listing_id": sid,
                               "title": f"search stopped: {len(merged['results'])} partial results"})
             JOBS[sid].update({"status": "stopped", "result": merged})
             try:
@@ -971,7 +991,7 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             except Exception:
                 pass
         else:
-            EVENT_LOG.append({"kind": "search_done", "listing_id": sid,
+            _log_event({"kind": "search_done", "listing_id": sid,
                               "title": f"search finished: {len(merged['results'])} results"})
             JOBS[sid].update({"status": "done", "result": merged})
         if base.get("watch") or meta.get("notify_done"):

@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS search_results(search_id TEXT, rank INTEGER, listing_
   PRIMARY KEY (search_id, listing_id));
 CREATE TABLE IF NOT EXISTS fact_overrides(listing_id TEXT, field TEXT, value TEXT, ts REAL, by TEXT,
   PRIMARY KEY (listing_id, field));
+CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, kind TEXT,
+  listing_id TEXT, title TEXT);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 CREATE INDEX IF NOT EXISTS idx_obs_listing ON observations(listing_id);
 CREATE INDEX IF NOT EXISTS idx_sr_search ON search_results(search_id);
 CREATE INDEX IF NOT EXISTS idx_listings_seen ON listings(last_seen);
@@ -223,7 +226,7 @@ class Store:
         counts = {}
         with self._lock:
             for t in ("search_results", "observations", "favorites", "searches",
-                      "jobs", "listings", "fact_overrides"):
+                      "jobs", "listings", "fact_overrides", "events"):
                 try:
                     cur = self.db.execute(f"DELETE FROM {t}")
                     counts[t] = cur.rowcount
@@ -238,6 +241,36 @@ class Store:
             cur = self.db.execute("UPDATE jobs SET status='interrupted' WHERE status='running'")
             self.db.commit()
             return cur.rowcount if cur else 0
+
+    def log_event(self, ev: dict) -> None:
+        """Durable global event log (admin numbers survive restarts). Best-effort, capped."""
+        import time as _t
+        try:
+            with self._lock:
+                self.db.execute("INSERT INTO events(ts, kind, listing_id, title) VALUES(?,?,?,?)",
+                                (_t.time(), str(ev.get("kind", ""))[:60],
+                                 str(ev.get("listing_id", ""))[:160], str(ev.get("title", ""))[:200]))
+                self.db.execute("DELETE FROM events WHERE id NOT IN "
+                                "(SELECT id FROM events ORDER BY id DESC LIMIT 5000)")
+                self.db.commit()
+        except Exception:
+            pass
+
+    def event_tail(self, n: int = 30) -> list[dict]:
+        try:
+            rows = self.db.execute(
+                "SELECT ts, kind, listing_id, title FROM events ORDER BY id DESC LIMIT ?",
+                (max(1, min(500, n)),)).fetchall()
+            return [{"ts": r[0], "kind": r[1], "listing_id": r[2], "title": r[3]}
+                    for r in reversed(rows)]
+        except Exception:
+            return []
+
+    def event_count(self) -> int:
+        try:
+            return int(self.db.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+        except Exception:
+            return 0
 
     def list_searches(self) -> list[dict]:
         out = []
