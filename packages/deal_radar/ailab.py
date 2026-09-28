@@ -115,7 +115,19 @@ async def generate(kind: str, instruction: str, followup: str = "",
         progress("contract_check", "hot-loading + firing on samples…")
     checks: dict = {}
     if kind == "enricher":
-        checks = hotload_enricher(path)
+        if progress:
+            progress("contract_check", "sandbox fire-check (no secrets, net allowlist, limits)…")
+        from deal_radar.lab_sandbox import run_in_sandbox
+        samples = [{"title": "TEST WARRANTY Garantie 12 Monate",
+                    "description": "volle Gewaehrleistung"},
+                   {"title": "plain thing", "description": "nothing special here"}]
+        sb = run_in_sandbox(str(path), samples)
+        if not sb.get("ok"):
+            checks = {"ok": False,
+                      "error": "sandbox refused: " + str(sb.get("error") or sb.get("errors") or "unknown")}
+        else:
+            checks = hotload_enricher(path)
+            checks["sandbox"] = {"fired": sb.get("fired"), "net_blocked": sb.get("net_blocked", 0)}
     else:
         from deal_radar.registry import check as _check
         checks = _check(path.parent.name)
@@ -138,8 +150,9 @@ _ATTR_DENY = {"__subclasses__", "__bases__", "__mro__", "__globals__", "__code__
 
 
 def validate_python(code: str) -> str | None:
-    """Syntax + import/call AST gate. Hardening, not a sandbox: generated code still
-    runs in-process after human-visible contract checks — keep LAB behind auth."""
+    """Syntax + import/call AST gate (import-time surface). Execution behavior is proven
+    separately in the lab_sandbox subprocess (no secrets, net allowlist, rlimits) before
+    any in-process hot-load — keep LAB behind auth regardless."""
     try:
         tree = ast.parse(code)
     except SyntaxError as e:

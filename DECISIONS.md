@@ -42,6 +42,19 @@ generic mix, verticals need per-shape parsers, robots.txt expressly forbids auto
 incl. /webapi/), willhaben categories stay keyword-only until a tolerated path exists
 (official API or explicit permission). kleinanzeigen remains the reference implementation.
 
+## 2026-09-28 (Lab sandbox — execution isolated, import stays gated)
+Generated enricher code now fires in `deal_radar.lab_sandbox.run_in_sandbox` BEFORE any
+in-process import: subprocess with secret-scrubbed env, RLIMIT_CPU/AS, socket egress
+allowlist (default cpubenchmark hosts), wall-timeout kill, JSON verdict. Refusal blocks
+the build with the sandbox reason. Layering is honest: import-time surface stays under
+the AST allowlist (validate_python); driver generation only contract-checks the manifest
+(no network execution at build time). Proven: 5 unit tests (fire, net-block, no-leak,
+kill-loop, syntax) + wired into ailab.generate contract_check stage.
+SSRF: listing image downloads (`vision.download_image`) now guard private/loopback/
+link-local ranges, cap redirects at 3, keep the 8MB budget (5 unit tests). Fixed-host
+fetchers (benchmarks, geocode, registry index) unchanged; community-driver installs stay
+a privileged explicit action.
+
 ## 2026-09-28 (vinted categories — same playbook as willhaben)
 Vinted catalog pages link their own tree as `/catalog/<id>-<slug>` path prefixes
 (top 8: Men/Women/Kids/Home/Entertainment/Electronics/Sports/Hobbies; 10 subs under
