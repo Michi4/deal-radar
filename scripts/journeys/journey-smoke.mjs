@@ -24,6 +24,10 @@ await page.waitForTimeout(2500);
 try {
   // 1. keyword search, small, fast sources only (kleinanzeigen+vinted via checkboxes if present)
   await page.evaluate(() => { const b = document.querySelector('#modeseg [data-mode="kw"]'); if (b) b.click(); });
+  await page.waitForFunction(() => {
+    const f = document.querySelector('#qform');
+    return f && getComputedStyle(f).display !== 'none';
+  }, null, { timeout: 15000 });
   await page.fill('#q', 'ThinkPad X1');
   const limit = await page.$('#limitN');
   if (limit) await page.selectOption('#limitN', '10');
@@ -73,8 +77,15 @@ try {
   // 5. stop a running search (start a big one, stop it)
   await page.evaluate(() => tab('search'));
   await page.waitForTimeout(500);
-  await page.fill('#q', 'fahrrad');
-  await page.click('#searchbtn');
+  await page.waitForFunction(() => {
+    const f = document.querySelector(SMODE === 'kw' ? '#qform' : '#nlform');
+    return f && getComputedStyle(f).display !== 'none';
+  }, null, { timeout: 15000 });
+  await page.evaluate(() => {
+    const sel = (typeof SMODE !== 'undefined' && SMODE === 'kw') ? '#q' : '#nl';
+    document.querySelector(sel).value = 'fahrrad';
+  });
+  await page.evaluate(() => { (typeof SMODE !== 'undefined' && SMODE === 'kw' ? run : runNL)(); });
   await page.waitForTimeout(4000);
   const running = await page.evaluate(() => typeof ACTIVEJOBS !== 'undefined' && ACTIVEJOBS.size > 0);
   if (running) {
@@ -92,7 +103,7 @@ try {
     const r = await fetch('/searches').then((x) => x.json()).catch(() => ({ searches: [] }));
     let n = 0;
     for (const s of (r.searches || []).slice(0, 10)) {
-      if (s.keywords === 'ThinkPad X1' || s.keywords === 'fahrrad') {
+      if ((s.keywords || '').includes('ThinkPad X1') || (s.keywords || '').includes('fahrrad')) {
         await fetch('/searches/' + encodeURIComponent(s.id), { method: 'DELETE' }).catch(() => {});
         n++;
       }

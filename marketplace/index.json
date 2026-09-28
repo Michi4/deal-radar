@@ -57,7 +57,9 @@
     "shipping"
    ],
    "author": "deal-radar core",
-   "license": "MIT"
+   "license": "MIT",
+   "status": "limited",
+   "status_reason": "First results page only (~60 items). Deep pages need the itemSearch persisted-query hash (see BLOCKERS.md) — help capture it from browser devtools."
   },
   {
    "id": "ricardo",
@@ -70,7 +72,9 @@
     "location"
    ],
    "author": "deal-radar core",
-   "license": "MIT"
+   "license": "MIT",
+   "status": "blocked",
+   "status_reason": "Site bot-wall (HTTP 403) blocks server fetches. Legitimate options: official API access, user-supplied proxy in Secrets, or retry later — the driver reports this cleanly per search, never fakes results."
   },
   {
    "id": "ebay",
@@ -86,7 +90,9 @@
     "images"
    ],
    "author": "deal-radar core",
-   "license": "MIT"
+   "license": "MIT",
+   "status": "needs-credentials",
+   "status_reason": "Paste EBAY_APP_ID + EBAY_CERT_ID (or EBAY_OAUTH_TOKEN) in Admin -> Secrets; the app mints its own token. No keyless path exists (public pages serve decoy cards)."
   },
   {
    "id": "_template",
