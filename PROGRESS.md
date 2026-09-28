@@ -1,6 +1,11 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- FULL GATE GREEN vs production: `./scripts/journeys.sh` exit 0 (layout audit 224 PASS
+  across 7 pages x 4 viewports x 2 themes + smoke 10/10 fresh-profile).
+- LAB SANDBOX SHIPPED: generated enrichers fire in a locked-down subprocess (scrubbed env,
+  rlimits, egress allowlist, kill-on-timeout) before in-process import; 5 unit tests.
+  SSRF guard on image downloads (ranges blocked, 3 redirects, 8MB). Deployed.
 - JOURNEY SMOKE GREEN 10/10 vs production (fresh profile: kw search, history reopen,
   block-100, compare table, stop→stopped, no page errors).
 - STOP FIXES (real bugs found by journeys): single-intent stop reported "done" (server
