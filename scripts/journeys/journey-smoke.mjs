@@ -19,11 +19,15 @@ const page = await ctx.newPage();
 const perr = [];
 page.on('pageerror', (e) => perr.push(String(e).slice(0, 120)));
 await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-await page.waitForTimeout(2500);
+await page.waitForFunction(() => typeof setMode !== 'undefined' && !!document.querySelector('#modeseg [data-mode="kw"]'),
+  null, { timeout: 60000 });
+await page.waitForTimeout(1000);
 
 try {
   // 1. keyword search, small, fast sources only (kleinanzeigen+vinted via checkboxes if present)
   await page.evaluate(() => { const b = document.querySelector('#modeseg [data-mode="kw"]'); if (b) b.click(); });
+  await page.waitForFunction(() => typeof SMODE !== 'undefined' && SMODE === 'kw',
+    null, { timeout: 15000 });
   await page.waitForFunction(() => {
     const f = document.querySelector('#qform');
     return f && getComputedStyle(f).display !== 'none';

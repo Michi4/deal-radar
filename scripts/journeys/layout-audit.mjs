@@ -45,6 +45,9 @@ for (const width of VIEWPORTS) {
       cerr.length = 0;
       try {
         await goWithRetry(() => pg.go(page));
+        await page.waitForFunction(
+          () => typeof setMode !== 'undefined' || !!document.querySelector('#stats'),
+          null, { timeout: 30000 });
         // theme: app defaults dark unless localStorage says light; force via class
         await page.evaluate((t) => {
           document.documentElement.classList.toggle('dark', t === 'dark');
