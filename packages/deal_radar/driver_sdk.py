@@ -43,6 +43,7 @@ class HealthStatus(BaseModel):
     last_ok_ts: float | None = None
     last_error: str | None = None
     consecutive_failures: int = 0
+    retry_at: float | None = None  # epoch when an open breaker accepts traffic again
 
 
 # ---- Transport / proxy layer (interchangeable) ----
@@ -171,6 +172,22 @@ class CircuitBreaker:
             return False
         return True
 
+    @property
+    def retry_at(self) -> float | None:
+        """Epoch when the open breaker accepts traffic again; None while closed."""
+        if self.opened_at is None:
+            return None
+        if time.time() - self.opened_at > self.cooldown_s:
+            return None
+        return self.opened_at + self.cooldown_s
+
+    def retry_clock(self) -> str:
+        """Local HH:MM of retry_at for honest UI messages; empty while closed."""
+        ts = self.retry_at
+        if ts is None:
+            return ""
+        return time.strftime("%H:%M", time.localtime(ts))
+
 
 class MarketplaceDriver(ABC):
     manifest: DriverManifest
@@ -194,7 +211,9 @@ class MarketplaceDriver(ABC):
     async def guarded_search(self, query: SearchQuery) -> tuple[list[CanonicalListing], str | None]:
         """Retry once + alternate handling. Never raises: returns ([], error)."""
         if self.breaker.is_open:
-            return [], f"{self.manifest.id} circuit-open (degraded, cooldown)"
+            clock = self.breaker.retry_clock()
+            self.health.retry_at = self.breaker.retry_at
+            return [], f"{self.manifest.id} cooling down after failures — retrying at {clock or 'soon'}"
         last_err: str | None = None
         for attempt in range(2):
             try:
@@ -204,6 +223,7 @@ class MarketplaceDriver(ABC):
                 self.health.degraded = False
                 self.health.last_ok_ts = time.time()
                 self.health.consecutive_failures = 0
+                self.health.retry_at = None
                 return res, None
             except Exception as e:
                 last_err = f"{type(e).__name__}: {e}"
@@ -213,6 +233,7 @@ class MarketplaceDriver(ABC):
                 if self.breaker.is_open:
                     self.health.ok = False
                     self.health.degraded = True
+                    self.health.retry_at = self.breaker.retry_at
                 await asyncio.sleep(0.5 * (attempt + 1))
         self.health.ok = False
         return [], last_err

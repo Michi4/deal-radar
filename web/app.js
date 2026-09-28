@@ -81,6 +81,7 @@ return data;
 const retryable=e instanceof TypeError||(e.status>=500)||(e.status===429);
 if(retryable&&a<retries)await new Promise(x=>setTimeout(x,1500*(a+1)));else throw e}}
 throw last}
+function fmtErrors(err){const e=err||{};const ks=Object.keys(e);if(!ks.length)return '';return ' · '+(ks.length===1?'source note':'source notes')+': '+ks.map(k=>{let m=String(e[k]||'').slice(0,120);if(/cooling down/i.test(m))return k+' cooling down ('+m.slice(m.indexOf('retrying')||0)+')';if(/EBAY_APP_ID|EBAY_OAUTH_TOKEN/i.test(m))return k+' needs credentials (Admin -> Secrets)';if(/403|blocked/i.test(m))return k+' blocked by site — retry later or via proxy';return k+': '+m}).join(' · ')};
 function netMsg(e){const m=String((e&&e.message)||e);if(m.includes('Failed to fetch')||m.includes('NetworkError')||m.includes('Load failed'))return 'server unreachable (restarting?)';if(/server 429/.test(m))return 'too many requests — backing off, retrying…';return m}
 function safe(fn){return async(...a)=>{try{return await fn(...a)}catch(e){toast(netMsg(e))}}}
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.hasAttribute('data-rm'))t.remove()},true);
@@ -245,7 +246,7 @@ if(mp)body.max_pages=mp;
 $('searchbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('Search started in background …');PAGE=0;
 try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},0);
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
-status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`done: ${LAST.length} results`)},$('q').value);}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
+status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'}${fmtErrors(r.driver_errors)}</small>`);toast(`done: ${LAST.length} results`)},$('q').value);}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
 async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=liveSources();
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));

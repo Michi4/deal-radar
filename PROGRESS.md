@@ -6,6 +6,11 @@
   catalog nav gives path-based tree (8 top + 10 subs, /catalog/<id>-<slug>). Backend:
   driver support, `GET /drivers/{id}/categories`, real fixtures, 8 unit + 4 live tests
   green. kleinanzeigen static 20 already exposed. UI dropdown deferred to frontend rebuild.
+- EBAY AUTH SHIPPED: client-credentials mint (App ID + Cert ID in Secrets UI, auto
+  mint/cache/refresh, unit-tested); live proof needs user creds (BLOCKERS top).
+- SHPOCK PAGINATION BLOCKED with 4-attempt evidence (page params return p1, hash not in
+  chunks, ~29 candidates too many); first-page + honest status stands; slicer idea in IDEAS.md.
+- IDEAS.md created (ACCEPTANCE 40).
 - One flaky red seen this session: test_job_stop_pause_resume KeyError 'ok' in a full run;
   passes in isolation (3/3) and in two subsequent full runs (131 passed) — timing flake in
   the job-control test, not the feature. Watching.
