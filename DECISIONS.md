@@ -42,6 +42,16 @@ generic mix, verticals need per-shape parsers, robots.txt expressly forbids auto
 incl. /webapi/), willhaben categories stay keyword-only until a tolerated path exists
 (official API or explicit permission). kleinanzeigen remains the reference implementation.
 
+## 2026-09-28 (vinted categories — same playbook as willhaben)
+Vinted catalog pages link their own tree as `/catalog/<id>-<slug>` path prefixes
+(top 8: Men/Women/Kids/Home/Entertainment/Electronics/Sports/Hobbies; 10 subs under
+Electronics incl. 3565-electronics_phones, both verified live with 1 GET each).
+Driver: CATEGORIES/SUBCATEGORIES/CAT_SLUGS + resolve_category + search_url catalog-path
++ cached fetch_categories(parent). Same `GET /drivers/{id}/categories` contract.
+Fixture: real trimmed capture (first 200KB — nav links live at the top, documented in
+the test module). 3 unit + 2 live tests green. Display labels are prettified slugs;
+slugs/ids are the ground truth (live test asserts slugs).
+
 ## 2026-09-28 (willhaben categories SOLVED via facet navigators — supersedes above)
 Polite single-GET probes of the public marktplatz search page show `__NEXT_DATA__`
 `searchResult.navigatorGroups` already embeds the full facet tree the site itself uses:
