@@ -1,5 +1,14 @@
 # BLOCKERS.md — external items this agent cannot clear alone. Everything else keeps moving.
 
+- [ ] Prod-UI verification path (2026-09-28): laptop lost LAN L3 (wifi connected at L2 per
+  nmcli with 192.0.2.172, but no kernel interface; default route is WG). All prod edge
+  traffic egresses WG (src 10.9.9.12) → Authelia 302 (bypass only covers 192.0.2.0/24).
+  Journeys (audit green + smoke 10/10) were proven against production BEFORE the route
+  broke and now re-run vs local same-commit servers + in-container prod endpoint checks.
+  Needed (pick one): (a) laptop back on LAN L3, (b) add 10.9.9.0/24 to Authelia LAN-bypass
+  (your own mesh — your call, I won't touch security config unilaterally), or
+  (c) a throwaway Authelia test user for playwright.
+
 - [ ] TokenHarbor key is TEMPORARY (user-supplied 2026-09-28): lives in prod
   `~/docker/deal-radar/.env` (app host) + chat history only — never in repo/docs.
   Needed: permanent key → replace CLOUD_API_KEY in prod .env, then revoke the temp one.
