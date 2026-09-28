@@ -35,6 +35,8 @@ class SearchQuery(BaseModel):
     max_pages: int | None = None  # user-configurable page cap; None = driver default (walk to exhaustion)
     sid: str = ""  # search id for cooperative stop/pause (checked every page)
     cat_map: dict[str, str] = Field(default_factory=dict)  # per-driver category override
+    require_pickup: bool = False  # server-side where the driver supports it (willhaben 2536)
+    require_shipping: bool = False  # server-side where the driver supports it (willhaben 2537)
 
 
 class HealthStatus(BaseModel):

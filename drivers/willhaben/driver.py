@@ -237,6 +237,11 @@ class WillhabenDriver(MarketplaceDriver):
         cat = self.resolve_category((query.cat_map or {}).get("willhaben", "") or query.category)
         if cat:
             base += f"&ATTRIBUTE_TREE={cat}"
+        # delivery facets (verified live 2026-09-28: server-side filter, both = union)
+        if query.require_pickup:
+            base += "&treeAttributes=2536"
+        if query.require_shipping:
+            base += "&treeAttributes=2537"
         # geo: Bundesland-level (?areaId=), cities/postcodes fall back to keywords
         loc = (query.location or "").strip().lower()
         if loc and loc in self.AREAS:

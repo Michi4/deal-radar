@@ -57,7 +57,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     sid=intent.get("_sid", ""),
                     location=str(intent.get("location", "") or "")[:120],
                     radius_km=int(intent["radius_km"]) if intent.get("radius_km") else None,
-                    cat_map=dict(intent.get("cat_map", {}) or {}))
+                    cat_map=dict(intent.get("cat_map", {}) or {}),
+                    require_pickup=bool(intent.get("require_pickup", False)),
+                    require_shipping=bool(intent.get("require_shipping", False)))
     hard = intent.get("hard", {}) or {}
     if isinstance(hard, list):  # model sometimes returns bare rules list
         hard = {"rules": hard}
