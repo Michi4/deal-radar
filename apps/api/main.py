@@ -1430,6 +1430,49 @@ async def compare(sid: str):
     return {"id": sid, "groups": groups}
 
 
+class TrackUrl(BaseModel):
+    url: str = Field(default="", max_length=2000)
+    note: str = Field(default="", max_length=500)
+
+
+# host -> driver for add-by-link (only drivers with real fetch_detail)
+_LINK_DRIVERS = (("willhaben.at", "willhaben"), ("kleinanzeigen.de", "kleinanzeigen"))
+
+
+@app.post("/favorites/by-url")
+async def fav_by_url(req: TrackUrl):
+    """Save + track a product found outside deal-radar by pasting its page URL."""
+    from urllib.parse import urlparse
+    try:
+        host = urlparse(req.url.strip()).netloc.lower()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "invalid URL"}, status_code=400)
+    did = next((d for h, d in _LINK_DRIVERS if h in host), None)
+    if not did:
+        return JSONResponse({"ok": False,
+                             "error": "tracking by link needs willhaben.at or kleinanzeigen.de (others: no detail API yet)"},
+                            status_code=400)
+    d = registry.get(did)
+    if d is None or "fetch_detail" not in (d.manifest.capabilities or []):
+        return JSONResponse({"ok": False, "error": f"{did} driver unavailable"}, status_code=400)
+    try:
+        listing = await d.fetch_detail(req.url.strip())
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": f"fetch failed: {type(e).__name__}"}, status_code=400)
+    if not listing:
+        return JSONResponse({"ok": False, "error": "page not recognized (sold? wrong link?)"}, status_code=400)
+    try:
+        store.upsert(listing)
+    except Exception:
+        pass
+    store.favorite(listing.id, req.note)
+    try:
+        metrics.inc("fav_by_url")
+    except Exception:
+        pass
+    return {"ok": True, "listing_id": listing.id, "title": listing.title, "price": listing.price}
+
+
 @app.post("/favorites/{listing_id}")
 def fav(listing_id: str, note: str = ""):
     store.favorite(listing_id, note)

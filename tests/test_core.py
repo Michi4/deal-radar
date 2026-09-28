@@ -832,3 +832,38 @@ def test_admin_reset_endpoint_wipes_isolated_db():
     finally:
         del os.environ["DB_PATH"]
         importlib.reload(m)
+
+
+def test_fav_by_url_validation_and_flow():
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app)
+    assert c.post("/favorites/by-url", json={"url": "not a url !!!://"}).status_code == 400
+    assert "no detail API" in c.post("/favorites/by-url",
+                                     json={"url": "https://example.com/x"}).json()["error"]
+    assert "no detail API" in c.post("/favorites/by-url",
+                                     json={"url": "https://www.vinted.de/items/1"}).json()["error"]
+
+    from deal_radar.contracts import CanonicalListing, Seller
+
+    async def fake_detail(url):
+        return CanonicalListing(id="t:link1", source="willhaben", native_id="n1", url=url,
+                                title="Linked ThinkPad", description="d", price=300,
+                                images=[], seller=Seller(name="s"))
+
+    from unittest.mock import patch
+
+    class FakeDriver:
+        manifest = type("M", (), {"capabilities": ["search", "fetch_detail"]})()
+
+        async def fetch_detail(self, url):
+            return await fake_detail(url)
+
+    with patch.object(m.registry, "get", return_value=FakeDriver()):
+        r = c.post("/favorites/by-url", json={"url": "https://www.willhaben.at/iad/x-123/"}).json()
+        assert r["ok"] and r["listing_id"] == "t:link1", r
+        favs = c.get("/favorites").json()
+        assert any(f["listing_id"] == "t:link1" for f in favs)
+        c.delete("/favorites/t:link1")
