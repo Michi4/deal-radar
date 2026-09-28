@@ -211,7 +211,7 @@ await new Promise(x=>setTimeout(x,3000));continue}
 RUNNING=false;const mine=sid===FOLLOWED;const st=r.status,er=r.error;leave(sid);
 if(st==='error'||er){toast(`search failed: ${(er||'error').toString().slice(0,120)}`);if(mine)status(`<div class="err">search failed: ${esc(String(er||'error').slice(0,200))}</div>`);return}
 if(!mine){toast('background search finished');return}SEARCHED=true;HIDDEN=r.filtered||[];if(r.flags)FLAGS=r.flags;LASTDUR=Math.round((Date.now()-t0)/1000);onDone(r);const _hn=$('hidN');if(_hn)_hn.textContent=HIDDEN.length;return}}
-async function run(){const sel=[...SRCS];
+async function run(){const sel=liveSources();
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));
 const mn=+$('min').value||undefined,mx=+$('max').value||undefined;
 const hard={};if(mn!=null)hard.min_price=mn;if(mx!=null)hard.max_price=mx;const mm=+$('minMatch').value;if(!isNaN(mm))hard.min_match=mm/100;
@@ -224,7 +224,7 @@ try{const j=await api('/searches',{method:'POST',headers:{'Content-Type':'applic
 pushHist($('q').value);saveFilters();await poll(j.id,r=>{LAST=r.results||[];SID=r.id;render();mirrorRefine();
 status(`<small>${LAST.length} results · filtered out ${r.filtered_out||0} · median ${r.median??'—'} · errors: ${esc(JSON.stringify(r.driver_errors||{}))}</small>`);toast(`✓ search done: ${LAST.length} results`)},$('q').value);}catch(e){status(`<div class="err">search failed: ${esc(netMsg(e))}</div>`)}
 $('searchbtn').disabled=false;$('searchbtn').textContent='Search'}
-async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=[...SRCS];
+async function runNL(){const t=$('nl').value.trim();if(!t)return;const sel=liveSources();
 const limRaw=$('limitN').value,limN=limRaw===''||limRaw==null?null:Math.max(1,Math.min(100000,+limRaw||200)),deepRaw=$('deepN').value,deepV=deepRaw==='all'||deepRaw===''||deepRaw==null?0:Math.max(0,Math.min(100000,+deepRaw||150));
 $('askbtn').innerHTML='<span class="spin"></span>';skel(6);$('applied').style.display='none';status('AI is resolving products for: '+t+' …');PAGE=0;
 try{const j=await api('/searches/nl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,sources:sel,category:$('catSel').value,limit:limN,enrich_top_n:isNaN(deepV)?150:Math.max(0,Math.min(1000,deepV))})},0);
@@ -292,7 +292,7 @@ $('pageview').innerHTML=ptitle('Watches','auto re-polled · survive restarts · 
 <label class="fld"><span>re-check every (min)</span><input id="wIntMin" class="inp" type="number" value="30" min="1" title="Poll interval in minutes"/></label><label class="fld"><span>&nbsp;</span><button type="submit" class="btn btn-primary">+ Watch</button></label></div><div class="row mt-2"><label class="ck"><input type="checkbox" id="nNew" checked/> new hits</label><label class="ck"><input type="checkbox" id="nPrice" checked/> price drops</label><label class="ck"><input type="checkbox" id="nDesc"/> desc changes</label><label class="ck"><input type="checkbox" id="nImg"/> image changes</label><small id="wDurHint" style="opacity:.6"></small></div><div class="row mt-2"><label class="fld" style="min-width:200px;flex:0"><span>saved-product tracking every (min)</span><input id="favPoll" class="inp" type="number" min="5" max="1440" value="30"/></label><button class="btn btn-ghost" data-act="saveTrack">save</button></div></form><div id="wlist"></div><div id="nstat"></div></div>`;const wf=$('wform');if(wf)wf.addEventListener('submit',e=>{e.preventDefault();mkWatch()});paintChecks();fetch('/settings/tracking').then(r=>r.json()).then(t=>{const f=$('favPoll');if(f&&t.fav_poll_min)f.value=t.fav_poll_min}).catch(()=>{});if(LASTDUR>0){const el=$('wIntMin');if(el)el.value=Math.max(30,Math.ceil(LASTDUR/60));const dh=$('wDurHint');if(dh)dh.textContent=`last search took ${LASTDUR}s`}refreshWatches();
 try{const n=await(await fetch('/notifications/status')).json();$('nstat').innerHTML='<small>alert channels: '+n.channels.map(c=>c.type+(c.target||'')).join(', ')+'</small>'}catch(e){}}
 async function refreshWatches(){let m;try{m=await api('/metrics.json',{},1)}catch(e){return}$('wlist').innerHTML='<small>active watches poll in background; new matches + price drops notify + appear in toasts.</small>'}
-async function mkWatch(){const sel=[...SRCS];
+async function mkWatch(){const sel=liveSources();
 if(LASTDUR>0){const el=$('wIntMin');if(el&&(+el.value*60<LASTDUR)){el.value=Math.max(1,Math.ceil(LASTDUR/60));toast(`interval raised to last search duration (${LASTDUR}s)`)}}
 const mins=Math.max(1,+$('wIntMin')?.value||30);
 const no=[];if($('nNew')?.checked??true)no.push('new_top');if($('nPrice')?.checked??true)no.push('price_drop');
@@ -374,6 +374,7 @@ function closeD(){$('drawer').classList.remove('open')}
 document.addEventListener('touchstart',e=>{window._tx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{if(!$('drawer').classList.contains('open'))return;const dx=e.changedTouches[0].clientX-window._tx;if(Math.abs(dx)>60)cgo(dx<0?1:-1)});
 let DRVLIST=[];
+function liveSources(){return [...SRCS].filter(id=>DRVLIST.some(x=>x.id===id&&x.configured!==false))}
 function paintSources(){const el=$('sources');if(!el)return;el.innerHTML='<div class="pills">'+DRVLIST.map(x=>{const ok=x.configured!==false;const on=SRCS.has(x.id);return `<button class="${on?'active':''} ${ok?'':'dim'}" title="${ok?x.display_name+' — click to toggle':('needs '+(x.requires||[]).join(','))}" data-act="toggleSrc" data-arg="${esc(x.id)}">${x.display_name}</button>`}).join('')+'</div>'}
 async function init(){try{const d=await(await fetch('/drivers')).json();
 d.forEach(x=>{if(x.configured!==false)SRCS.add(x.id)});DRVLIST=d;paintSources();

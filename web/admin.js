@@ -31,7 +31,7 @@ async function tick() {
   try {
     const m = await api('/metrics.json');
     try {
-      const dd = await api('/drivers');
+      const dd = await api('/drivers?include_disabled=1');
       m._allDrivers = dd;
     } catch (e) { m._allDrivers = null; }
     document.getElementById('updated').textContent = 'updated ' + new Date().toLocaleTimeString();

@@ -706,8 +706,9 @@ def test_core_driver_disable_reenable_roundtrip():
         r = c.delete("/marketplace/willhaben").json()
         assert r["ok"] and "disabled" in r.get("note", ""), r
         assert "willhaben" not in m.registry.ids()
-        ds = {d["id"]: d for d in c.get("/drivers").json()}
+        ds = {d["id"]: d for d in c.get("/drivers?include_disabled=1").json()}
         assert ds["willhaben"].get("disabled") is True
+        assert "willhaben" not in [d["id"] for d in c.get("/drivers").json()]
         r2 = c.post("/marketplace/install", json={"id": "willhaben"}).json()
         assert r2["ok"] and "re-enabled" in r2.get("note", ""), r2
         assert "willhaben" in m.registry.ids()

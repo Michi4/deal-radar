@@ -485,8 +485,9 @@ def health():
 
 
 @app.get("/drivers")
-def drivers():
+def drivers(include_disabled: int = 0):
     out = []
+    off = disabled_drivers()
     for m in registry.manifests():
         d = m.model_dump()
         reqs = {"ebay": ["EBAY_OAUTH_TOKEN"]}.get(m.id, [])
@@ -499,9 +500,11 @@ def drivers():
         except Exception:
             pass
         out.append(d)
-    for did in sorted(disabled_drivers()):
-        out.append({"id": did, "display_name": did, "installed": False, "disabled": True,
-                    "requires": [], "configured": True, "builtin": True})
+    if include_disabled:
+        for did in sorted(off):
+            out.append({"id": did, "display_name": did, "installed": False, "disabled": True,
+                        "requires": [], "configured": True, "builtin": True,
+                        "categories": getattr(registry.get(did), "CATEGORIES", None) or {}})
     return out
 
 

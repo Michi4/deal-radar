@@ -102,6 +102,10 @@ input[type=checkbox]{accent-color:var(--acc);width:1.1rem;height:1.1rem}
 header.sticky{position:sticky;top:0;z-index:60}
 .safe-top{padding-top:env(safe-area-inset-top,0px)}.safe-bottom{padding-bottom:env(safe-area-inset-bottom,0px)}
 .touch-target{min-width:44px;min-height:44px}
+@media (max-width: 767px){.hide-mobile{display:none !important}}
+.histwrap{display:flex;gap:.5rem;overflow-x:auto;padding:.4rem .1rem;margin-top:.55rem;scrollbar-width:none;align-items:center}
+.histwrap::-webkit-scrollbar{display:none}
+@media (max-width: 767px){#topnav{gap:.25rem}#topnav .brandname{font-size:1.05rem}}
 #bottomnav{display:none}
 @media (max-width: 767px){
  #toasts{bottom:4.75rem !important}
@@ -218,11 +222,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="sr-only" for="q">Keyword search</label>
 <input id="q" name="q" class="inp" placeholder="Search… (use ; for multi-topic)"/>
 <button id="searchbtn" type="submit" class="btn btn-primary">Search</button></form>
-
-
-
-
-
+<div class="histwrap" id="histwrap" title="search history — click to re-run"><span class="flabel" style="align-self:center;flex:0 0 auto">history</span><span id="hist" style="display:flex;gap:.4rem;flex-wrap:nowrap"></span></div>
 </div>
 
 
@@ -294,7 +294,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="fld"><span>deep-check top N · OCR + benchmarks</span><select id="deepN" class="inp" title="Expensive AI/OCR/benchmark checks run only for the top N"><option value="50">50</option><option value="150" selected>150</option><option value="500">500</option><option value="all">all (slow)</option></select></label>
 <label class="fld"><span>max pages per source · empty = all</span><input id="maxpages" class="inp" type="number" min="1" placeholder="all" title="Max pages per source"/></label>
 </div></div>
-<div class="flex gap-2 flex-wrap items-center mt-2 text-sm"><span class="opacity-60">history:</span><span id="hist" class="flex gap-1 flex-wrap"></span></div>
+
 <div class="row mt-2"><button type="button" class="btn btn-ghost" data-act="resetFilters">reset filters to defaults</button></div>
 </details>
 
