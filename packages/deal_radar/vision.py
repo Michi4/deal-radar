@@ -7,9 +7,12 @@ described item) needs a vision model — hook: VISION_URL (OpenAI-compatible) wh
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import shutil
+import socket
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 
@@ -21,12 +24,53 @@ def _tesseract_ok() -> bool:
     return shutil.which("tesseract") is not None
 
 
-def download_image(url: str, timeout: float = 12.0) -> bytes | None:
+def safe_image_url(url: str) -> str | None:
+    """SSRF guard for untrusted listing image URLs. Returns the URL if safe, else None.
+
+    Blocks non-http(s) schemes, literal private/loopback/link-local/multicast IPs,
+    and hostnames resolving to any non-global address. Best-effort against DNS
+    rebinding (checked pre-fetch); fetches additionally cap redirects + size.
+    """
     try:
-        r = httpx.get(url, timeout=timeout, follow_redirects=True,
-                      headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0",
-                               "Accept": "image/*,*/*;q=0.8",
-                               "Referer": "https://www.kleinanzeigen.de/"})
+        p = urlparse(str(url or "").strip())
+    except Exception:
+        return None
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return None
+    host = p.hostname
+    try:
+        ip = ipaddress.ip_address(host)
+        if not ip.is_global:
+            return None
+        return url
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80),
+                                   type=socket.SOCK_STREAM)
+    except Exception:
+        return None
+    addrs = {info[4][0] for info in infos}
+    if not addrs:
+        return None
+    for a in addrs:
+        try:
+            if not ipaddress.ip_address(a).is_global:
+                return None
+        except ValueError:
+            return None
+    return url
+
+
+def download_image(url: str, timeout: float = 12.0) -> bytes | None:
+    if safe_image_url(url) is None:
+        return None
+    try:
+        with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3,
+                          headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0",
+                                   "Accept": "image/*,*/*;q=0.8",
+                                   "Referer": "https://www.kleinanzeigen.de/"}) as client:
+            r = client.get(url)
         r.raise_for_status()
         if len(r.content) > 8_000_000:
             return None
