@@ -50,3 +50,6 @@
 - [x] Margin pass (toolbar panel surface, pager scroll, sidebar reflow, balance guard in verify)
 - [x] willhaben categories researched honestly (slugs serve generic mix, verticals need session API/parses — logged, keyword fallback)
 - [x] Fresh-profile proof (clean context: 19 server cards, zero localStorage dependency)
+- [x] Risk unified (block 100/empty = off, obvious label, dup checkbox removed)
+- [x] Delivery relabeled possible (not only)
+- [x] willhaben categories verdict (bot-walled, logged, keyword fallback)
