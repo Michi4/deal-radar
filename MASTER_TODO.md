@@ -53,3 +53,4 @@
 - [x] Risk unified (block 100/empty = off, obvious label, dup checkbox removed)
 - [x] Delivery relabeled possible (not only)
 - [x] willhaben categories verdict (bot-walled, logged, keyword fallback)
+- [x] iPhone relevance war (umlauts/compounds/financing/clones demoted, flagship-price risk)
