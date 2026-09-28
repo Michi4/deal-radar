@@ -493,6 +493,13 @@ def drivers(include_disabled: int = 0):
     off = disabled_drivers()
     for m in registry.manifests():
         d = m.model_dump()
+        try:
+            t = type(registry.get(m.id).transport).__name__
+            d["transport"] = {"direct": "direct", "ProxyTransport": "proxy",
+                              "RotatingProxyTransport": "rotating",
+                              "TlsImpersonatingTransport": "tls"}.get(t, t)
+        except Exception:
+            d["transport"] = "direct"
         if m.id == "ebay":
             reqs = ["EBAY_OAUTH_TOKEN or (EBAY_APP_ID + EBAY_CERT_ID)"]
             d["requires"] = reqs
