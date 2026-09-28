@@ -34,3 +34,10 @@
 - Product tracking Snoty-style: favorites re-fetched via fetch_detail (ebay/kleinanzeigen/
   willhaben only), title now versioned, snapshot time-travel in drawer. Others: no detail API.
 - Lab/code-exec + SSRF + metrics-vs-SQLite still queued (unchanged).
+
+## 2026-09-28 (willhaben categories verdict)
+Attempted session-API bootstrap via real Chromium: no cookies set, document.cookie
+throws SecurityError (bot-walled document). Combined with earlier findings (slugs serve
+generic mix, verticals need per-shape parsers, robots.txt expressly forbids automation
+incl. /webapi/), willhaben categories stay keyword-only until a tolerated path exists
+(official API or explicit permission). kleinanzeigen remains the reference implementation.

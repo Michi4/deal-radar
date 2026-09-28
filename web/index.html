@@ -263,18 +263,17 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 <label class="fld" style="min-width:110px;flex:0"><span>min relevance %</span><input id="minMatch" class="inp" type="number" value="12" min="0" max="100" title="Lower shows more, higher is stricter"/></label>
 </div></div>
 <div class="fsec"><span class="flabel">risk</span><div class="fgrid3">
-<label class="ck"><input type="checkbox" id="hideRisk"/> hide risky ≥85%</label>
-<label class="fld"><span>warn from %</span><input id="warnT" class="inp" type="number" value="35" min="0" max="100" title="Risk warn threshold"/></label>
-<label class="fld"><span>block from %</span><input id="blockT" class="inp" type="number" value="85" min="0" max="100" title="Risk block threshold"/></label>
-</div></div>
+<label class="fld"><span>warn from % · sort down</span><input id="warnT" class="inp" type="number" value="35" min="0" max="100" title="Risk warn threshold"/></label>
+<label class="fld"><span>block from % · 100 = block nothing</span><input id="blockT" class="inp" type="number" value="100" min="0" max="100" placeholder="100 = off" title="Hide listings at or above this risk. 100 (or empty) blocks nothing."/></label>
+</div><small style="opacity:.6">To block nothing: set 100 (or empty). Anything below 100 hides that risk and up.</small></div>
 <div class="fsec"><span class="flabel">location</span><div class="fgrid3">
 <label class="fld"><span>near city / postcode</span><input id="locQ" class="inp" placeholder="e.g. Wien, 1010" title="kleinanzeigen: postcode+city radius search; willhaben: Bundesland (e.g. Wien)"/></label>
 <label class="fld"><span>radius km</span><input id="locR" class="inp" type="number" min="1" max="1000" placeholder="50" title="Search radius in km"/></label>
 <label class="fld"><span>&nbsp;</span><button type="button" class="btn btn-ghost" data-act="geoloc" title="Use browser location (via OpenStreetMap reverse-geocode, cached)">📍 locate me</button></label>
 </div><small style="opacity:.6">Server-side geo where supported. Browser location is reverse-geocoded locally-cached via OpenStreetMap.</small></div>
 <div class="fsec"><span class="flabel">delivery</span><div class="flex gap-2 flex-wrap items-center">
-<label class="ck"><input type="checkbox" id="fPick"/> pickup only</label>
-<label class="ck"><input type="checkbox" id="fShip"/> shipped only</label>
+<label class="ck"><input type="checkbox" id="fPick" title="Only listings where pickup is possible"/> pickup possible</label>
+<label class="ck"><input type="checkbox" id="fShip" title="Only listings where shipping is possible"/> shipping possible</label>
 </div></div>
 <div class="fsec"><span class="flabel">ranking weights</span><div class="fgrid4">
 <label class="fld"><span>match</span><input id="wMatch" class="inp" type="number" value="35" min="0" max="100" title="Match weight"/></label>
