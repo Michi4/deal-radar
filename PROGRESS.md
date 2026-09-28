@@ -1,6 +1,13 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- JOURNEY SMOKE GREEN 10/10 vs production (fresh profile: kw search, history reopen,
+  block-100, compare table, stop→stopped, no page errors).
+- STOP FIXES (real bugs found by journeys): single-intent stop reported "done" (server
+  status + client toast both fixed); stop ignored during enrichment (stage B/details/
+  vision now check cancellation; phases skipped when halted). Live: stop lands ~4s.
+- PROGRESSIVE PARTIALS: fetched/scored callbacks stream cards in seconds during slow
+  enrichment (verified live: "fetched 180 listings" detail mid-run).
 - PROD DEPLOYED + VERIFIED (`342ee65`): AI host jump -> app host pull + rebuild,
   container healthy, in-container `/health` ok, `/drivers/willhaben/categories` returns
   the 19 live on production. Prod drivers: kleinanzeigen/vinted/willhaben (ebay/shpock/
