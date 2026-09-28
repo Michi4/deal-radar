@@ -1,6 +1,13 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- TOKENHARBOR CLOUD AI LIVE (user key): shootout picked qwen3.8-flash primary (clean JSON,
+  frugal) → mimo fallback (fenced JSON) → deepseek last (reasoning-bloated, empty content).
+  Prod .env switched + restarted; NL parse verified in-container. No code change needed
+  (OpenAI-compatible path already). Temp key: prod .env + chat only, rotation in BLOCKERS.
+- NL 10-query sweep: free tier congested tonight (60s hangs → deterministic fallback for all
+  10). 2 direct cloud proofs banked (USB-C → 15/16/16e/17/Air + excludes). Rerun off-peak
+  via scripts/nl-evidence.py for full 10/10 model evidence.
 - VUE REBUILD (web-v2, preview at /v2, journeys green): Vue 3 + Vite + TS + Tailwind +
   Pinia + vue-router + Lucide (per FINISH stack; logged choice = recommendation as-is).
   All 9 pages ported, Web-Worker filtering, store-persisted results across routes,
