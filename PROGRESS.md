@@ -1,6 +1,14 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- VUE REBUILD (web-v2, preview at /v2, journeys green): Vue 3 + Vite + TS + Tailwind +
+  Pinia + vue-router + Lucide (per FINISH stack; logged choice = recommendation as-is).
+  All 9 pages ported, Web-Worker filtering, store-persisted results across routes,
+  design tokens (12px floor, 44px taps). v2 smoke 9/9 vs local. Real bugs found by
+  journeys: worker postMessage choked on reactive proxies (deep-clone fix), results died
+  on route change (visibleIds moved to Pinia). verify.sh now typechecks+builds v2 and
+  gates emoji in v2 src. dist/ committed (252K) + Dockerfile ships it. NOT cut over yet
+  (cutover = journeys vs /v2 on prod, then flip /).
 - PROXY FAILOVER PROVEN: tiny CONNECT relay on AI host (WG-only) + local tunnel;
   kleinanzeigen search returned 5 results through it (targets logged server-side),
   dead-first RotatingProxyTransport failed over cleanly. Encoded as live tests
