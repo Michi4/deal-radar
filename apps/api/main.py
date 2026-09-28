@@ -142,7 +142,9 @@ UI_MANAGED: set[str] = set()  # keys currently overridden via the secrets UI
 
 
 SECRET_DEFS = [
-    ("EBAY_OAUTH_TOKEN", "eBay Browse API token", True),
+    ("EBAY_OAUTH_TOKEN", "eBay Browse API token (explicit override)", True),
+    ("EBAY_APP_ID", "eBay App ID / client ID (auto token mint)", True),
+    ("EBAY_CERT_ID", "eBay Cert ID / client secret (auto token mint)", True),
     ("EBAY_MARKETPLACE", "eBay marketplace (default EBAY_AT)", False),
     ("CLOUD_API_URL", "OpenAI-compatible base URL", False),
     ("CLOUD_API_KEY", "cloud model API key", True),
@@ -187,8 +189,9 @@ def default_sources() -> list[str]:
     import os as _os
     out = []
     for d in registry.manifests():
-        if d.id == "ebay" and not _os.getenv("EBAY_OAUTH_TOKEN"):
-            continue  # needs credentials; user said ignore for now
+        if d.id == "ebay" and not (_os.getenv("EBAY_OAUTH_TOKEN") or
+                                   (_os.getenv("EBAY_APP_ID") and _os.getenv("EBAY_CERT_ID"))):
+            continue  # needs credentials; configure App ID + Cert ID in Secrets
         out.append(d.id)
     return out or registry.ids()
 
@@ -490,9 +493,15 @@ def drivers(include_disabled: int = 0):
     off = disabled_drivers()
     for m in registry.manifests():
         d = m.model_dump()
-        reqs = {"ebay": ["EBAY_OAUTH_TOKEN"]}.get(m.id, [])
-        d["requires"] = reqs
-        d["configured"] = all(os.getenv(r) for r in reqs)
+        if m.id == "ebay":
+            reqs = ["EBAY_OAUTH_TOKEN or (EBAY_APP_ID + EBAY_CERT_ID)"]
+            d["requires"] = reqs
+            d["configured"] = bool(os.getenv("EBAY_OAUTH_TOKEN") or
+                                   (os.getenv("EBAY_APP_ID") and os.getenv("EBAY_CERT_ID")))
+        else:
+            reqs = {}.get(m.id, [])
+            d["requires"] = reqs
+            d["configured"] = all(os.getenv(r) for r in reqs)
         try:
             cats = getattr(registry.get(m.id), "CATEGORIES", None)
             if cats:
