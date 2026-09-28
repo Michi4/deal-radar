@@ -1,6 +1,12 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- PROD DEPLOYED + VERIFIED (`342ee65`): AI host jump -> app host pull + rebuild,
+  container healthy, in-container `/health` ok, `/drivers/willhaben/categories` returns
+  the 19 live on production. Prod drivers: kleinanzeigen/vinted/willhaben (ebay/shpock/
+  ricardo store-uninstalled there — honest state).
+- Breaker retry visibility: `retry_at`/`retry_clock`, "cooling down — retrying at HH:MM"
+  messages, friendly per-source status chips in UI (no raw JSON). 4 unit tests + browser proof.
 - WILLHABEN + VINTED CATEGORIES SOLVED (was the top blocker): willhaben facet
   navigators give the real tree (19 top + drill-down, ATTRIBUTE_TREE param); vinted
   catalog nav gives path-based tree (8 top + 10 subs, /catalog/<id>-<slug>). Backend:
