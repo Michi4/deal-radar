@@ -21,6 +21,11 @@
           <button v-else class="btn btn-sm" @click="redo(s.id)" title="Run the same query again">re-run</button>
           <button class="btn btn-sm" @click="del(s.id)" title="Delete this search">delete</button>
           <button class="btn btn-sm" @click="watch(s.id)" title="Re-poll automatically and notify">watch</button>
+          <template v-if="s.job && s.job.status === 'running'">
+            <button class="btn btn-sm" @click="jobOp(s.id, 'pause')" title="Pause (resumable)">pause</button>
+            <button class="btn btn-sm" @click="jobOp(s.id, 'resume')" title="Resume">resume</button>
+            <button class="btn btn-sm" @click="jobOp(s.id, 'stop')" title="Stop now">stop</button>
+          </template>
         </div>
       </div>
     </div>
@@ -65,6 +70,11 @@ async function watch(id: string) {
   const r = await api<{ id?: string; error?: string }>(`/searches/${encodeURIComponent(id)}/watch`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   ui.toast(r?.id ? 'watching every 30 min' : `watch failed: ${r?.error || '?'}`);
   load();
+}
+async function jobOp(id: string, op: 'pause' | 'resume' | 'stop') {
+  await api(`/searches/${encodeURIComponent(id)}/${op}`, { method: 'POST' });
+  ui.toast(op === 'stop' ? 'stopping…' : op === 'pause' ? 'paused' : 'resumed');
+  setTimeout(load, 1500);
 }
 onMounted(load);
 onUnmounted(() => { if (timer != null) clearInterval(timer); });
