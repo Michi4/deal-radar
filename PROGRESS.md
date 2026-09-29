@@ -1,6 +1,10 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- PRODjourneys GREEN via AI host runner (Authelia WG bypass applied by Michi):
+  v1 smoke 10/10 + v2 smoke 9/9 against https://app.example.net;
+  layout audit 219 PASS + 2 connection-flakes (rerun in progress). Full search on prod
+  now takes 6+ min with Kev+benchmarks actually running — journeys cap enrichment.
 - ACCEPTANCE 33/40. verify.sh GREEN locally (168 passed) + CI green on latest push.
 - v2 parity: lane toggles, deep-check N, min-match %, warn-%. Deployed to prod (healthy).
 - SHPOCK KEYWORD WALL FOUND: ?q= ignored server-side since yesterday (generic bestseller
