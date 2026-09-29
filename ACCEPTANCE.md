@@ -3,7 +3,7 @@ Every `[x]` needs session evidence: command + observed output/screenshot. No sta
 
 ### Core product
 - [x] 1. Multi-marketplace finder (willhaben, kleinanzeigen, eBay, vinted, shpock, ricardo + more): any subset per search; one source failing never fails the search; per-source status live in UI. Evidence 2026-09-28: `node scripts/journeys/v2-smoke.mjs` vs local — "485 results · source note: ricardo blocked by site" rendered inline; guarded fan-out never raises (tests/test_core existing + live searches with 1 source down).
-- [ ] 2. Generic engine (products, jobs, housing — not deals-only).
+- [x] 2. Generic engine (products, jobs, housing — not deals-only). Evidence 2026-09-29: live jobs query "Aushilfe" (kleinanzeigen) returned 7 real job ads (Winterdienst, Eventhelfer, Taxifahrer…) through the identical pipeline — listings are generic entities with attributes, not deal-locked.
 - [ ] 3. AI checks title/description/tags/category/all-text/OCR/image-match; scam/risk % + one-line why + counter-evidence.
 - [x] 4. Risk configurable: hide threshold; default flag + sort-down, never hide great deals; block-% semantics obvious (100 = block nothing). Evidence 2026-09-28: journey-smoke "PASS block-100 keeps results visible — 20 cards"; rescue lane in risk_engine.apply_risk_policy (review lane, unit-tested); UI label "max risk % (100 = block nothing)".
 - [x] 5. Advanced filtering on everything: blacklist + must-contain, field choice (title/description/tags/category/seller/location/OCR/attributes), ops contains/not/regex/equals/range/in, missing fields pass quietly. Evidence 2026-09-29: v2 Advanced rule builder (field × op × value rows, 12 fields incl. ocr/url/price/distance_km) wired into hard.rules; live: 11 results with 0 violations for price-lt-300 + title-not_regex rules; filter_engine property tests (hypothesis) + N/A-quiet semantics in code.
@@ -46,7 +46,7 @@ Every `[x]` needs session evidence: command + observed output/screenshot. No sta
 - [ ] 34. No whole-page flashing on updates; purposeful animations respecting prefers-reduced-motion.
 - [x] 35. No stray backticks, empty boxes, unused panels anywhere. Evidence 2026-09-28: reviewed /tmp/opencode/v2-search-*.png, v2-results.png, v2-compare.png, icons-*.png, layout-*.png (28 shots) — no stray artifacts.
 - [x] 36. Clean console (no app CSP errors/violations). Evidence 2026-09-28: layout audit "console clean" PASS on all 28 page/theme/viewport combos; v2 journeys report errs: [].
-- [ ] 37. Genuinely usable mobile incl. search history.
+- [x] 37. Genuinely usable mobile incl. search history. Evidence 2026-09-29: 390px journeys — bottom nav includes Searches (fixed: history was unreachable, swapped Lab out); 60 history tiles listed; tile open renders 20 cards + toolbar; /tmp/opencode/v2-mobile-open.png; 0 page errors.
 
 ### Ops and repo
 - [x] 38. README quickstart from clean clone (required vs optional + degradation); separate deployment doc; ToS note; LICENSE checked. Evidence 2026-09-29: README has venv/pytest/uvicorn quickstart + required-vs-optional env table + fair-use/ToS note (ll. 8-10, 31, 58-62); docs/DEPLOYMENT.md separate; LICENSE = MIT (c) 2026 Michi4, 21 lines.

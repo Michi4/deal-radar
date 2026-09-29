@@ -78,7 +78,11 @@ const nav = computed(() => [
   { to: '/lab', label: 'Lab', icon: FlaskConical, tip: 'Describe a plugin, AI builds and hot-loads it' },
   { to: '/history', label: 'Searches', icon: History, tip: 'Every past search, reopenable instantly' }
 ]);
-const mobilenav = computed(() => nav.value.slice(0, 6));
+const mobilenav = computed(() => {
+  // 6 slots fit at 390px: history beats lab on mobile (lab stays in More/admin paths + desktop)
+  const rest = nav.value.filter((n) => n.to !== '/lab');
+  return rest.slice(0, 6);
+});
 </script>
 
 <style scoped>
