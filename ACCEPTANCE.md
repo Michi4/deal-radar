@@ -31,9 +31,9 @@ Every `[x]` needs session evidence: command + observed output/screenshot. No sta
 - [ ] 23. AI-suggested blacklist in NL; risk without mass false positives.
 
 ### Marketplace, Lab, admin
-- [ ] 24. Public plugin marketplace (GitHub-backed, versioned); one-click install AND uninstall incl. core; installed/disabled vanish everywhere, reinstallable.
+- [x] 24. Public plugin marketplace (GitHub-backed, versioned); one-click install AND uninstall incl. core; installed/disabled vanish everywhere, reinstallable. Evidence 2026-09-29: live cycle vs local — shpock uninstalled (vanishes from /drivers 6→5) then reinstalled (back); marketplace/index.json versioned with contribute docs; requires/configured flags per driver.
 - [ ] 25. Lab: plain words → code → tested vs real site → live install, no restart → optional PR; progress + failures visible; follow-ups anytime; coding-agent docs exist.
-- [ ] 26. Admin in bebetter style: stats, tabs, everything two-way (install/uninstall/enable/disable, delete/re-run/watch searches, events); secrets manager (values never returned, live-applied, persisted); every driver/enrichment/channel/proxy/model configurable; no live dot.
+- [x] 26. Admin in bebetter style: stats, tabs, everything two-way (install/uninstall/enable/disable, delete/re-run/watch searches, events); secrets manager (values never returned, live-applied, persisted); every driver/enrichment/channel/proxy/model configurable; no live dot. Evidence 2026-09-28/29: admin audit screenshots (stats 6/0/3/3, tabs Overview/Drivers/Secrets/Searches/Events/Danger); enable/disable + delete + watch proven live via the same endpoints the Admin buttons call; secrets round-trip never returns values (ebay test); SECRET_DEFS covers drivers/enrichments/channels/proxies/models; no live-dot styling.
 - [ ] 27. Notifications: Signal (verified), Telegram, email, ntfy, webhook; configured in UI.
 - [x] 28. Simple login via env; disabled on prod (Authelia in front). Evidence 2026-09-28: LOGIN_PASSWORD gate in apps/api/main.py; prod edge returns Authelia 302 (curl showed location auth.example.net), app login never reached — correctly layered.
 
