@@ -43,7 +43,9 @@
           <label class="fld"><span title="Your location (text or browser)">location</span><input v-model="f.locQ" class="inp" /></label>
           <label class="fld"><span title="Search radius in km (empty = unlimited)">radius km</span><input v-model="f.locR" class="inp" type="number" /></label>
           <label class="fld"><span>category (willhaben)</span><select v-model="f.catSel" class="inp"><option value="">any</option><option v-for="c in cats.wh" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
-          <label class="fld"><span>category (kleinanzeigen)</span><select v-model="f.catKa" class="inp"><option value="">any</option><option v-for="c in cats.ka" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
+          <label class="fld"><span>category (kleinanzeigen)</span><select v-model="f.catKa" class="inp" @change="f.catAuto = false"><option value="">any</option><option v-for="c in cats.ka" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
+          <label class="fld"><span>category (vinted)</span><select v-model="f.catVi" class="inp" @change="f.catAuto = false"><option value="">any</option><option v-for="c in cats.vi" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
+          <label class="fld"><span title="Map the chosen category to the best match on the other sites automatically">automatch categories</span><input v-model="f.catAuto" type="checkbox" /></label>
           <label class="fld"><span title="Ranking weight: text match">weight: match</span><input v-model.number="weights.match" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
           <label class="fld"><span title="Ranking weight: value for money">weight: value</span><input v-model.number="weights.value" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
           <label class="fld"><span title="Ranking weight: risk penalty">weight: risk</span><input v-model.number="weights.risk" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
@@ -169,7 +171,7 @@ const nlText = ref('');
 const busy = ref(false);
 const drawerId = ref<string | null>(null);
 const allSources = ref<string[]>([]);
-const cats = reactive<{ wh: Category[]; ka: Category[] }>({ wh: [], ka: [] });
+const cats = reactive<{ wh: Category[]; ka: Category[]; vi: Category[] }>({ wh: [], ka: [], vi: [] });
 const history = ref<string[]>(JSON.parse(localStorage.getItem('drh') || '[]'));
 const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[]; required?: string[]; category?: string; subs?: string[] } | null>(null);
 const statusLine = ref('');
@@ -320,7 +322,7 @@ function intentBase() {
     blacklist: f.black.split(',').filter(Boolean).map((w: string) => ({ fields: ['title', 'description'], op: 'not_contains', value: w.trim() })),
     enrich_top_n: deep, limit: lim, ...(mp ? { max_pages: mp } : {}),
     category: f.catSel, location: f.locQ.trim(), radius_km: f.locR === '' ? undefined : +f.locR,
-    cat_map: f.catKa ? { kleinanzeigen: f.catKa } : {},
+    cat_map: f.catAuto ? {} : { ...(f.catKa ? { kleinanzeigen: f.catKa } : {}), ...(f.catVi ? { vinted: f.catVi } : {}) },
     risk: { warning_threshold: f.warnT / 100, block_threshold: f.blockT / 100, hard_filter_enabled: f.blockT < 100 },
     ocr: f.fOcr, benchmarks: f.fBench, vision: f.fVision, details: f.fDet,
     require_pickup: f.fPick, require_shipping: f.fShip
@@ -383,6 +385,10 @@ onMounted(async () => {
   try {
     const ka = await api<{ categories: { label: string; id: string }[] }>('/drivers/kleinanzeigen/categories');
     cats.ka = (ka?.categories || []).map((c: { label: string; id: string }) => ({ label: c.label, id: c.id }));
+  } catch { /* offline */ }
+  try {
+    const vi = await api<{ categories: Category[] }>('/drivers/vinted/categories');
+    cats.vi = vi?.categories || [];
   } catch { /* offline */ }
   search.loadFavs();
   byId.value = new Map(search.results.map((s) => [s.listing.id, s]));

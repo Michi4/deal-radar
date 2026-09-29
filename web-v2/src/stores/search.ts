@@ -8,7 +8,7 @@ export interface Filters {
   minMatch: number; warnT: number; blockT: number;
   wMatch: number; wValue: number; wRisk: number; wComp: number;
   maxpages: string; limitN: string; deepN: string;
-  catSel: string; catKa: string; catAuto: boolean;
+  catSel: string; catKa: string; catVi: string; catAuto: boolean;
   locQ: string; locR: string;
   fOcr: boolean; fBench: boolean; fVision: boolean; fDet: boolean;
   fPick: boolean; fShip: boolean;
@@ -17,7 +17,7 @@ export const defaultFilters = (): Filters => ({
   min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100,
   wMatch: 35, wValue: 35, wRisk: 20, wComp: 10,
   maxpages: '', limitN: '', deepN: '150',
-  catSel: '', catKa: '', catAuto: true, locQ: '', locR: '',
+  catSel: '', catKa: '', catVi: '', catAuto: true, locQ: '', locR: '',
   fOcr: true, fBench: true, fVision: true, fDet: true, fPick: false, fShip: false
 });
 
