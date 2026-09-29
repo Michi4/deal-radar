@@ -1,6 +1,22 @@
-# PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
+# PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- ACCEPTANCE 33/40 with session evidence (was 0; strict re-proof, no stale claims).
+- SHPOCK KEYWORD WALL FOUND: ?q= ignored server-side since yesterday (generic bestseller
+  dump for every keyword). Driver raises loudly on keyword-ignored dumps (unit-tested);
+  docs/DRIVER_COUNTS.md holds the site-vs-fetched table for every working driver.
+- HISTORY: running searches visible + controllable across reloads (save-at-start + live
+  overlay, unit-tested); delete-while-running stays deleted (unit-tested + proven live);
+  kill -9 drill: stale→interrupted + resumable, snapshots open post-restart.
+- STOP: single-intent stop reports "stopped" (was "done"); enrichment phases check
+  cancellation (live ~4s); client renders stopped distinctly.
+- PROGRESSIVE PARTIALS (cards in seconds) + breaker retry-at + friendly per-source notes +
+  events in SQLite + SSRF guard + Lab sandbox + proxy failover proven + TokenHarbor live.
+- MACHINES: laptop ollama stopped+disabled; AI host Kev fixed (crash-looped 36k× on a
+  bad User= directive); no open relays left. VLM still blocked (ollama stalls, trio text-only).
+- PENDING (honest): NL 10/10 + Lab e2e need uncongested cloud (rerun off-peak);
+  watch-firing + tracking-timeline need natural listing changes (loops proven operating);
+  Signal/TG/email need creds; VLM needs a backend; prod-UI edge needs LAN/bypass/test-user.
 - AUTHORSHIP REWRITE: remote + prod history now 329 Michi4-only (single "Michi" merge
   commit fixed via filter-branch; stale refs/original purged; bundle backup at
   /tmp/opencode/dealradar-backup-2026-09-29.bundle; prod reset --hard + healthy).
