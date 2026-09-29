@@ -39,12 +39,21 @@ try {
   if (limit) await page.selectOption('#limitN', '50');
   const mp = await page.$('#maxpages');
   if (mp) await page.fill('#maxpages', '1');
+  await page.evaluate(() => {
+    const adv = document.querySelector('details:not([open]) summary');
+    if (adv) adv.click();
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const deep = document.querySelector('#deepN');
+    if (deep) { deep.value = '50'; deep.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
   await page.click('#searchbtn');
   await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0,
     null, { timeout: 240000 });
   check('kw search renders cards', true);
   await page.waitForFunction(() => typeof ACTIVEJOBS !== 'undefined' && ACTIVEJOBS.size === 0,
-    null, { timeout: 240000 });
+    null, { timeout: 480000 });
   const n = await page.evaluate(() => LAST.length);
   check('search completes with results', n > 0, `${n} results`);
   const status = await page.evaluate(() => document.querySelector('#status').innerText.slice(0, 200));
