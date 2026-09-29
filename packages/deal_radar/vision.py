@@ -170,9 +170,8 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
                         r.raise_for_status()
                         _ok()
                         return _parse_vision(r.json())
-                return _fail()
             except Exception:
-                return _fail()
+                pass  # fall through to cloud instead of giving up
         # 2) cloud free VLM
         if not (api and key and image_url):
             return {}
