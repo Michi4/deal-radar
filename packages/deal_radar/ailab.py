@@ -128,6 +128,12 @@ async def generate(kind: str, instruction: str, followup: str = "",
         else:
             checks = hotload_enricher(path)
             checks["sandbox"] = {"fired": sb.get("fired"), "net_blocked": sb.get("net_blocked", 0)}
+            if checks.get("ok") and not checks.get("fired_on_sample"):
+                checks = {"ok": False,
+                          "error": "contract check: enricher does not fire on the positive sample "
+                                   "(fix patterns or contract shapes: EnrichmentFact(field, value, "
+                                   "confidence, status; Evidence(type, detail)))",
+                          "sandbox": checks.get("sandbox")}
     else:
         from deal_radar.registry import check as _check
         checks = _check(path.parent.name)
@@ -210,17 +216,18 @@ def hotload_enricher(path: Path) -> dict:
         assert spec is not None and spec.loader is not None
         mod = importlib.util.module_from_spec(spec)
         from deal_radar.enrich import REGISTRY as _REG
-        _before = set(_REG.keys())
+        _before = {k: id(v) for k, v in _REG.items()}
         spec.loader.exec_module(mod)
         # live fire-check: run the NEWLY registered enricher(s) against samples
         from deal_radar.contracts import CanonicalListing, Seller
         from deal_radar.enrich import REGISTRY
         mk = lambda t, d: CanonicalListing(id="labtest", source="lab", native_id="x", url="u",
                                            title=t, description=d, price=1.0, seller=Seller(name="s"))
+        _candidates = [eid for eid, enr in REGISTRY.items()
+                       if eid not in _before or id(enr) != _before[eid]]
         fired = False
-        for eid, enr in REGISTRY.items():
-            if eid in _before:
-                continue
+        for eid in _candidates:
+            enr = REGISTRY[eid]
             try:
                 r1 = enr.enrich(mk("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"), {})
                 enr.enrich(mk("plain thing", "nothing special here"), {})

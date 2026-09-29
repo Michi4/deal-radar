@@ -833,7 +833,7 @@ class WarrantyEnricher(Enricher):
         if "garantie" in t.lower():
             return [EnrichmentFact(field="warranty", value="mentioned", confidence=0.8,
                                    status=FactStatus.EXTERNAL,
-                                   sources=[Evidence(type="external", detail="test")])]
+                                   evidence=[Evidence(type="external", detail="test")])]
         return []
 register(WarrantyEnricher())
 '''.strip()

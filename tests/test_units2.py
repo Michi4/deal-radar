@@ -183,7 +183,9 @@ def test_ailab_generate_mocked():
     code = ("from deal_radar.enrich import Enricher, register\n"
             "from deal_radar.contracts import EnrichmentFact, FactStatus, Evidence\n"
             "class TLab2Enricher(Enricher):\n    id = \"tlab2\"\n    version = \"0.0.1\"\n"
-            "    def enrich(self, listing, ctx):\n        return []\n"
+            "    def enrich(self, listing, ctx):\n"
+            "        t = ((listing.title or '') + ' ' + (listing.description or '')).lower()\n"
+            "        return [EnrichmentFact(field='t', value='y', confidence=0.9, status=FactStatus.EXTERNAL, evidence=[Evidence(type='text', detail='t')])] if 'warranty' in t or 'test' in t else []\n"
             "register(TLab2Enricher())\n")
     with patch("deal_radar.decision.cloud_code", new=AsyncMock(return_value="```python\n" + code + "\n```")):
         out = asyncio.run(ailab.generate("enricher", "test thing"))
