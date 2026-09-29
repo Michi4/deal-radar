@@ -53,6 +53,14 @@ User asked to clean unneeded LLM stuff. Found and fixed/done:
   remains the fallback behind it). AI host Ollama stays stopped (prior decision).
 - AI host tinyproxy relay + laptop tunnel killed after the proxy proof (no open relays left).
 
+## 2026-09-29 (AI host journey runner + WG bypass)
+Laptop lost LAN L3 (only VPN uplink) → Authelia 302 (bypass is subnet-based). Michi
+approved + applied the WG bypass himself (10.9.9.0/24 in authelia configuration.yml,
+backup .bak-20260929, container restarted — I could not write the root-owned file).
+Since the laptop still egresses via VPN exit (not WG), journeys run FROM AI host:
+~/dr-journeys (playwright-core + ESM shim + cached chromium-1234), hosts override
+10.9.9.2 app.example.net, edge 200. scripts/journeys/* stay canonical in repo.
+
 ## 2026-09-28 (cloud AI → TokenHarbor, model shootout)
 User supplied a temp TokenHarbor key (OpenAI-compatible) and asked for cloud-first with
 the best-fitting model. Live shootout 2026-09-28, same USB-C/iPhone JSON task:

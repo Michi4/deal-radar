@@ -12,7 +12,8 @@
 ```
 cd ~/docker/deal-radar/app && git pull && cd .. && docker compose up -d --build
 ```
-- URL: https://app.example.net (Authelia; LAN bypass per authelia config)
+- URL: https://app.example.net (Authelia; LAN bypass per authelia config;
+  since 2026-09-29 also 10.9.9.0/24 WG bypass for mesh machines + AI host journey runner)
 - Data volume: `dealradar-data` (/data/dealradar.db + /data/lab-*). Backup: `~/bin/backup_dealradar.sh` (cron 03:17).
 - Off-host copy: AI host `~/bin/pull_dealradar_backup.sh` (cron 04:05) pulls newest nightly
   over WG to `~/backups/dealradar/<date>/`, 14-day retention. Restore drill 2026-09-28:
