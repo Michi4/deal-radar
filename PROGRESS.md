@@ -1,6 +1,10 @@
 # PROGRESS.md — 2026-09-28 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- AUTHORSHIP REWRITE: remote + prod history now 329 Michi4-only (single "Michi" merge
+  commit fixed via filter-branch; stale refs/original purged; bundle backup at
+  /tmp/opencode/dealradar-backup-2026-09-29.bundle; prod reset --hard + healthy).
+  Secrets history scan clean (no key/password fragments in any commit).
 - TOKENHARBOR CLOUD AI LIVE (user key): shootout picked qwen3.8-flash primary (clean JSON,
   frugal) → mimo fallback (fenced JSON) → deepseek last (reasoning-bloated, empty content).
   Prod .env switched + restarted; NL parse verified in-container. No code change needed
