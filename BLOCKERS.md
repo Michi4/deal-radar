@@ -12,6 +12,11 @@
   laptop's egress after this session's probing volume (facets, categories, searches).
   Polite rule now: NO willhaben live fetches from the laptop; willhaben live proofs run
   from prod/app host IP or after a cooldown of days. Unit + fixture coverage stands in.
+- [ ] Vision VLM backend missing (2026-09-29): local qwen2.5vl unusable (ollama startup
+  stalls on Arc GPU probing + only 2.3G RAM free; service stopped again); TokenHarbor
+  free trio is text-only (no vision model offered). vision_check code + breaker + honest
+  {}-degradation are unit-covered; OCR (tesseract) proven live. Needed: a reachable VLM
+  (cloud vision model or fixed local ollama) for the match/mismatch pair proof.
 
 - [ ] TokenHarbor key is TEMPORARY (user-supplied 2026-09-28): lives in prod
   `~/docker/deal-radar/.env` (app host) + chat history only — never in repo/docs.
