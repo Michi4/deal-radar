@@ -143,6 +143,7 @@ async def generate(kind: str, instruction: str, followup: str = "",
 
 
 _IMPORT_ALLOW = {"deal_radar", "re", "math", "statistics", "datetime", "json",
+                  "unicodedata", "functools", "itertools",
                   "httpx", "pydantic", "asyncio", "time", "urllib"}
 _CALL_DENY = {"eval", "exec", "open", "__import__", "compile", "input", "breakpoint"}
 _ATTR_DENY = {"__subclasses__", "__bases__", "__mro__", "__globals__", "__code__",
