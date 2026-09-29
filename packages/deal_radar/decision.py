@@ -59,7 +59,7 @@ CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")  #
 
 
 async def _post_chat(base: str, key: str, model: str, system: str, user: str,
-                   max_tokens: int, timeout: float = 60.0, raw: bool = False) -> dict | None:
+                   max_tokens: int, timeout: float = 150.0, raw: bool = False) -> dict | None:
     import json as _json
     try:
         headers = {"Content-Type": "application/json"}
@@ -186,9 +186,8 @@ async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | No
 
 NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON SearchIntent. "
              "Use your product knowledge: resolve to concrete models (e.g. 'iPhone with USB-C charging' "
-             "-> models ['iPhone 15','iPhone 15 Plus','iPhone 15 Pro','iPhone 15 Pro Max','iPhone 16',"
-             "'iPhone 16 Plus','iPhone 16 Pro','iPhone 16 Pro Max','iPhone 17','iPhone Air']; "
-             "'ThinkPad with OLED' -> ThinkPad models known with OLED options). "
+             "-> models ['iPhone 15','iPhone 15 Plus','iPhone 15 Pro','iPhone 15 Pro Max','iPhone 16']; "
+             "'ThinkPad with OLED' -> ThinkPad models known with OLED options). Keep lists short (max 8 models). "
              "Return ONLY JSON with keys: keywords (broad marketplace search words), "
              "models [] (exact product models that qualify — listings must match one), "
              "exclude [] (words that disqualify: accessories like case/hülle/kabel/charger, wrong variants, "
