@@ -188,7 +188,7 @@ NL_SYSTEM = ("You convert a natural-language second-hand search into a JSON Sear
              "Use your product knowledge: resolve to concrete models (e.g. 'iPhone with USB-C charging' "
              "-> models ['iPhone 15','iPhone 15 Plus','iPhone 15 Pro','iPhone 15 Pro Max','iPhone 16']; "
              "'ThinkPad with OLED' -> ThinkPad models known with OLED options). Keep lists short (max 8 models). "
-             "Return ONLY JSON with keys: keywords (broad marketplace search words), "
+             "Return ONLY JSON with keys: keywords (broad marketplace search words, ONE space-separated string), "
              "models [] (exact product models that qualify — listings must match one), "
              "exclude [] (words that disqualify: accessories like case/hülle/kabel/charger, wrong variants, "
              "other brands, 'defekt' if user wants working), "
@@ -246,7 +246,11 @@ async def nl_to_intent(text: str) -> dict:
     if hit:
         return hit
     cloud = await cloud_json(NL_SYSTEM, text)
-    if cloud and isinstance(cloud.get("keywords"), str):
+    _kw = cloud.get("keywords", "") if cloud else ""
+    if isinstance(_kw, list):
+        _kw = " ".join(str(k) for k in _kw if k)  # models often return keyword lists
+    if cloud and isinstance(_kw, str) and _kw.strip():
+        cloud["keywords"] = _kw.strip()
         bl = cloud.get("blacklist", []) or []
         for ex in (cloud.get("exclude", []) or []):
             bl.append({"fields": ["title", "description", "tags"], "op": "not_contains", "value": str(ex)})
@@ -261,9 +265,11 @@ async def nl_to_intent(text: str) -> dict:
         bl = [b for b in bl if not _selfterm(str(b.get("value", "")))]
         # follow-up: model skipped model resolution but query implies specific models
         import re as _re3
+        _noprice = _re3.sub(r"(unter|under|below|über|over|above|bis|max|min|ab|€|euro|eur)\s*[\d\.,]+|[\d\.,]+\s*(€|euro|eur)",
+                            "", text.lower())  # prices are not model numbers
         if not models and (any(w in text.lower() for w in
                                ("which", "with", "mit", "welche", "ohne", "that", "uses", "having", "haben"))
-                           or _re3.search(r"\d", text)):  # model numbers ("845 g8", "iphone 15") = specific product
+                           or _re3.search(r"\d", _noprice)):  # model numbers ("845 g8", "iphone 15") = specific product
             fix = await cloud_json(
                 "You know every product lineup. Return ONLY JSON {models: [exact model names], "
                 "exclude: [accessory/wrong-variant words]}.",
