@@ -1044,7 +1044,8 @@ async def create_search(intent: SearchIntent):
                                           "notify_done": True})
     # multi-query: "rtx 4080; rtx 4070 ti super" -> parallel sub-searches, merged
     # (cartesian with categories when both given, total fan-out capped at 6)
-    parts = [p.strip() for p in (data.get("keywords", "") or "").split(";") if p.strip()]
+    import re as _re10
+    parts = [p.strip() for p in _re10.split(r"\s*;\s*|\s+[Oo][Rr]\s+", (data.get("keywords", "") or "")) if p.strip()]
     if len(parts) > 1:
         combo = [(p, c) for p in parts[:6] for c in (cats or [""] )][:6]
         lim = data.get("limit")
