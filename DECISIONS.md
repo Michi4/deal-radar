@@ -42,6 +42,17 @@ generic mix, verticals need per-shape parsers, robots.txt expressly forbids auto
 incl. /webapi/), willhaben categories stay keyword-only until a tolerated path exists
 (official API or explicit permission). kleinanzeigen remains the reference implementation.
 
+## 2026-09-29 (machine cleanup + AI host Kev fixed)
+User asked to clean unneeded LLM stuff. Found and fixed/done:
+- Laptop ollama serve STOPPED + DISABLED (15G box was at 12G used; cloud-first now).
+  Restart anytime: `sudo systemctl enable --now ollama`. Models stay on disk (nothing uninstalled).
+- Laptop leftover uvicorn test servers killed; no Kev dev copy was running (nothing to do).
+- AI host Kev was crash-looping ~36k times (`User=ubuntu` in a user unit → step GROUP
+  denied). Removed the directive (+RestartSec 10→30), daemon-reload, now active and the
+  /v1/systemone endpoint validates requests. Prod Stage B via KEV_URL works again (cloud
+  remains the fallback behind it). AI host Ollama stays stopped (prior decision).
+- AI host tinyproxy relay + laptop tunnel killed after the proxy proof (no open relays left).
+
 ## 2026-09-28 (cloud AI → TokenHarbor, model shootout)
 User supplied a temp TokenHarbor key (OpenAI-compatible) and asked for cloud-first with
 the best-fitting model. Live shootout 2026-09-28, same USB-C/iPhone JSON task:
