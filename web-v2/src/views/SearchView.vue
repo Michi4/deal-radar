@@ -56,6 +56,20 @@
           <label class="fld"><span title="Max results per search (empty = unlimited)">results per search</span><input v-model="f.limitN" class="inp" type="number" /></label>
           <label class="fld"><span title="Max pages per source (empty = walk to exhaustion)">max pages per source</span><input v-model="f.maxpages" class="inp" type="number" /></label>
         </div>
+        <div class="rules">
+          <div class="eyebrow">field rules (missing fields pass quietly)</div>
+          <div v-for="(r, i) in rules" :key="i" class="rulerow">
+            <select v-model="r.field" class="inp" :aria-label="'rule field ' + (i + 1)" title="Which field to match">
+              <option v-for="fl in ruleFields" :key="fl" :value="fl">{{ fl }}</option>
+            </select>
+            <select v-model="r.op" class="inp" :aria-label="'rule operator ' + (i + 1)" title="contains/not/regex/equals/lt/gt/range/in">
+              <option>contains</option><option>not_contains</option><option>regex</option><option>not_regex</option><option>equals</option><option>lt</option><option>gt</option><option>range</option><option>in</option>
+            </select>
+            <input v-model="r.value" class="inp grow" :placeholder="r.op === 'range' ? 'min..max' : 'value'" :aria-label="'rule value ' + (i + 1)" title="Value (range as min..max)" />
+            <button class="btn iconbtn" @click="rules.splice(i, 1)" :aria-label="'remove rule ' + (i + 1)" title="Remove rule"><X :size="15" /></button>
+          </div>
+          <button class="btn btn-sm" @click="rules.push({ field: 'title', op: 'contains', value: '' })" title="Add a field rule">+ rule</button>
+        </div>
         <div class="row">
           <button class="btn" @click="resetFilters" title="Reset every filter to defaults">reset filters</button>
         </div>
@@ -137,7 +151,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowDown, ArrowUp, Keyboard, LayoutGrid, List, Sparkles } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, Keyboard, LayoutGrid, List, Sparkles, X } from 'lucide-vue-next';
 import { api } from '@/api';
 import { useSearch } from '@/stores/search';
 import { useUi } from '@/stores/ui';
@@ -161,6 +175,9 @@ const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[
 const statusLine = ref('');
 const driverNotes = ref('');
 const weights = reactive({ match: 35, value: 35, risk: 20, comp: 10 });
+interface FieldRule { field: string; op: string; value: string }
+const rules = reactive<FieldRule[]>([]);
+const ruleFields = ['title', 'description', 'tags', 'category', 'seller_name', 'location', 'condition', 'ocr', 'url', 'price', 'distance_km', 'all_text'];
 const visibleIds = computed(() => search.visibleIds);
 const byId = ref(new Map<string, Scored>());
 const scoreMin = computed({ get: () => search.minScore, set: (v: number) => { search.minScore = v; refilter(); } });
@@ -195,7 +212,7 @@ function toggleSrc(s: string) {
   else search.sources.add(s);
 }
 function toggleKind(k: string) { search.hideKind[k] = !search.hideKind[k]; refilter(); }
-function resetFilters() { Object.assign(search.filters, { min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100 }); Object.assign(weights, { match: 35, value: 35, risk: 20, comp: 10 }); search.maxRisk = 100; search.minScore = 0; search.maxDist = null; refilter(); }
+function resetFilters() { Object.assign(search.filters, { min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100 }); Object.assign(weights, { match: 35, value: 35, risk: 20, comp: 10 }); search.maxRisk = 100; search.minScore = 0; search.maxDist = null; rules.splice(0); refilter(); }
 function pushHist(q: string) {
   history.value = [q, ...history.value.filter((x) => x !== q)].slice(0, 8);
   localStorage.setItem('drh', JSON.stringify(history.value));
@@ -278,10 +295,22 @@ function applyDone(r: SearchResult, label: string) {
   ui.toast(`done: ${search.results.length} results (${label})`);
 }
 
+function buildRules(): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const r of rules) {
+    if (!r.value.trim()) continue;
+    if (r.op === 'range') {
+      const [a, b] = r.value.split('..').map((x) => +x.trim());
+      if (isNaN(a)) continue;
+      out.push({ field: r.field, op: 'range', min: a, max: isNaN(b) ? 1e18 : b });
+    } else out.push({ field: r.field, op: r.op, value: r.value.trim() });
+  }
+  return out;
+}
 function intentBase() {
   const lim = f.limitN === '' ? null : Math.max(1, Math.min(100000, +f.limitN || 200));
   const deep = f.deepN === 'all' || f.deepN === '' ? 0 : Math.max(0, Math.min(100000, +f.deepN || 150));
-  const hard: Record<string, unknown> = {};
+  const hard: Record<string, unknown> = { rules: buildRules() };
   if (f.min !== '') hard.min_price = +f.min;
   if (f.max !== '') hard.max_price = +f.max;
   const mp = f.maxpages === '' ? undefined : Math.max(1, +f.maxpages);
@@ -395,6 +424,10 @@ onMounted(async () => {
 .srcs { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 .ck { display: inline-flex; align-items: center; gap: 0.25rem; border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; font-size: var(--fs-xs); cursor: pointer; text-transform: none; }
 .ck.on { background: var(--acc-soft); border-color: var(--acc); }
+.rules { margin: 0.625rem 0; }
+.rulerow { display: flex; gap: 0.375rem; margin-bottom: 0.375rem; }
+.rulerow .inp { min-height: 36px; }
+.rulerow select.inp { max-width: 11rem; }
 .histrow { display: flex; gap: 0.375rem; align-items: center; flex-wrap: wrap; }
 .toolbar { display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap; margin-bottom: 0.625rem; }
 .toolbar label { display: flex; flex-direction: column; gap: 0.25rem; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; }
