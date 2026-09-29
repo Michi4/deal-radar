@@ -79,6 +79,20 @@ class ShpockDriver(MarketplaceDriver):
         items = parse_next_data(r.text, query.limit)
         if not items and len(r.text) > 5000:
             raise RuntimeError("shpock markup changed (schema-change) — no ItemSummary objects")
+        # keyword-ignored dump guard (verified 2026-09-29: ?q= is served generic
+        # bestsellers with serializedFilters:"{}" — same class as willhaben's dump).
+        # A genuinely empty query has ~0 summaries; a dump has dozens, none matching.
+        if items and (query.keywords or "").strip():
+            import re as _re3
+            toks = [t.lower() for t in _re3.findall(r"[a-z0-9äöü]{3,}", query.keywords.lower())]
+            hits = sum(1 for it in items
+                       if any(t in f"{it['title']} {it['description']}".lower() for t in toks))
+            if not hits:
+                from deal_radar import metrics as _mx
+                _mx.inc("shpock_unfiltered_dump")
+                raise RuntimeError(
+                    "shpock ignored the keyword (unfiltered bestseller dump) — retry later, "
+                    "via proxy, or paste the persisted itemSearch hash (see BLOCKERS.md)")
         out: list[CanonicalListing] = []
         for it in items:
             blob = f"{it['title']} {it['description']}".lower()

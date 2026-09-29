@@ -36,6 +36,9 @@
   Network -> graphql -> extensions.persistedQuery.sha256Hash + variables) or official API
   access. Fallback active: first page + honest per-search status. Idea logged: price-band
   slicing per FINISH cap-workaround rule.
+  UPDATE 2026-09-29: ?q= now IGNORED server-side (generic bestseller dump for every
+  keyword, serializedFilters:"{}" — same class as willhaben's dump). Driver raises loudly
+  on keyword-ignored dumps instead of returning silent zero (unit-tested).
 - [x] AUTH (audit HIGH, 2026-09-27): simple password login shipped (`LOGIN_PASSWORD`,
   HttpOnly SameSite session cookie 30d, /login page + JSON, 5/min brute-force bucket,
   extendable to users/OTP later). Enabled on prod 2026-09-27 (password in server .env,
