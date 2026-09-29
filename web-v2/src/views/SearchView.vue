@@ -90,20 +90,21 @@
       <span class="lane">{{ visibleIds.length }} items</span>
     </div>
 
-    <div v-if="search.searched" class="panel refine">
-      <div class="eyebrow">Filter loaded results · no re-search · everything re-adjustable</div>
-      <div class="advgrid">
-        <label class="fld"><span>hide if contains</span><input v-model="f.black" class="inp" @input="refilter" /></label>
-        <label class="fld"><span>must contain</span><input v-model="f.req" class="inp" @input="refilter" /></label>
-        <label class="fld"><span>max risk % ({{ search.maxRisk }})</span><input v-model.number="search.maxRisk" type="range" min="0" max="100" @input="refilter" /></label>
-        <label class="fld"><span>min score % ({{ search.minScore }})</span><input v-model.number="search.minScore" type="range" min="0" max="100" @input="refilter" /></label>
-      </div>
-      <div class="row kinds">
-        <button v-for="k in kindKeys" :key="k" :class="{ active: search.hideKind[k] }" @click="toggleKind(k)" :title="kindTip(k)">{{ kindLabel(k) }}</button>
-        <label class="ck" :class="{ on: search.showHidden }"><input type="checkbox" v-model="search.showHidden" /> show hidden ({{ search.hidden.length }})</label>
-      </div>
-    </div>
-
+    <div v-if="search.searched" class="cols">
+      <aside v-if="search.searched" class="panel refine side" aria-label="result filters">
+        <div class="eyebrow">Filter loaded results · no re-search · everything re-adjustable</div>
+        <div class="sidegrid">
+          <label class="fld"><span>hide if contains</span><input v-model="f.black" class="inp" @input="refilter" /></label>
+          <label class="fld"><span>must contain</span><input v-model="f.req" class="inp" @input="refilter" /></label>
+          <label class="fld"><span>max risk % ({{ search.maxRisk }})</span><input v-model.number="search.maxRisk" type="range" min="0" max="100" @input="refilter" /></label>
+          <label class="fld"><span>min score % ({{ search.minScore }})</span><input v-model.number="search.minScore" type="range" min="0" max="100" @input="refilter" /></label>
+        </div>
+        <div class="row kinds">
+          <button v-for="k in kindKeys" :key="k" :class="{ active: search.hideKind[k] }" @click="toggleKind(k)" :title="kindTip(k)">{{ kindLabel(k) }}</button>
+          <label class="ck" :class="{ on: search.showHidden }"><input type="checkbox" v-model="search.showHidden" /> show hidden ({{ search.hidden.length }})</label>
+        </div>
+      </aside>
+      <div class="main">
     <div v-if="statusLine" class="panel statusline"><small>{{ statusLine }}</small></div>
 
     <Pager v-if="pages > 1" :page="search.page" :pages="pages" @go="goPage" />
@@ -126,6 +127,8 @@
         @compare="search.toggleCompare(s.listing.id)" @fav="search.toggleFav(s.listing.id)" @click="openDrawer(s.listing.id)" />
     </div>
     <Pager v-if="pages > 1" :page="search.page" :pages="pages" @go="goPage" />
+      </div>
+    </div>
 
     <Drawer v-if="drawerId" :id="drawerId" @close="drawerId = null" />
   </div>
@@ -398,6 +401,12 @@ onMounted(async () => {
 .iconbtn { min-width: var(--tap); justify-content: center; }
 .iconbtn.active { background: var(--acc-soft); border-color: var(--acc); }
 .refine { margin-bottom: 0.625rem; }
+.cols { display: block; }
+@media (min-width: 70rem) {
+  .cols { display: grid; grid-template-columns: 17rem 1fr; gap: 0.75rem; align-items: start; }
+  .refine.side { position: sticky; top: 4.5rem; margin-bottom: 0; }
+  .refine.side .sidegrid { display: flex; flex-direction: column; gap: 0.625rem; }
+}
 .kinds { align-items: center; flex-wrap: wrap; }
 .kinds button { border: 1px solid var(--line); background: transparent; color: var(--mut); border-radius: 99px; padding: 6px 12px; cursor: pointer; min-height: 36px; }
 .kinds button.active { background: var(--acc-soft); border-color: var(--acc); color: var(--ink); }

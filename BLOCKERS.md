@@ -8,6 +8,10 @@
   Needed (pick one): (a) laptop back on LAN L3, (b) add 10.9.9.0/24 to Authelia LAN-bypass
   (your own mesh — your call, I won't touch security config unilaterally), or
   (c) a throwaway Authelia test user for playwright.
+- [ ] Laptop IP willhaben-walled (2026-09-29): willhaben returns ConnectError from this
+  laptop's egress after this session's probing volume (facets, categories, searches).
+  Polite rule now: NO willhaben live fetches from the laptop; willhaben live proofs run
+  from prod/app host IP or after a cooldown of days. Unit + fixture coverage stands in.
 
 - [ ] TokenHarbor key is TEMPORARY (user-supplied 2026-09-28): lives in prod
   `~/docker/deal-radar/.env` (app host) + chat history only — never in repo/docs.
