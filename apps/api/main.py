@@ -242,6 +242,7 @@ from deal_radar.notify_rules import rules_ok as _rules_ok
 
 FAV_POLL_S = int(os.getenv("FAV_POLL_S", "1800"))
 _last_fav_poll = 0.0
+_FAV_MISS: dict[str, int] = {}  # consecutive fetch failures per tracked item
 
 
 def _fav_poll_s() -> int:
@@ -293,9 +294,27 @@ async def _track_favorites() -> None:
             det = await d.fetch_detail(durl)
         except Exception:
             metrics.inc("favtrack_errors")
+            _FAV_MISS[lid] = _FAV_MISS.get(lid, 0) + 1
+            if _FAV_MISS[lid] == 3:
+                _log_event({"kind": "fav_availability", "listing_id": lid, "url": durl,
+                            "title": f.get("title", ""),
+                            "note": "unreachable 3 polls in a row (sold? blocked? offline?)"})
+                try:
+                    await notifier.send(f"Tracked item possibly gone: {(f.get('title') or lid)[:60]}",
+                                        f"unreachable 3 polls in a row\n{durl}", {"url": durl})
+                except Exception:
+                    pass
             continue
         if not det:
+            _log_event({"kind": "fav_availability", "listing_id": lid, "url": durl,
+                        "title": f.get("title", ""), "note": "detail page gone (sold? removed?)"})
+            try:
+                await notifier.send(f"Tracked item gone: {(f.get('title') or lid)[:60]}",
+                                    f"detail page gone (sold? removed?)\n{durl}", {"url": durl})
+            except Exception:
+                pass
             continue
+        _FAV_MISS.pop(lid, None)
         det.id = lid  # keep stable id so history accumulates on the saved item
         try:
             for c in store.upsert(det):
