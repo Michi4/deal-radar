@@ -1,7 +1,8 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
-- ACCEPTANCE 33/40 with session evidence (was 0; strict re-proof, no stale claims).
+- ACCEPTANCE 33/40. verify.sh GREEN locally (168 passed) + CI green on latest push.
+- v2 parity: lane toggles, deep-check N, min-match %, warn-%. Deployed to prod (healthy).
 - SHPOCK KEYWORD WALL FOUND: ?q= ignored server-side since yesterday (generic bestseller
   dump for every keyword). Driver raises loudly on keyword-ignored dumps (unit-tested);
   docs/DRIVER_COUNTS.md holds the site-vs-fetched table for every working driver.
