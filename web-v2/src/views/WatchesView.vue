@@ -8,6 +8,8 @@
         <label class="fld"><span title="Only notify drops of at least this %">drop % ≥</span><input v-model="dropP" class="inp" type="number" placeholder="any" /></label>
         <label class="fld"><span title="Only notify new matches below this risk %">risk ≤ %</span><input v-model="riskP" class="inp" type="number" placeholder="any" /></label>
         <label class="fld"><span title="Poll interval in minutes">re-check every (min)</span><input v-model.number="intMin" class="inp" type="number" min="1" value="30" /></label>
+        <label class="fld"><span title="Location for distance-aware watches">location</span><input v-model="locQ" class="inp" placeholder="optional" /></label>
+        <label class="fld"><span title="Radius in km (empty = unlimited)">radius km</span><input v-model="locR" class="inp" type="number" min="1" placeholder="any" /></label>
         <label class="fld"><span>&nbsp;</span><button type="submit" class="btn btn-primary">+ Watch</button></label>
       </form>
       <div class="row checks">
@@ -38,6 +40,8 @@ const nNew = ref(true);
 const nPrice = ref(true);
 const nDesc = ref(false);
 const nImg = ref(false);
+const locQ = ref('');
+const locR = ref('');
 const channels = ref('');
 
 async function mkWatch() {
@@ -53,6 +57,7 @@ async function mkWatch() {
   const body = {
     keywords: q.value || 'watch', sources: [...search.sources],
     hard: maxP.value ? { max_price: +maxP.value } : {},
+    location: locQ.value.trim(), radius_km: locR.value === '' ? undefined : Math.max(1, +locR.value || 50),
     watch: true, poll_interval_s: mins * 60, notify_on: notifyOn, notify_rules: rules
   };
   const r = await api<{ id?: string; error?: string }>('/searches', {

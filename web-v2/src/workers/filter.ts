@@ -38,6 +38,7 @@ self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
   const { items, opts } = e.data;
   const t = opts.matchW + opts.valueW + opts.riskW + opts.compW || 1;
   const out: { id: string; key: number }[] = [];
+  let unknown = 0;
   for (const s of items) {
     const l = s.listing;
     const why = JSON.stringify(s.why || '');
@@ -47,7 +48,10 @@ self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
     if (opts.hideLanes.includes(s.lane || '')) continue;
     if (((s.risk?.score ?? 0) * 100) > opts.maxRisk) continue;
     if ((s.final_score ?? 0) * 100 < opts.minScore) continue;
-    if (opts.maxDist != null && (l.distance_km == null || l.distance_km > opts.maxDist)) continue;
+    if (opts.maxDist != null && (l.distance_km == null || l.distance_km > opts.maxDist)) {
+      if (l.distance_km == null) unknown++;
+      continue;
+    }
     if (opts.min != null && (l.price ?? 1e18) < opts.min) continue;
     if (opts.max != null && (l.price ?? -1) > opts.max) continue;
     const txt = ((l.title || '') + ' ' + (l.description || '')).toLowerCase();
@@ -71,5 +75,5 @@ self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
     out.push({ id: l.id, key: key * desc * opts.dir });
   }
   out.sort((a, b) => a.key - b.key);
-  (self as unknown as { postMessage: (m: unknown) => void }).postMessage({ ids: out.map((o) => o.id) });
+  (self as unknown as { postMessage: (m: unknown) => void }).postMessage({ ids: out.map((o) => o.id), unknownHidden: unknown });
 };

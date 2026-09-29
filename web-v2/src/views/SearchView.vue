@@ -41,7 +41,11 @@
           <label class="fld"><span title="Pickup possible">pickup possible</span><input v-model="f.fPick" type="checkbox" /></label>
           <label class="fld"><span title="Shipping possible">shipping possible</span><input v-model="f.fShip" type="checkbox" /></label>
           <label class="fld"><span title="Your location (text or browser)">location</span><input v-model="f.locQ" class="inp" /></label>
-          <label class="fld"><span title="Search radius in km (empty = unlimited)">radius km</span><input v-model="f.locR" class="inp" type="number" /></label>
+          <label class="fld"><span title="Search radius 1 km to unlimited (empty)">radius km</span>
+            <span class="row"><input v-model="f.locR" class="inp" type="number" min="1" max="1000" />
+            <button class="btn btn-sm" @click.prevent="geoloc" title="Use browser location (reverse-geocoded, cached)">locate</button></span>
+            <input v-model="f.locR" type="range" min="1" max="200" title="Radius slider 1–200 km (clear the number for unlimited)" />
+          </label>
           <label class="fld"><span>category (willhaben)</span><select v-model="f.catSel" class="inp"><option value="">any</option><option v-for="c in cats.wh" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
           <label class="fld"><span>category (kleinanzeigen)</span><select v-model="f.catKa" class="inp" @change="f.catAuto = false"><option value="">any</option><option v-for="c in cats.ka" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
           <label class="fld"><span>category (vinted)</span><select v-model="f.catVi" class="inp" @change="f.catAuto = false"><option value="">any</option><option v-for="c in cats.vi" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
@@ -104,6 +108,7 @@
       <button class="btn iconbtn" @click="ui.setView('grid')" :class="{ active: ui.view === 'grid' }" aria-label="grid view" title="Grid view"><LayoutGrid :size="16" /></button>
       <button class="btn iconbtn" @click="ui.setView('list')" :class="{ active: ui.view === 'list' }" aria-label="list view" title="List view"><List :size="16" /></button>
       <span class="lane">{{ visibleIds.length }} items</span>
+      <span v-if="unknownNote" class="lane warn" :title="unknownNote">{{ unknownNote }}</span>
     </div>
 
     <div v-if="search.searched" class="cols">
@@ -117,7 +122,8 @@
         </div>
         <div class="row kinds">
           <button v-for="k in kindKeys" :key="k" :class="{ active: search.hideKind[k] }" @click="toggleKind(k)" :title="kindTip(k)">{{ kindLabel(k) }}</button>
-          <label class="ck" :class="{ on: search.showHidden }"><input type="checkbox" v-model="search.showHidden" /> show hidden ({{ search.hidden.length }})</label>
+          <label class="fld"><span>max distance km (empty = any)</span><input v-model="f.locR" class="inp" type="number" min="1" @input="refilter" title="Radius 1 km to unlimited — listings without location are counted, not silently dropped" /></label>
+        <label class="ck" :class="{ on: search.showHidden }"><input type="checkbox" v-model="search.showHidden" /> show hidden ({{ search.hidden.length }})</label>
         </div>
       </aside>
       <div class="main">
@@ -176,6 +182,7 @@ const history = ref<string[]>(JSON.parse(localStorage.getItem('drh') || '[]'));
 const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[]; required?: string[]; category?: string; subs?: string[] } | null>(null);
 const statusLine = ref('');
 const driverNotes = ref('');
+const unknownNote = ref('');
 const weights = reactive({ match: 35, value: 35, risk: 20, comp: 10 });
 interface FieldRule { field: string; op: string; value: string }
 const rules = reactive<FieldRule[]>([]);
@@ -188,7 +195,12 @@ const f = search.filters;
 let worker: Worker | null = null;
 try {
   worker = new Worker(new URL('../workers/filter.ts', import.meta.url), { type: 'module' });
-  worker.onmessage = (e: MessageEvent<{ ids: string[] }>) => { search.visibleIds = e.data.ids; };
+  worker.onmessage = (e: MessageEvent<{ ids: string[]; unknownHidden?: number }>) => {
+    search.visibleIds = e.data.ids;
+    unknownNote.value = e.data.unknownHidden
+      ? `${e.data.unknownHidden} without location hidden by radius — clear radius to include`
+      : '';
+  };
 } catch { worker = null; }
 
 const isValueSort = computed(() => search.sort === 'ppe');
@@ -214,7 +226,23 @@ function toggleSrc(s: string) {
   else search.sources.add(s);
 }
 function toggleKind(k: string) { search.hideKind[k] = !search.hideKind[k]; refilter(); }
-function resetFilters() { Object.assign(search.filters, { min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100 }); Object.assign(weights, { match: 35, value: 35, risk: 20, comp: 10 }); search.maxRisk = 100; search.minScore = 0; search.maxDist = null; rules.splice(0); refilter(); }
+function resetFilters() { Object.assign(search.filters, { min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100 }); Object.assign(weights, { match: 35, value: 35, risk: 20, comp: 10 }); search.maxRisk = 100; search.minScore = 0; search.maxDist = null; unknownNote.value = ''; rules.splice(0); refilter(); }
+function geoloc() {
+  if (!navigator.geolocation) { useUi().toast('no geolocation in this browser'); return; }
+  useUi().toast('locating…');
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const key = pos.coords.latitude.toFixed(2) + ',' + pos.coords.longitude.toFixed(2);
+      const cached = JSON.parse(localStorage.getItem('drgeo') || '{}');
+      if (cached[key]) { f.locQ = cached[key]; return; }
+      const r = await (await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=jsonv2`, { headers: { Accept: 'application/json' } })).json();
+      const a = r.address || {};
+      f.locQ = ((a.postcode || '') ? a.postcode + ' ' : '') + (a.city || a.town || a.village || a.state || '');
+      cached[key] = f.locQ;
+      try { localStorage.setItem('drgeo', JSON.stringify(cached)); } catch { /* full */ }
+    } catch { useUi().toast('reverse-geocode failed'); }
+  }, () => useUi().toast('location denied'), { enableHighAccuracy: false, timeout: 15000 });
+}
 function pushHist(q: string) {
   history.value = [q, ...history.value.filter((x) => x !== q)].slice(0, 8);
   localStorage.setItem('drh', JSON.stringify(history.value));
@@ -225,6 +253,7 @@ function rerunHistory(h: string) {
 }
 
 function refilter() {
+  search.maxDist = f.locR === '' || f.locR == null ? null : Math.max(1, +f.locR);
   const items = [...search.results];
   byId.value = new Map(items.map((s) => [s.listing.id, s]));
   // strip Vue reactivity (proxies are not structured-cloneable for the worker)
@@ -449,6 +478,7 @@ onMounted(async () => {
 .kinds { align-items: center; flex-wrap: wrap; }
 .kinds button { border: 1px solid var(--line); background: transparent; color: var(--mut); border-radius: 99px; padding: 6px 12px; cursor: pointer; min-height: 36px; }
 .kinds button.active { background: var(--acc-soft); border-color: var(--acc); color: var(--ink); }
+.lane.warn { opacity: 1; color: #d97706; font-weight: 600; }
 .statusline { margin-bottom: 0.625rem; }
 .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.75rem; }
 .listcol { display: flex; flex-direction: column; gap: 0.5rem; }
