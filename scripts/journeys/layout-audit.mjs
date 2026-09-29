@@ -48,7 +48,7 @@ for (const width of VIEWPORTS) {
     for (const pg of PAGES) {
       const tag = `${pg.name}-${width}-${theme}`;
       cerr.length = 0;
-      try {
+      const evalOnce = async () => {
         await goWithRetry(() => pg.go(page));
         await page.waitForFunction(
           () => typeof setMode !== 'undefined' || !!document.querySelector('#stats'),
@@ -60,7 +60,7 @@ for (const width of VIEWPORTS) {
         }, theme);
         await page.waitForTimeout(900);
         await page.screenshot({ path: `${OUT}/layout-${tag}.png` });
-        const res = await page.evaluate(() => {
+        return await page.evaluate(() => {
           const out = { emoji: [], overflow: [], tiny: 0, smallTaps: 0, overlaps: 0, boxes: 0 };
           const emoRe = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u;
           for (const el of document.querySelectorAll('button, a, h1, h2, h3, input, .chip, .badge')) {
@@ -90,19 +90,36 @@ for (const width of VIEWPORTS) {
           }
           return out;
         });
-        if (cerr.length) fail(`${tag} console errors: ${cerr.slice(0, 3).join(' | ')}`);
-        else pass(`${tag} console clean`);
-        if (res.emoji.length) fail(`${tag} emoji in UI: ${res.emoji.slice(0, 3).join(' | ')}`);
-        else pass(`${tag} no emoji`);
-        if (res.overflow > 1) fail(`${tag} horizontal overflow ${res.overflow}px`);
-        else pass(`${tag} no h-overflow`);
-        if (res.tiny) fail(`${tag} sub-12px body text found`);
-        else pass(`${tag} type scale ok`);
-        // informational only (design tokens come with the rebuild): taps + overlaps
-        console.log(`INFO ${tag} small-taps(<20px)=${res.smallTaps} overlaps=${res.overlaps} boxes=${res.boxes}`);
+      };
+      const isNetFlake = (errs) => errs.length > 0 && errs.every((m) => /ERR_CONNECTION|ERR_INTERNET|ERR_TIMED_OUT|TimeoutError|net::ERR/.test(m));
+      let res;
+      try {
+        res = await evalOnce();
       } catch (e) {
         fail(`${tag} exception: ${String(e).slice(0, 140)}`);
+        continue;
       }
+      if (cerr.length && isNetFlake(cerr)) {
+        // single network flake on the WG path: reload once, judge the clean run
+        console.log(`RETRY ${tag} after flake: ${cerr.slice(0, 2).join(' | ')}`);
+        cerr.length = 0;
+        try {
+          res = await evalOnce();
+        } catch (e) {
+          fail(`${tag} exception on retry: ${String(e).slice(0, 140)}`);
+          continue;
+        }
+      }
+      if (cerr.length) fail(`${tag} console errors: ${cerr.slice(0, 3).join(' | ')}`);
+      else pass(`${tag} console clean`);
+      if (res.emoji.length) fail(`${tag} emoji in UI: ${res.emoji.slice(0, 3).join(' | ')}`);
+      else pass(`${tag} no emoji`);
+      if (res.overflow > 1) fail(`${tag} horizontal overflow ${res.overflow}px`);
+      else pass(`${tag} no h-overflow`);
+      if (res.tiny) fail(`${tag} sub-12px body text found`);
+      else pass(`${tag} type scale ok`);
+      // informational only: taps + overlaps
+      console.log(`INFO ${tag} small-taps(<20px)=${res.smallTaps} overlaps=${res.overlaps} boxes=${res.boxes}`);
     }
     await ctx.close();
   }
