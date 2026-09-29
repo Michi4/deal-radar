@@ -16,7 +16,7 @@ class FilterResult:
 
 
 SUPPORTED_OPS = {"contains", "not_contains", "regex", "not_regex", "equals",
-                 "lt", "gt", "range", "in", "not_in", "exists"}
+                 "not_equals", "lt", "gt", "range", "in", "not_in", "exists"}
 
 
 def _matchable_fields(listing: CanonicalListing) -> dict[str, str]:
@@ -105,6 +105,9 @@ def eval_rule(listing: CanonicalListing, rule: dict[str, Any]) -> tuple[bool, st
         elif op == "equals":
             if tl.strip() == pl.strip():
                 return True, f"{f} equals '{pat}'", False
+        elif op == "not_equals":
+            if tl.strip() == pl.strip():
+                return False, f"{f} equals blacklisted '{pat}'", False
         elif op == "in":
             vals = rule.get("values", [])
             if any(str(v).lower() in tl for v in vals):
@@ -135,7 +138,12 @@ def apply_filters(listing: CanonicalListing, hard: dict[str, Any] | None,
         return FilterResult(False, [f"price {listing.price} > max {hard['max_price']}"], missing)
     if hard.get("min_price") is not None and listing.price is not None and listing.price < float(hard["min_price"]):
         return FilterResult(False, [f"price {listing.price} < min {hard['min_price']}"], missing)
+    _NEGATE = {"contains": "not_contains", "regex": "not_regex",
+                 "equals": "not_equals", "in": "not_in"}
     for rule in (blacklist or []):
+        if isinstance(rule, dict) and rule.get("op") in _NEGATE:
+            # blacklist entries mean "must NOT match" regardless of caller wording
+            rule = {**rule, "op": _NEGATE[rule["op"]]}
         ok, reason, was_missing = eval_rule(listing, rule)
         if was_missing:
             missing.append(reason)

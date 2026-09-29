@@ -251,6 +251,21 @@ async def nl_to_intent(text: str) -> dict:
         _kw = " ".join(str(k) for k in _kw if k)  # models often return keyword lists
     if cloud and isinstance(_kw, str) and _kw.strip():
         cloud["keywords"] = _kw.strip()
+        # normalize model-shaped blacklist entries to exclusion semantics
+        _neg = {"contains": "not_contains", "regex": "not_regex",
+                "equals": "not_equals", "in": "not_in"}
+        _bl = []
+        for b in (cloud.get("blacklist", []) or []):
+            if isinstance(b, str):
+                b = {"fields": ["title", "description", "tags"], "op": "not_contains",
+                     "value": b}
+            elif isinstance(b, dict):
+                b = {"fields": b.get("fields") or ["title", "description", "tags"],
+                     "op": _neg.get(b.get("op", "not_contains"), b.get("op", "not_contains")),
+                     "value": b.get("value", b.get("pattern", ""))}
+            if str(b.get("value", "")).strip():
+                _bl.append(b)
+        cloud["blacklist"] = _bl
         bl = cloud.get("blacklist", []) or []
         for ex in (cloud.get("exclude", []) or []):
             bl.append({"fields": ["title", "description", "tags"], "op": "not_contains", "value": str(ex)})
