@@ -60,7 +60,10 @@
             </span>
           </label>
           <label class="fld"><span title="Max results per search (empty = unlimited)">results per search</span><input v-model="f.limitN" class="inp" type="number" /></label>
+          <label class="fld"><span title="Deep-check top N with OCR + benchmarks (expensive)">deep-check top N</span><select v-model="f.deepN" class="inp"><option value="50">50</option><option value="150">150</option><option value="500">500</option><option value="all">all (slow)</option></select></label>
           <label class="fld"><span title="Max pages per source (empty = walk to exhaustion)">max pages per source</span><input v-model="f.maxpages" class="inp" type="number" /></label>
+          <label class="fld"><span title="Relevance floor % (low-quality matches hide, unhideable below)">min match %</span><input v-model.number="f.minMatch" class="inp" type="number" min="0" max="100" /></label>
+          <label class="fld"><span title="Risk % that moves a listing to review">warn at risk %</span><input v-model.number="f.warnT" class="inp" type="number" min="0" max="100" /></label>
         </div>
         <div class="rules">
           <div class="eyebrow">field rules (missing fields pass quietly)</div>
@@ -122,6 +125,7 @@
         </div>
         <div class="row kinds">
           <button v-for="k in kindKeys" :key="k" :class="{ active: search.hideKind[k] }" @click="toggleKind(k)" :title="kindTip(k)">{{ kindLabel(k) }}</button>
+          <button v-for="l in laneKeys" :key="l" :class="{ active: !search.hideLanes.has(l) }" @click="toggleLane(l)" :title="'Show/hide lane: ' + l">{{ l }}</button>
           <label class="fld"><span>max distance km (empty = any)</span><input v-model="f.locR" class="inp" type="number" min="1" @input="refilter" title="Radius 1 km to unlimited — listings without location are counted, not silently dropped" /></label>
         <label class="ck" :class="{ on: search.showHidden }"><input type="checkbox" v-model="search.showHidden" /> show hidden ({{ search.hidden.length }})</label>
         </div>
@@ -216,6 +220,13 @@ const pageItems = computed(() => {
   return arr.slice(search.page * search.perPage, search.page * search.perPage + search.perPage);
 });
 const kindKeys = ['want', 'parts', 'acc'];
+const laneKeys = computed(() => [...new Set(search.results.map((s) => s.lane || 'good'))]);
+function toggleLane(l: string) {
+  if (search.hideLanes.has(l)) search.hideLanes.delete(l);
+  else search.hideLanes.add(l);
+  search.hideLanes = new Set(search.hideLanes);
+  refilter();
+}
 const kindLabel = (k: string) => ({ want: 'Gesuche', parts: 'parts', acc: 'accessories' }[k] || k);
 const kindTip = (k: string) => ({ want: 'Hide wanted/buy-request ads (kept, unhide anytime)', parts: 'Hide parts/repair-only listings', acc: 'Hide accessories/empty boxes/cases' }[k] || k);
 const filtersActive = computed(() => !!(f.min || f.max || f.black || f.req || f.blockT < 100));
@@ -341,7 +352,7 @@ function buildRules(): Record<string, unknown>[] {
 function intentBase() {
   const lim = f.limitN === '' ? null : Math.max(1, Math.min(100000, +f.limitN || 200));
   const deep = f.deepN === 'all' || f.deepN === '' ? 0 : Math.max(0, Math.min(100000, +f.deepN || 150));
-  const hard: Record<string, unknown> = { rules: buildRules() };
+  const hard: Record<string, unknown> = { rules: buildRules(), min_match: (f.minMatch || 0) / 100 };
   if (f.min !== '') hard.min_price = +f.min;
   if (f.max !== '') hard.max_price = +f.max;
   const mp = f.maxpages === '' ? undefined : Math.max(1, +f.maxpages);
