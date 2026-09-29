@@ -28,6 +28,26 @@ try {
   });
   check('v2 kw mode', kwBtn);
   await page.fill('#q', 'ThinkPad X1');
+  await page.evaluate(() => {
+    const adv = document.querySelector('details.adv:not([open]) summary');
+    if (adv) adv.click();
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const labs = [...document.querySelectorAll('.advgrid .fld')];
+    const setNum = (frag, val) => {
+      const lab = labs.find((l) => (l.textContent || '').includes(frag));
+      if (!lab) return;
+      const inp = lab.querySelector('input, select');
+      inp.focus();
+      if (inp.tagName === 'SELECT') { inp.value = val; inp.dispatchEvent(new Event('change', { bubbles: true })); }
+      else { inp.value = val; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+    };
+    setNum('results per search', '50');
+    setNum('max pages per source', '1');
+    const deep = labs.find((l) => (l.textContent || '').includes('deep-check'));
+    if (deep) { const s = deep.querySelector('select'); s.value = '50'; s.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
   await page.click('#searchbtn');
   await page.waitForFunction(() => document.querySelectorAll('.rgrid .res').length > 0, null, { timeout: 240000 });
   check('v2 cards render', true);
