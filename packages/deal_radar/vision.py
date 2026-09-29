@@ -139,8 +139,9 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
         return {}
 
     def _ok() -> None:
-        global _vision_failures
+        global _vision_failures, _vision_disabled_until
         _vision_failures = 0
+        _vision_disabled_until = 0.0
     prompt = ("Listing title: " + title[:300] +
               "\nDescription: " + (description or "")[:800] +
               "\nReturn ONLY JSON: {shows_item (0..1: photo shows THIS item), "
@@ -171,10 +172,10 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
                         _ok()
                         return _parse_vision(r.json())
             except Exception:
-                pass  # fall through to cloud instead of giving up
+                pass  # local down: cloud still gets its chance; only total failure trips the breaker
         # 2) cloud free VLM
         if not (api and key and image_url):
-            return {}
+            return _fail()
         async with httpx.AsyncClient(timeout=150.0) as c:
             r = await c.post(f"{api.rstrip('/')}/chat/completions",
                              headers={"Authorization": f"Bearer {key}"}, json=payload(vmodel))
