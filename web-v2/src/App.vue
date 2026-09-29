@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   Compass, Search, Star, Bell, Columns2, Store, FlaskConical, History, Moon, Sun
@@ -83,6 +83,32 @@ const mobilenav = computed(() => {
   const rest = nav.value.filter((n) => n.to !== '/lab');
   return rest.slice(0, 6);
 });
+
+// Live SSE push (new matches, price changes, finished searches) with backoff reconnect.
+let esTimer: number | null = null;
+let esBackoff = 5000;
+function esConnect() {
+  try {
+    const es = new EventSource('/stream');
+    es.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data);
+        if (!['new_match', 'search_done', 'price'].includes(m.kind)) return;
+        ui.toast(`update: ${m.kind}: ${(m.title || m.listing_id || '').slice(0, 80)}`);
+      } catch { /* partial frame */ }
+    };
+    es.onerror = () => {
+      try { es.close(); } catch { /* closed */ }
+      esTimer = window.setTimeout(esConnect, esBackoff);
+      esBackoff = Math.min(60000, esBackoff * 2);
+    };
+    es.onopen = () => { esBackoff = 5000; };
+  } catch {
+    esTimer = window.setTimeout(esConnect, esBackoff);
+  }
+}
+onMounted(esConnect);
+onUnmounted(() => { if (esTimer != null) clearTimeout(esTimer); });
 </script>
 
 <style scoped>
