@@ -29,6 +29,10 @@ const benchOf = (s: Item): number => {
   const b = (s.enrichments || []).find((e) => e.field === 'cpu_benchmark' || e.field === 'gpu_benchmark');
   return b ? b.value : 0;
 };
+const gpuOf = (s: Item): number => {
+  const b = (s.enrichments || []).find((e) => e.field === 'gpu_benchmark');
+  return b ? b.value : 0;
+};
 
 self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
   const { items, opts } = e.data;
@@ -58,6 +62,7 @@ self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
       case 'dist': key = l.distance_km ?? 1e18; break;
       case 'tc': key = s.deal_dna?.total_cost ?? l.price ?? 1e18; break;
       case 'ppe': key = (l.price && benchOf(s)) ? benchOf(s) / (l.price as number) : -1; break;
+      case 'gpe': key = (l.price && gpuOf(s)) ? gpuOf(s) / (l.price as number) : -1; break;
       case 'mt': key = benchOf(s); break;
       default: key = score;
     }

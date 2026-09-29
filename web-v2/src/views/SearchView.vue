@@ -73,6 +73,7 @@
           <option value="score">Score</option><option value="price">Price</option>
           <option value="ppe" :disabled="!hasBench">Perf/€{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
           <option value="mt" :disabled="!hasBench">Multithread{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
+          <option value="gpe" :disabled="!hasGpu">GPU/€{{ hasGpu ? '' : ' (re-run with GPU benchmarks)' }}</option>
           <option value="dist">Distance</option><option value="tc">Total cost</option>
         </select>
       </label>
@@ -170,8 +171,9 @@ try {
 
 const isValueSort = computed(() => search.sort === 'ppe');
 const hasBench = computed(() => search.results.some((s) => (s.enrichments || []).some((e) => e.field === 'cpu_benchmark' || e.field === 'gpu_benchmark')));
+const hasGpu = computed(() => search.results.some((s) => (s.enrichments || []).some((e) => e.field === 'gpu_benchmark')));
 const sortDown = computed(() => {
-  const descDefault = search.sort === 'score' || search.sort === 'ppe' || search.sort === 'mt';
+  const descDefault = search.sort === 'score' || search.sort === 'ppe' || search.sort === 'mt' || search.sort === 'gpe';
   return (descDefault ? -1 : 1) * search.sortDir === 1;
 });
 const pages = computed(() => Math.max(1, Math.ceil(visibleIds.value.length / search.perPage)));
