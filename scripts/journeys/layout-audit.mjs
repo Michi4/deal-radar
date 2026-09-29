@@ -35,10 +35,15 @@ for (const width of VIEWPORTS) {
     page.on('pageerror', (e) => cerr.push('pageerror: ' + String(e).slice(0, 140)));
     page.on('response', (r) => { if (r.status() >= 400) cerr.push(`${r.status()} ${r.url().slice(-80)}`); });
     const goWithRetry = async (fn) => {
-      try { await fn(); } catch (e) {
-        await page.waitForTimeout(4000);
-        await fn();
+      let last = null;
+      for (let a = 0; a < 3; a++) {
+        try { await fn(); return; }
+        catch (e) {
+          last = e;
+          await page.waitForTimeout(4000);
+        }
       }
+      throw last;
     };
     for (const pg of PAGES) {
       const tag = `${pg.name}-${width}-${theme}`;
