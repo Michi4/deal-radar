@@ -65,9 +65,10 @@
 
     <div v-if="search.searched" class="toolbar" id="toolbar">
       <label title="Sort key (asc/desc per key)">sort
-        <select v-model="search.sort" class="inp">
+        <select v-model="search.sort" class="inp" title="Sort key — keys needing data that was not collected are disabled">
           <option value="score">Score</option><option value="price">Price</option>
-          <option value="ppe">Perf/€</option><option value="mt">Multithread</option>
+          <option value="ppe" :disabled="!hasBench">Perf/€{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
+          <option value="mt" :disabled="!hasBench">Multithread{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
           <option value="dist">Distance</option><option value="tc">Total cost</option>
         </select>
       </label>
@@ -163,6 +164,7 @@ try {
 } catch { worker = null; }
 
 const isValueSort = computed(() => search.sort === 'ppe');
+const hasBench = computed(() => search.results.some((s) => (s.enrichments || []).some((e) => e.field === 'cpu_benchmark' || e.field === 'gpu_benchmark')));
 const sortDown = computed(() => {
   const descDefault = search.sort === 'score' || search.sort === 'ppe' || search.sort === 'mt';
   return (descDefault ? -1 : 1) * search.sortDir === 1;
@@ -258,6 +260,7 @@ function fmtErrors(err?: Record<string, string>): string {
 function applyDone(r: SearchResult, label: string) {
   search.results = r.results || [];
   search.sid = r.id;
+  search.searched = true;
   refilter();
   const errs = fmtErrors(r.driver_errors);
   statusLine.value = `${search.results.length} results · filtered out ${r.filtered_out || 0} · median ${r.median ?? '—'}${errs}`;
