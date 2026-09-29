@@ -67,8 +67,8 @@ async function mkWatch() {
 }
 onMounted(async () => {
   try {
-    const n = await api<{ channels: { type: string; target?: string }[] }>('/notifications/status');
-    channels.value = 'alert channels: ' + (n?.channels || []).map((c: { type: string; target?: string }) => c.type + (c.target || '')).join(', ');
+    const n = await api<{ channels: { type: string; target?: string; configured?: boolean }[] }>('/notifications/status');
+    channels.value = 'alert channels: ' + (n?.channels || []).map((c: { type: string; target?: string; configured?: boolean }) => `${c.type} ${c.configured === false ? '(not configured)' : '(ready)'}`).join(', ');
   } catch { /* offline */ }
   if (search.lastDurationS > 0) intMin.value = Math.max(30, Math.ceil(search.lastDurationS / 60));
 });

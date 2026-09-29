@@ -1478,11 +1478,22 @@ def notifications_status():
     chans = []
     if os.getenv("SIGNAL_NUMBER"):
         chans.append({"type": "signal", "configured": True})
+    else:
+        chans.append({"type": "signal", "configured": False})
     if os.getenv("NTFY_TOPIC_URL"):
-        chans.append({"type": "ntfy"})
+        chans.append({"type": "ntfy", "configured": True})
+    else:
+        chans.append({"type": "ntfy", "configured": False})
     if os.getenv("WEBHOOK_URL"):
-        chans.append({"type": "webhook"})
-    chans.append({"type": "log"})
+        chans.append({"type": "webhook", "configured": True})
+    else:
+        chans.append({"type": "webhook", "configured": False})
+    _nj = os.getenv("NOTIFIERS_JSON", "")
+    has_tg = "telegram" in _nj
+    has_mail = "email" in _nj
+    chans.append({"type": "telegram", "configured": has_tg})
+    chans.append({"type": "email", "configured": has_mail})
+    chans.append({"type": "log", "configured": True})
     extra = []
     if os.getenv("NOTIFIERS_JSON"):
         try:
