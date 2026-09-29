@@ -128,11 +128,11 @@ async def generate(kind: str, instruction: str, followup: str = "",
         else:
             checks = hotload_enricher(path)
             checks["sandbox"] = {"fired": sb.get("fired"), "net_blocked": sb.get("net_blocked", 0)}
-            if checks.get("ok") and not checks.get("fired_on_sample"):
+            if checks.get("ok") and checks.get("supported_sample") and not checks.get("fired_on_sample"):
                 checks = {"ok": False,
-                          "error": "contract check: enricher does not fire on the positive sample "
-                                   "(fix patterns or contract shapes: EnrichmentFact(field, value, "
-                                   "confidence, status; Evidence(type, detail)))",
+                          "error": "contract check: enricher claims support on samples but returns "
+                                   "nothing (fix patterns or contract shapes: EnrichmentFact(field, "
+                                   "value, confidence, status; Evidence(type, detail)))",
                           "sandbox": checks.get("sandbox")}
     else:
         from deal_radar.registry import check as _check
@@ -226,14 +226,27 @@ def hotload_enricher(path: Path) -> dict:
         _candidates = [eid for eid, enr in REGISTRY.items()
                        if eid not in _before or id(enr) != _before[eid]]
         fired = False
+        supported = False
         for eid in _candidates:
             enr = REGISTRY[eid]
             try:
+                for _t, _d in (("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"),
+                               ("plain thing", "nothing special here")):
+                    _m = mk(_t, _d)
+                    try:
+                        if enr.supports(_m):
+                            supported = True
+                            if enr.enrich(_m, {}):
+                                fired = True
+                    except Exception:
+                        pass
                 r1 = enr.enrich(mk("TEST WARRANTY Garantie 12 Monate", "volle Gewaehrleistung"), {})
                 enr.enrich(mk("plain thing", "nothing special here"), {})
-                fired = bool(r1)
+                if r1:
+                    fired = True
             except Exception as e:
                 return {"ok": False, "error": f"enrich() raised on sample: {e}"}
-        return {"ok": True, "enrichers": sorted(REGISTRY.keys()), "fired_on_sample": fired}
+        return {"ok": True, "enrichers": sorted(REGISTRY.keys()), "fired_on_sample": fired,
+                "supported_sample": supported}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
