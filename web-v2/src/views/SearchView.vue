@@ -44,6 +44,10 @@
           <label class="fld"><span title="Search radius in km (empty = unlimited)">radius km</span><input v-model="f.locR" class="inp" type="number" /></label>
           <label class="fld"><span>category (willhaben)</span><select v-model="f.catSel" class="inp"><option value="">any</option><option v-for="c in cats.wh" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
           <label class="fld"><span>category (kleinanzeigen)</span><select v-model="f.catKa" class="inp"><option value="">any</option><option v-for="c in cats.ka" :key="c.id" :value="c.id">{{ c.label }}</option></select></label>
+          <label class="fld"><span title="Ranking weight: text match">weight: match</span><input v-model.number="weights.match" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
+          <label class="fld"><span title="Ranking weight: value for money">weight: value</span><input v-model.number="weights.value" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
+          <label class="fld"><span title="Ranking weight: risk penalty">weight: risk</span><input v-model.number="weights.risk" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
+          <label class="fld"><span title="Ranking weight: listing completeness">weight: complete</span><input v-model.number="weights.comp" class="inp" type="number" min="0" max="100" @input="refilter" /></label>
           <label class="fld"><span>sources</span>
             <span class="srcs">
               <label v-for="s in allSources" :key="s" class="ck" :class="{ on: srcOn(s) }"><input type="checkbox" :checked="srcOn(s)" @change="toggleSrc(s)" /> {{ s }}</label>
@@ -152,6 +156,7 @@ const history = ref<string[]>(JSON.parse(localStorage.getItem('drh') || '[]'));
 const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[]; required?: string[]; category?: string; subs?: string[] } | null>(null);
 const statusLine = ref('');
 const driverNotes = ref('');
+const weights = reactive({ match: 35, value: 35, risk: 20, comp: 10 });
 const visibleIds = computed(() => search.visibleIds);
 const byId = ref(new Map<string, Scored>());
 const scoreMin = computed({ get: () => search.minScore, set: (v: number) => { search.minScore = v; refilter(); } });
@@ -185,7 +190,7 @@ function toggleSrc(s: string) {
   else search.sources.add(s);
 }
 function toggleKind(k: string) { search.hideKind[k] = !search.hideKind[k]; refilter(); }
-function resetFilters() { Object.assign(search.filters, { min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100 }); search.maxRisk = 100; search.minScore = 0; search.maxDist = null; refilter(); }
+function resetFilters() { Object.assign(search.filters, { min: '', max: '', black: '', req: '', minMatch: 12, warnT: 35, blockT: 100 }); Object.assign(weights, { match: 35, value: 35, risk: 20, comp: 10 }); search.maxRisk = 100; search.minScore = 0; search.maxDist = null; refilter(); }
 function pushHist(q: string) {
   history.value = [q, ...history.value.filter((x) => x !== q)].slice(0, 8);
   localStorage.setItem('drh', JSON.stringify(history.value));
@@ -211,7 +216,7 @@ function refilter() {
       min: f.min === '' ? null : +f.min, max: f.max === '' ? null : +f.max,
       black: f.black.split(',').map((w: string) => w.trim().toLowerCase()).filter(Boolean),
       req: f.req.split(',').map((w: string) => w.trim().toLowerCase()).filter(Boolean),
-      matchW: 0.35, valueW: 0.35, riskW: 0.2, compW: 0.1,
+      matchW: weights.match / 100, valueW: weights.value / 100, riskW: weights.risk / 100, compW: weights.comp / 100,
       sort: search.sort, dir: search.sortDir
     }
   };
