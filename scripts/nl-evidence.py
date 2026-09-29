@@ -1,4 +1,4 @@
-import asyncio, json, os
+import asyncio, json, os, time
 os.environ.pop("LOCAL_API_URL", None)
 from deal_radar.decision import nl_to_intent
 
@@ -16,7 +16,9 @@ QUERIES = [
 ]
 
 async def main():
-    for q in QUERIES:
+    for i, q in enumerate(QUERIES):
+        if i:
+            await asyncio.sleep(30)  # free-tier breathing room
         try:
             p = await nl_to_intent(q)
             print(json.dumps({"q": q, "keywords": p.get("keywords"),
