@@ -127,7 +127,7 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
     if _t.time() < _vision_disabled_until:
         return {}
     api, key = os.getenv("CLOUD_API_URL", ""), os.getenv("CLOUD_API_KEY", "")
-    vmodel = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")
+    vmodel = os.getenv("CLOUD_MODEL_VISION", "mimo-v2.5:free")
     local_base, local_vl = os.getenv("LOCAL_VISION_API_URL", "") or os.getenv("LOCAL_API_URL", ""), os.getenv("LOCAL_MODEL_VISION", "")
 
     def _fail() -> dict:
@@ -176,7 +176,7 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
         # 2) cloud free VLM
         if not (api and key and image_url):
             return {}
-        async with httpx.AsyncClient(timeout=45.0) as c:
+        async with httpx.AsyncClient(timeout=150.0) as c:
             r = await c.post(f"{api.rstrip('/')}/chat/completions",
                              headers={"Authorization": f"Bearer {key}"}, json=payload(vmodel))
             if r.status_code == 429:
