@@ -840,6 +840,7 @@ def _merge_outs(outs: list[dict], limit: int | None) -> dict:
 
 
 JOBS: dict[str, dict] = {}
+_DELETED: set[str] = set()  # sids deleted mid-run: completion must not re-save them
 
 
 async def _start_job(intents: list[dict], meta: dict) -> dict:
@@ -850,6 +851,7 @@ async def _start_job(intents: list[dict], meta: dict) -> dict:
                  "parsed": meta.get("parsed"), "subqueries": meta.get("subqueries", [])}
     try:
         store.job_upsert(sid, "running", 0, len(intents), base)
+        store.save_search(sid, base, 0, 0)  # visible in history while running
     except Exception:
         pass
     asyncio.create_task(_run_job(sid, intents, meta))
@@ -957,6 +959,14 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
         if any(o.get("stopped") for o in outs):
             merged["stopped"] = True
         base = meta.get("base", intents[0] if intents else {})
+        if sid in _DELETED:
+            _DELETED.discard(sid)
+            try:
+                from deal_radar import cancel as _cancel_gone
+                _cancel_gone.disarm(sid)
+            except Exception:
+                pass
+            return  # deleted mid-run: stay deleted, skip persist + notify
         SEARCHES[sid] = base
         store.save_search(sid, base, len(merged["results"]), merged.get("filtered_out", 0))
         try:
@@ -1078,7 +1088,25 @@ async def watch_clone(sid: str, w: WatchClone):
 
 @app.get("/searches")
 def list_searches():
-    return {"searches": store.list_searches()}
+    out = {"searches": store.list_searches()}
+    # overlay live in-memory jobs (running/paused): history tiles stay controllable
+    # across reloads, browsers and restarts-in-progress
+    try:
+        live = []
+        for sid, job in JOBS.items():
+            if job.get("status") not in ("running", "paused"):
+                continue
+            intent = job.get("intent", {}) or {}
+            live.append({"id": sid, "ts": time.time(), "keywords": intent.get("keywords", ""),
+                         "sources": intent.get("sources", []), "results": 0,
+                         "watch": bool(intent.get("watch", False)), "thumbs": [],
+                         "job": {"status": job.get("status"), "done": job.get("done", 0),
+                                 "total": job.get("total", 1), "detail": job.get("detail", "")}})
+        known = {s.get("id") for s in out["searches"]}
+        out["searches"] = [j for j in live if j["id"] not in known] + out["searches"]
+    except Exception:
+        pass
+    return out
 
 
 @app.post("/searches/{sid}/redo")
@@ -1233,6 +1261,16 @@ def delete_search(sid: str):
     SEARCHES.pop(sid, None)
     SEEN_IDS.pop(sid, None)
     LAST_RUN.pop(sid, None)
+    _DELETED.add(sid)  # completion path must not resurrect it (see _run_job)
+    job = JOBS.get(sid)
+    if job is not None and job.get("status") == "running":
+        job["control"] = "stop"
+        try:
+            from deal_radar import cancel as _cx
+            _cx._STOP.add(sid)
+        except Exception:
+            pass
+    JOBS.pop(sid, None)
     store.delete_search(sid)
     return {"ok": True}
 
