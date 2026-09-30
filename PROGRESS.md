@@ -1,6 +1,13 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- PURGE COMPLETE (owner-ordered): zero personal infra in tree AND history. Removed
+  scripts/ops, deploy/, machine-specific deployment doc; sanitized all docs; test IPs
+  → doc ranges; journeys default to localhost. History rewritten (369 commits) + verified
+  via fresh clone: 0 hits for passwords/keys/IPs/hostnames/phone/paths, 369 Michi4-only.
+  Stale lab branch deleted. Prod reset --hard + rebuilt + healthy.
+  ACTION FOR YOU: rotate the app-host user password (it sat in git history; purge
+  removes it from GitHub but rotate anyway) + later revoke the temp TokenHarbor key.
 - MULTI-SEARCH BULLETPROOF: no busy gate (start unlimited anytime), supersede-safe
   following, global tile refresher (other tabs/reloads/browsers), router ?open (no
   reload), startup resumes interrupted searches. Deployed.
