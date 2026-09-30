@@ -1,11 +1,14 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
-- ACCEPTANCE 39/40. Only #27 (Signal verified + Telegram/email live sends) remains, blocked
-  on user actions logged in BLOCKERS (phone re-register; bot token; SMTP creds). Channels
-  now display ready/not-configured honestly; ntfy + webhook proven live.
-- Free VLM found (mimo-v2.5:free): vision pair proof green (match 1.0 / mismatch 0.0);
-  local-down vision bug fixed (falls through to cloud); breaker counts total failure.
+- MULTI-SEARCH BULLETPROOF: no busy gate (start unlimited anytime), supersede-safe
+  following, global tile refresher (other tabs/reloads/browsers), router ?open (no
+  reload), startup resumes interrupted searches. Deployed.
+- CPU BENCHMARKS FIXED: vague titles ("X1 Carbon Gen 6 i5") now get labeled family
+  estimates with REAL PassMark marks (11/25 in proof test) → Perf/€ + Multithread sorts
+  unlock; exact mentions unchanged; truly-unknown stays honestly empty. Drawer offers
+  exact alternatives to set. Deployed.
+- ACCEPTANCE 39/40 (only Signal-live + TG/email-cred sends remain, BLOCKERS logged).
 - v2 parity: lane toggles, deep-check N, min-match %, warn-%. Deployed to prod (healthy).
 - SHPOCK KEYWORD WALL FOUND: ?q= ignored server-side since yesterday (generic bestseller
   dump for every keyword). Driver raises loudly on keyword-ignored dumps (unit-tested);
