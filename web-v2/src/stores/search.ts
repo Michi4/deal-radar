@@ -31,6 +31,7 @@ export const useSearch = defineStore('search', {
     searched: false,
     jobs: new Map<string, JobState>(),
     followed: null as string | null,
+    followGen: 0,
     running: false,
     lastDurationS: 0,
     filters: defaultFilters(),
@@ -96,9 +97,11 @@ export const useSearch = defineStore('search', {
       this.jobs = new Map(this.jobs);
     },
     async poll(sid: string, label: string): Promise<SearchResult | null> {
+      const myGen = ++this.followGen;
       const t0 = Date.now();
       this.running = true;
       this.followed = sid;
+      const isLive = () => this.followGen === myGen && this.followed === sid;
       this.jobs.set(sid, { done: 0, total: '?', detail: 'starting', label });
       this.jobs = new Map(this.jobs);
       let dark = 0;
@@ -120,10 +123,10 @@ export const useSearch = defineStore('search', {
           const prev = this.jobs.get(sid);
           this.jobs.set(sid, {
             done: r.done || 0, total: r.total || '?', detail: r.detail || '',
-            control: r.control || 'run', label: prev?.label || sid
+            control: r.control || 'run', label: prev?.label || label || sid
           });
           this.jobs = new Map(this.jobs);
-          if (sid !== this.followed) { await new Promise((x) => setTimeout(x, 3000)); continue; }
+          if (!isLive()) return null; // superseded: tile refresher owns this job now
           const part = r.partial;
           if (part && part.n_results) {
             this.results = part.results || [];
@@ -133,15 +136,42 @@ export const useSearch = defineStore('search', {
           await new Promise((x) => setTimeout(x, 3000));
           continue;
         }
-        this.running = false;
-        const mine = sid === this.followed;
+        const mine = isLive();
         this.leave(sid);
+        this.running = this.jobs.size > 0;
         if (!mine) return null;
         this.searched = true;
         this.hidden = r.filtered || [];
         this.lastDurationS = Math.round((Date.now() - t0) / 1000);
         return r;
       }
-    }
+    },
+    async refreshJobs() {
+      // instance-global tiles: picks up jobs from other tabs, reloads and browsers
+      try {
+        const r = await api<{ searches: { id: string; keywords?: string; job?: { status: string; done?: number; total?: number | string; detail?: string } }[] }>('/searches', {}, 0);
+        let changed = false;
+        for (const s of r?.searches || []) {
+          const jb = s.job;
+          if (!jb || (jb.status !== 'running' && jb.status !== 'paused')) continue;
+          const prev = this.jobs.get(s.id);
+          const label = prev?.label || (s.keywords || s.id).slice(0, 50);
+          if (!prev || prev.done !== (jb.done || 0) || prev.detail !== (jb.detail || '')) {
+            this.jobs.set(s.id, { done: jb.done || 0, total: jb.total || '?', detail: jb.detail || '', label });
+            changed = true;
+          }
+        }
+        for (const id of [...this.jobs.keys()]) {
+          if (id === this.followed) continue;
+          const stillLive = (r?.searches || []).some((s) => s.id === id && s.job && (s.job.status === 'running' || s.job.status === 'paused'));
+          if (!stillLive) {
+            const cur = await api<SearchResult>(`/searches/${encodeURIComponent(id)}`).catch(() => null);
+            if (!cur || cur.status !== 'running') { this.jobs.delete(id); changed = true; }
+          }
+        }
+        if (changed) this.jobs = new Map(this.jobs);
+        if (!this.followed) this.running = this.jobs.size > 0;
+      } catch { /* offline: keep tiles as-is */ }
+    },
   }
 });

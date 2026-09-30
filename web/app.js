@@ -86,15 +86,15 @@ function netMsg(e){const m=String((e&&e.message)||e);if(m.includes('Failed to fe
 function safe(fn){return async(...a)=>{try{return await fn(...a)}catch(e){toast(netMsg(e))}}}
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.hasAttribute('data-rm'))t.remove()},true);
 document.addEventListener('click',e=>{
-const da=e.target.closest('[data-act]');if(da){if(da.tagName==='A')e.preventDefault();const f=ACT[da.dataset.act];if(f){f(da.dataset.arg,da)}return}
+const da=e.target.closest('[data-act]');if(da){if(da.tagName==='A')e.preventDefault();if(da.closest('#pageview'))window._histAct=Date.now();const f=ACT[da.dataset.act];if(f){f(da.dataset.arg,da)}return}
 const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favAct(fav.dataset.fav,fav.hasAttribute('data-close'));return}
 const unf=e.target.closest('[data-unfav]');if(unf){unfav(unf.dataset.unfav);return}
 const cycB=e.target.closest('[data-cyc]');if(cycB){e.stopPropagation();cyc(cycB,+cycB.dataset.d||1,cycB.dataset.cyc);return}
 const cmp=e.target.closest('[data-cmp]');if(cmp){e.stopPropagation();cmpTgl(cmp.dataset.cmp);return}
-const os=e.target.closest('[data-osearch]');if(os){openSearch(os.dataset.osearch);return}
-const rs=e.target.closest('[data-rsearch]');if(rs){redoSearch(rs.dataset.rsearch);return}
-const ds=e.target.closest('[data-dsearch]');if(ds){delSearch(ds.dataset.dsearch);return}
-const ws=e.target.closest('[data-wsearch]');if(ws){watchTile(ws.dataset.wsearch);return}
+const os=e.target.closest('[data-osearch]');if(os){window._histAct=Date.now();openSearch(os.dataset.osearch);return}
+const rs=e.target.closest('[data-rsearch]');if(rs){window._histAct=Date.now();redoSearch(rs.dataset.rsearch);return}
+const ds=e.target.closest('[data-dsearch]');if(ds){window._histAct=Date.now();delSearch(ds.dataset.dsearch);return}
+const ws=e.target.closest('[data-wsearch]');if(ws){window._histAct=Date.now();watchTile(ws.dataset.wsearch);return}
 const sn=e.target.closest('[data-snap]');if(sn){const [i,t]=sn.dataset.snap.split('|');viewSnap(i,t);return}
 const hh=e.target.closest('[data-hist]');if(hh){histGo(hh.dataset.hist);return}
 const op=e.target.closest('[data-open]');if(op){openD(op.dataset.open)}});
@@ -334,17 +334,22 @@ const card=(x,kind)=>`<div class="card" style="padding:10px"><b>${x.display_name
 $('pageview').innerHTML=ptitle('Store','drivers & enrichers · one-click install')+'<h3>Drivers</h3><div class="rgrid">'+(r.drivers||[]).map(x=>card(x,'driver')).join('')+'</div><h3>Enrichers</h3><div class="rgrid">'+(r.enrichers||[]).map(x=>card(x,'enricher')).join('')+'</div><div class="empty">contribute via PR to marketplace/index.json</div>';$('pager').style.display='none'}catch(e){$('pageview').innerHTML=`<div class="err">${esc(String(e))}</div>`}}
 async function uninstallX(kind,id,el){if(!el||!el.dataset.armed){if(el){el.dataset.armed='1';el.textContent='sure?';setTimeout(()=>{if(el.isConnected){delete el.dataset.armed;el.textContent='uninstall'}},8000)}toast('click again to confirm uninstall');return}try{const r=await api('/marketplace/'+encodeURIComponent(id),{method:'DELETE'},0);toast(r.ok?'ok: uninstalled '+id:'fail: '+(r.error||'failed'));showStore()}catch(e){toast('uninstall failed: '+netMsg(e))}}
 async function installX(kind,id){if(kind!=='driver')return toast('enrichers ship with the app / lab builds');try{const r=await api('/marketplace/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})},0);toast(r.ok?'ok: installed '+id:'fail: '+(r.error||r.note||'failed'));showStore()}catch(e){toast('install failed: '+netMsg(e))}}
-async function showHistory(){hideSearchChrome();hideChrome();status('');$('pageview').innerHTML='<div class="empty">loading…</div>';
+async function showHistory(){hideSearchChrome();hideChrome();status('');
 try{const r=await api('/searches',{},1);
+if(Date.now()-(window._histAct||0)<2000&&document.querySelector('#pageview .rgrid'))return;
+const sig=JSON.stringify((r.searches||[]).map(s=>[s.id,s.results,s.filtered_out,(s.job||{}).status,(s.job||{}).done,(s.job||{}).detail]));
+if(sig===window._histSig&&document.querySelector('#pageview .rgrid'))return;window._histSig=sig;
+const _sy=window.scrollY;$('pageview').innerHTML='<div class="empty">loading…</div>';
 const tile=s=>{const dt=new Date(s.ts*1000);const when=isNaN(dt)?'':dt.toLocaleString();
 const thumbs=(s.thumbs||[]).map(u=>{const su=safeUrl(u);return su?'<img loading="lazy" src="'+su+'" data-rm="1" style="width:56px;height:44px;object-fit:cover;border-radius:6px"/>':''}).join('');
 const jb=s.job||null;
 const pill=jb?(jb.status==='running'?`<span class="jobpill jobrun">running ${jb.done||0}/${jb.total||'?'}</span>`:jb.status==='error'?'<span class="jobpill joberr">error</span>':jb.status==='interrupted'?'<span class="jobpill joberr">interrupted</span>':jb.status==='stopped'?'<span class="jobpill joberr">stopped</span>':'<span class="jobpill">done</span>'):'';
 const bar=jb&&jb.status==='running'&&jb.total?`<div class="pbar"><i style="width:${Math.min(100,Math.round(100*(jb.done||0)/jb.total))}%"></i></div>`:'';
-const det=jb&&jb.status==='running'&&jb.detail?`<br/><small>${esc(jb.detail.slice(0,80))}</small>`:'';
-return '<div class="card" style="padding:10px;cursor:default"><b>'+esc(s.keywords||'(query)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+((s.sources||[]).map(esc).join('+')||'all sources')+' · '+esc(s.results)+' results'+(s.filtered_out?` · ${esc(s.filtered_out)} hidden`:'')+'</small>'+bar+det+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button>'+((s.job&&s.job.status==='interrupted')?`<button class="btn btn-primary" data-act="resumeJobId" data-arg="'+esc(s.id)+'">resume</button>`:`<button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button>`)+'<button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
+const det=jb&&jb.status==='running'&&(jb.detail||'').trim()?`<br/><small>${esc(jb.detail.slice(0,80))}</small>`:'';
+return '<div class="card htile" style="padding:12px;cursor:default"><b>'+esc(s.keywords||'(untitled search)')+'</b> '+(s.watch?'<span class="badge risk-low">watch</span>':'')+pill+'<br/><small>'+esc(when)+' · '+((s.sources||[]).map(esc).join('+')||'all sources')+' · '+esc(s.results)+' results'+(s.filtered_out?` · ${esc(s.filtered_out)} hidden`:'')+'</small>'+bar+det+'<div style="display:flex;gap:4px;margin:6px 0">'+thumbs+'</div><div class="row tilebtns"><button class="btn btn-primary" data-osearch="'+esc(s.id)+'">open</button>'+((s.job&&s.job.status==='interrupted')?`<button class="btn btn-primary" data-act="resumeJobId" data-arg="'+esc(s.id)+'">resume</button>`:`<button class="btn btn-ghost" data-rsearch="'+esc(s.id)+'">re-run</button>`)+'<button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button><button class="btn btn-ghost" data-wsearch="'+esc(s.id)+'">watch</button>'+(jb&&jb.status==='running'?`<button class="btn btn-ghost" data-act="pauseJob" data-arg="${esc(s.id)}">pause</button><button class="btn btn-ghost" data-act="resumeJob" data-arg="${esc(s.id)}">resume</button><button class="btn btn-ghost" data-act="stopJob" data-arg="${esc(s.id)}">stop</button>`:'')+'</div></div>'};
 const tiles=(r.searches||[]).map(s=>{try{return tile(s)}catch(e){return '<div class="card" style="padding:10px"><b>'+esc(s.keywords||'(query)')+'</b><br/><small>unreadable entry</small><div class="row"><button class="btn btn-ghost" data-dsearch="'+esc(s.id)+'">delete</button></div></div>'}}).join('');
 $('pageview').innerHTML=ptitle('Searches','jump back in anytime · re-run or delete')+(tiles?'<div class="rgrid">'+tiles+'</div>':'<div class="empty">No searches yet.</div>');
+window.scrollTo({top:_sy});
 if((r.searches||[]).some(s=>s.job&&s.job.status==='running')){if(HISTT)clearInterval(HISTT);HISTT=setInterval(()=>{if($('pageview').style.display!=='none')showHistory()},8000)}}catch(e){$('pageview').innerHTML='<div class="err">'+esc(String(e))+'</div>'}}
 async function openSearch(id){tab('search');let r;try{r=await api('/searches/'+encodeURIComponent(id))}catch(e){status(`<div class="err">open failed: ${esc(netMsg(e))}</div>`);return}
 if(r.error&&!(r.results||[]).length){status(`<div class="err">${esc(r.error)} <button class="btn btn-primary" data-act="redoId" data-arg="${esc(id)}">re-run now</button></div>`);return}

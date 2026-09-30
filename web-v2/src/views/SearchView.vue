@@ -12,11 +12,11 @@
 
       <form v-if="ui.mode === 'nl'" @submit.prevent="runNL" class="row">
         <input v-model="nlText" class="inp grow" placeholder="Describe what you want…" aria-label="natural language query" />
-        <button class="btn btn-primary" type="submit" :disabled="busy">Ask</button>
+        <button class="btn btn-primary" type="submit" :disabled="!nlText.trim()">Ask</button>
       </form>
       <form v-else @submit.prevent="runKw" class="row">
         <input v-model="kwText" id="q" class="inp grow" placeholder="Keywords (e.g. ThinkPad X1)" aria-label="keywords" />
-        <button class="btn btn-primary" type="submit" :disabled="busy" id="searchbtn">Search</button>
+        <button class="btn btn-primary" type="submit" :disabled="!kwText.trim()" id="searchbtn">Search</button>
       </form>
 
       <div v-if="nlApplied" class="applied">
@@ -134,7 +134,7 @@
     <div v-if="statusLine" class="panel statusline"><small>{{ statusLine }}</small></div>
 
     <Pager v-if="pages > 1" :page="search.page" :pages="pages" @go="goPage" />
-    <div v-if="search.searched && !busy && !visibleIds.length" class="empty">
+    <div v-if="search.searched && !visibleIds.length" class="empty">
       No results. Try fewer filters or another query.
       <span v-if="driverNotes">{{ driverNotes }}</span>
     </div>
@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ArrowDown, ArrowUp, Keyboard, LayoutGrid, List, Sparkles, X } from 'lucide-vue-next';
 import { api } from '@/api';
@@ -178,7 +178,6 @@ const ui = useUi();
 const route = useRoute();
 const kwText = ref('');
 const nlText = ref('');
-const busy = ref(false);
 const drawerId = ref<string | null>(null);
 const allSources = ref<string[]>([]);
 const cats = reactive<{ wh: Category[]; ka: Category[]; vi: Category[] }>({ wh: [], ka: [], vi: [] });
@@ -187,6 +186,7 @@ const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[
 const statusLine = ref('');
 const driverNotes = ref('');
 const unknownNote = ref('');
+let refreshTimer: number | null = null;
 const weights = reactive({ match: 35, value: 35, risk: 20, comp: 10 });
 interface FieldRule { field: string; op: string; value: string }
 const rules = reactive<FieldRule[]>([]);
@@ -370,32 +370,35 @@ function intentBase() {
 }
 
 async function runKw() {
-  if (!kwText.value.trim() || busy.value) return;
-  busy.value = true;
-  statusLine.value = 'Search started in background …';
+  const q = kwText.value.trim();
+  if (!q) return;
+  statusLine.value = `Search started in background: ${q} …`;
+  ui.toast('search started — start another anytime');
   try {
     const j = await api<{ id: string }>('/searches', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keywords: kwText.value, ...intentBase() })
+      body: JSON.stringify({ keywords: q, ...intentBase() })
     });
-    pushHist(kwText.value);
-    const done = await search.poll(j.id, kwText.value);
-    if (done && done.status !== 'error' && done.status !== 'stopped') applyDone(done, 'fresh');
-    else if (done && done.status === 'stopped') { search.results = done.results || []; refilter(); statusLine.value = `stopped — ${search.results.length} partial results`; }
+    pushHist(q);
+    const done = await search.poll(j.id, q);
+    if (!done) return; // superseded or aborted: newer search owns the view
+    if (done.status !== 'error' && done.status !== 'stopped') applyDone(done, 'fresh');
+    else if (done.status === 'stopped') { search.results = done.results || []; refilter(); statusLine.value = `stopped — ${search.results.length} partial results`; }
   } catch (e) { statusLine.value = 'search failed: ' + (e instanceof Error ? e.message : String(e)); }
-  busy.value = false;
 }
 async function runNL() {
-  if (!nlText.value.trim() || busy.value) return;
-  busy.value = true;
-  statusLine.value = 'AI is resolving products for: ' + nlText.value + ' …';
+  const q = nlText.value.trim();
+  if (!q) return;
+  statusLine.value = 'AI is resolving products for: ' + q + ' …';
+  ui.toast('search started — start another anytime');
   try {
     const j = await api<{ id: string }>('/searches/nl', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: nlText.value, sources: [...search.sources], category: f.catSel, limit: f.limitN === '' ? null : +f.limitN })
     });
-    pushHist(nlText.value);
-    const done = await search.poll(j.id, 'AI: ' + nlText.value);
+    pushHist(q);
+    const done = await search.poll(j.id, 'AI: ' + q);
+    if (!done) return; // superseded or aborted
     if (done && done.status !== 'error' && done.status !== 'stopped') {
       const p = (done.parsed || {}) as Record<string, unknown>;
       nlApplied.value = {
@@ -407,10 +410,23 @@ async function runNL() {
       applyDone(done, 'AI');
     }
   } catch (e) { statusLine.value = 'NL search failed: ' + (e instanceof Error ? e.message : String(e)); }
-  busy.value = false;
 }
 
 watch(() => [search.sort, search.sortDir], refilter);
+watch(() => route.query.open, async (open) => {
+  if (typeof open === 'string' && open) await openById(open);
+});
+onUnmounted(() => { if (refreshTimer != null) clearInterval(refreshTimer); });
+
+async function openById(id: string) {
+  const r = await api<SearchResult>(`/searches/${encodeURIComponent(id)}`);
+  if (!r) return;
+  if (r.status === 'running') {
+    ui.toast('following live search…');
+    const done = await search.poll(id, id.slice(-6));
+    if (done && done.status !== 'error' && done.status !== 'stopped') applyDone(done, 'reopened');
+  } else applyDone(r, 'snapshot');
+}
 
 onMounted(async () => {
   try {
@@ -433,17 +449,12 @@ onMounted(async () => {
   search.loadFavs();
   byId.value = new Map(search.results.map((s) => [s.listing.id, s]));
   if (search.results.length && !search.visibleIds.length) refilter();
+  await search.refreshJobs();
+  refreshTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible') search.refreshJobs();
+  }, 5000);
   const open = route.query.open;
-  if (typeof open === 'string' && open) {
-    const r = await api<SearchResult>(`/searches/${encodeURIComponent(open)}`);
-    if (r) {
-      if (r.status === 'running') {
-        ui.toast('following live search…');
-        const done = await search.poll(open, open.slice(-6));
-        if (done && done.status !== 'error' && done.status !== 'stopped') applyDone(done, 'reopened');
-      } else applyDone(r, 'snapshot');
-    }
-  }
+  if (typeof open === 'string' && open) await openById(open);
 });
 </script>
 

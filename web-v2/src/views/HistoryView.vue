@@ -83,7 +83,10 @@ onUnmounted(() => { if (timer != null) clearInterval(timer); });
 <style scoped>
 h2 small { opacity: 0.6; font-weight: 400; }
 .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
-.tile { padding: 0.625rem; }
+.tile { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.tile .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.tile .btn { min-height: 40px; padding: 0.5rem 0.875rem; }
+.tile .btn-sm { min-height: 40px; }
 .badge.watch { background: #16a34a; color: #fff; }
 .jobpill { display: inline-block; font-size: var(--fs-xs); font-weight: 800; border-radius: 99px; padding: 2px 10px; background: var(--acc-soft); }
 .jobrun { background: var(--acc); color: #fff; } .joberr { background: #dc2626; color: #fff; }
