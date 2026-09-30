@@ -1,24 +1,29 @@
-"""Live proxy proof (needs the AI host tiny relay + local tunnel).
+"""Live proxy proof: search through a CONNECT relay + dead-first failover.
 
-Setup (AI host):  python3 /tmp/tinyproxy.py   # listens 10.9.9.1:18888, WG-only
-Tunnel (laptop):    ssh -N -L 18888:10.9.9.1:18888 ubuntu@203.0.113.107
-Run:                pytest -m live tests/live/test_proxy_live.py
-Skips cleanly when the tunnel is absent. Traffic observed in /tmp/dr-proxy-targets.log
-on AI host (www.kleinanzeigen.de) on 2026-09-28; 5 results + dead-first failover.
+Setup (any relay host reachable from here):
+  1. run a tiny CONNECT relay on port 18888 (WG-only bind, no auth, kill after)
+  2. make it reachable locally, e.g. ssh -N -L 18888:<relay>:18888 <jump-host>
+Run: PROXY_URL=http://127.0.0.1:18888 pytest -m live tests/live/test_proxy_live.py
+Skips cleanly when PROXY_URL is unset. Traffic must be observed relay-side.
 """
+import os
 import socket
 
 import pytest
 
 pytestmark = pytest.mark.live
 
-PROXY = "http://127.0.0.1:18888"
+PROXY = os.getenv("PROXY_URL", "")
 DEAD = "http://127.0.0.1:19999"
 
 
-def _tunnel_up() -> bool:
+def _proxy_up() -> bool:
+    if not PROXY:
+        return False
     try:
-        s = socket.create_connection(("127.0.0.1", 18888), timeout=5)
+        from urllib.parse import urlparse
+        u = urlparse(PROXY)
+        s = socket.create_connection((u.hostname or "127.0.0.1", u.port or 80), timeout=5)
         s.close()
         return True
     except OSError:
@@ -28,8 +33,8 @@ def _tunnel_up() -> bool:
 def test_proxy_fetch_live():
     import asyncio
 
-    if not _tunnel_up():
-        pytest.skip("proxy tunnel absent (see module docstring)")
+    if not _proxy_up():
+        pytest.skip("PROXY_URL unset/unreachable (see module docstring)")
     from kleinanzeigen.driver import KleinanzeigenDriver
 
     from deal_radar.driver_sdk import ProxyTransport, SearchQuery
@@ -44,8 +49,8 @@ def test_proxy_fetch_live():
 def test_proxy_failover_live():
     import asyncio
 
-    if not _tunnel_up():
-        pytest.skip("proxy tunnel absent (see module docstring)")
+    if not _proxy_up():
+        pytest.skip("PROXY_URL unset/unreachable (see module docstring)")
     from kleinanzeigen.driver import KleinanzeigenDriver
 
     from deal_radar.driver_sdk import RotatingProxyTransport, SearchQuery

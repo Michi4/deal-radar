@@ -3,7 +3,7 @@ from deal_radar import vision
 
 
 def test_literal_private_ips_rejected():
-    for u in ("http://127.0.0.1/x.jpg", "http://10.0.0.5/x.jpg",
+    for u in ("http://127.0.0.1/x.jpg", "http://203.0.113.5/x.jpg",
               "http://192.0.2.1/x.jpg", "http://172.16.0.1/x.jpg",
               "http://169.254.169.254/latest/meta-data/", "http://[::1]/x.jpg",
               "ftp://example.com/x.jpg", "file:///etc/passwd", "not-a-url"):

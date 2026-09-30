@@ -3,7 +3,7 @@
 # Exit 0 = all green. Screenshots + report in /tmp/opencode/journeys/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-BASE="${BASE:-https://app.example.net}"
+BASE="${BASE:-http://127.0.0.1:8099}"
 OUT="${OUT:-/tmp/opencode/journeys}"
 mkdir -p "$OUT"
 echo "== layout audit vs $BASE =="

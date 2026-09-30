@@ -442,7 +442,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         stopped = True
     if not stopped and _stageb_queue:
         _stageb_queue.sort(key=lambda t: abs(t[1].get("match", 0.5) - 0.55))
-        _sb_sem = asyncio.Semaphore(2)  # AI host Kev is 2 shared vCPUs — gentle
+        _sb_sem = asyncio.Semaphore(2)  # remote model host is small — gentle
 
         async def _sb(item):
             sc, _h, keywords = item

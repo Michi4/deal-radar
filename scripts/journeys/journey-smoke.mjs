@@ -3,7 +3,7 @@
 // history open, risk-100 unhide, cleanup (delete created searches). Exit 1 on failure.
 import { chromium } from 'playwright';
 
-const BASE = process.argv[2] || 'https://app.example.net';
+const BASE = process.argv[2] || 'http://127.0.0.1:8099';
 const OUT = process.argv[3] || '/tmp/opencode/journeys';
 
 let fail = 0;

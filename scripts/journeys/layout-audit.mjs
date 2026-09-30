@@ -5,7 +5,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
-const BASE = process.argv[2] || 'https://app.example.net';
+const BASE = process.argv[2] || 'http://127.0.0.1:8099';
 const OUT = process.argv[3] || '/tmp/opencode/journeys';
 fs.mkdirSync(OUT, { recursive: true });
 
