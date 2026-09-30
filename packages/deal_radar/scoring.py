@@ -68,10 +68,20 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
     t = text.lower()
     for cpu in CPU_DB:
         if cpu in t:
+            if re.match(r"m[1-4]$", cpu):
+                i = t.find(cpu)
+                ctx = t[max(0, i - 10):i + len(cpu) + 10]
+                if re.search(r"m\s*\.\s*[1-4]|ssd|nvme|\bslot\b|2280|2230|2242", ctx):
+                    continue  # M.2 SSD storage next to the match, not Apple Silicon
             return cpu, 0.9, f"mentioned '{cpu}'"
-    m = re.search(r"(ryzen\s*\d+\s*\w*|i[3579]-\d{4,5}\w*|m[1-4](\s*pro|\s*max)?)", t)
-    if m:
-        return m.group(1).strip(), 0.45, f"pattern '{m.group(1)}' (unverified)"
+    for m in re.finditer(r"(ryzen\s*\d+\s*\w*|i[3579]-\d{4,5}\w*|m[1-4](\s*pro|\s*max)?)", t):
+        g = (m.group(1) or "").strip()
+        # M.2 SSD slots are storage, not Apple Silicon — skip those matches
+        ctx = t[max(0, m.start() - 8):m.end() + 8]
+        if re.match(r"m[1-4]$", g, re.IGNORECASE) and (
+                re.search(r"m\s*\.\s*2|ssd|nvme|slot|2280|2230", ctx, re.IGNORECASE)):
+            continue
+        return g, 0.45, f"pattern '{g}' (unverified)"
     return None, 0.0, ""
 
 

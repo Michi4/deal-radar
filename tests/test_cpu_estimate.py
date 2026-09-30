@@ -35,3 +35,11 @@ def test_exact_still_wins():
 def test_seed_sanity_spot():
     assert MODEL_CPU_SEED["thinkpad x1 carbon gen 6"] == ["i5-8350U", "i7-8650U"]
     assert MODEL_CPU_SEED["macbook air m2"] == ["M2"]
+
+
+def test_m2_ssd_not_apple_silicon():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("mainboard x1 carbon m.2 ssd slot".lower())[0] is None
+    assert extract_cpu("thinkpad mit m2 2280 ssd".lower())[0] is None
+    assert extract_cpu("macbook air m1 2020 mit 512gb ssd".lower())[0] == "m1"
+    assert extract_cpu("macbook pro m2".lower())[0] == "m2"
