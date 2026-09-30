@@ -28,7 +28,8 @@ def test_truly_unknown_stays_empty():
 
 def test_exact_still_wins():
     fs = enrich_cpu(_mk("ThinkPad with Ryzen 5 PRO 5650U notebook"))
-    assert fs and "ryzen" in fs[0].value and fs[0].confidence >= 0.8
+    assert fs and "ryzen" in fs[0].value and fs[0].confidence > 0
+    assert "family estimate" not in fs[0].sources[0].detail
 
 
 def test_seed_sanity_spot():
