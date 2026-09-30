@@ -16,7 +16,20 @@ CPU_DB = {
 MODEL_CPU_SEED = {
     "hp elitebook 845 g8": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U"],
     "hp 835 g8": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U"],
+    "hp elitebook 840 g8": ["i5-1135G7", "i7-1165G7"],
+    "hp elitebook 840 g9": ["i5-1235U", "i7-1255U"],
     "thinkpad t14 gen 2": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U", "i5-1135G7", "i7-1165G7"],
+    "thinkpad t480": ["i5-8250U", "i7-8550U"],
+    "thinkpad t490": ["i5-8265U", "i7-8565U"],
+    "thinkpad x1 carbon gen 6": ["i5-8350U", "i7-8650U"],
+    "thinkpad x1 carbon gen 5": ["i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],    "thinkpad x1 carbon gen 7": ["i5-8265U", "i7-8565U"],
+    "thinkpad x1 carbon gen 8": ["i5-10210U", "i7-10610U"],
+    "thinkpad x1 carbon gen 9": ["i5-1135G7", "i7-1165G7"],
+    "thinkpad x1 yoga gen 4": ["i5-8265U", "i7-8565U"],
+    "macbook air m1": ["M1"],
+    "macbook air m2": ["M2"],
+    "macbook pro m1": ["M1", "M1 Pro", "M1 Max"],
+    "macbook pro m2": ["M2", "M2 Pro", "M2 Max"],
 }
 
 
@@ -97,6 +110,27 @@ def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
     blob = f"{listing.title}\n{listing.description}\n{' '.join(listing.ocr_texts)}"
     cpu, conf, ev = extract_cpu(blob)
     if not cpu:
+        # family estimate: known model line but no exact CPU in text (e.g. "X1 Carbon Gen 6, i5").
+        # Attach the base candidate as a labeled estimate so benchmark sorting works
+        # approximately; the drawer offers the exact alternatives to set.
+        bl = blob.lower()
+        import re as _re9
+        bl_nospace = _re9.sub(r"[^a-z0-9]", "", bl)
+        for seed_key, cands in MODEL_CPU_SEED.items():
+            hit = seed_key in bl or _re9.sub(r"[^a-z0-9]", "", seed_key) in bl_nospace
+            if hit and cands:
+                if any(c.lower() in bl for c in cands):
+                    continue  # exact mention handled above (extract would have caught most)
+                base = cands[0]
+                others = ", ".join(cands[1:4])
+                return [EnrichmentFact(
+                    field="cpu", value=base, confidence=0.45,
+                    status=FactStatus.AI_INFERRED,
+                    sources=[Evidence(
+                        type="description",
+                        detail=f"family estimate for '{seed_key}' (could be {base}"
+                               f"{', ' + others if others else ''} — set exact CPU in drawer)",
+                        confidence=0.45)])]
         return []
     bench = CPU_DB.get(cpu.lower())
     facts = [EnrichmentFact(field="cpu", value=cpu, confidence=conf,
