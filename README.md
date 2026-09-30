@@ -49,11 +49,10 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 - Enrichment: CPU→PassMark→perf/€ ranking, market median/discount facts, same-item-on-X hints.
 
 ## Deploy
-- App host (primary): `deploy/app host/` (Traefik websecure + Authelia), `app.example.net`.
-- Machine-specific hosts, IPs, access paths: `docs/DEPLOYMENT.md` (kept out of this generic README).
-- Auth: edge (Authelia/basic-auth) + optional in-app `API_KEY` (`x-api-key` header gates everything except `/health`); no CORS by design — browser clients are same-origin only.
-- Full env reference: `deploy/app host/.env.sample` (secrets stay in server `.env`, never git).
-- Back up sqlite: `sqlite3 /data/dealradar.db ".backup '/backups/dealradar-$(date +%F).db'"` on cron.
+- `docker compose up -d --build` (see `Dockerfile`; data volume for sqlite).
+- Auth: put an authenticating edge (Authelia/basic-auth) or set in-app `API_KEY` (`x-api-key` header gates everything except `/health`); no CORS by design — browser clients are same-origin only. Keep your deployment notes (hosts, IPs, access paths) OUT of this repo.
+- Full env reference: copy `.env.sample` to `.env` (secrets stay in server `.env`, never git).
+- Back up sqlite: `sqlite3 /data/dealradar.db ".backup '/backups/dealradar-$(date +%F).db'"` on cron, plus an off-host copy.
 
 ## Fair-use / ToS note
 Willhaben, Kleinanzeigen and eBay prohibit unauthorized automated access in their terms.

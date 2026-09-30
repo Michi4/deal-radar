@@ -103,12 +103,31 @@ _cloud_disabled_until = 0.0
 
 
 async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str = "") -> dict | None:
-    """Local-first (Ollama on laptop, free, private) then OpenRouter free-model failover.
+    """Cloud-first (TokenHarbor per owner order) then local Ollama fallback.
     None when everything fails (offline-first deterministic fallback)."""
     global _cloud_failures, _cloud_disabled_until
     import asyncio as _aio
     import time as _t
-    # 1) local backend (ollama OpenAI-compatible, no key needed)
+    # 1) cloud primary with one retry round
+    if CLOUD_API_URL and CLOUD_API_KEY:
+        models = [model] if model else list(CLOUD_MODELS)
+        last_err: str = ""
+        for round_no in range(2):
+            for m in models:
+                out = await _post_chat(CLOUD_API_URL, CLOUD_API_KEY, m, system, user, max_tokens)
+                if out is None:
+                    continue
+                if out.get("__rate_limited"):
+                    last_err = f"{m}: 429"
+                    continue
+                if out.get("__error"):
+                    last_err = f"{m}: {out['__error']}"
+                    continue
+                return out
+            if round_no == 0:
+                await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
+        print(f"[cloud] all models failed ({last_err})", flush=True)
+    # 2) local backend (ollama OpenAI-compatible, no key needed) as fallback
     local_base = os.getenv("LOCAL_API_URL", "")
     local_model = os.getenv("LOCAL_MODEL", "qwen2.5:3b")
     if local_base and _t.time() >= _cloud_disabled_until:
@@ -120,31 +139,11 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
         if _cloud_failures >= 3:
             _cloud_disabled_until = _t.time() + 600
             _cloud_failures = 0
-    # 2) OpenRouter free failover with one retry round
-    if not (CLOUD_API_URL and CLOUD_API_KEY):
-        return None
-    models = [model] if model else list(CLOUD_MODELS)
-    last_err: str = ""
-    for round_no in range(2):
-        for m in models:
-            out = await _post_chat(CLOUD_API_URL, CLOUD_API_KEY, m, system, user, max_tokens)
-            if out is None:
-                continue
-            if out.get("__rate_limited"):
-                last_err = f"{m}: 429"
-                continue
-            if out.get("__error"):
-                last_err = f"{m}: {out['__error']}"
-                continue
-            return out
-        if round_no == 0:
-            await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
-    print(f"[cloud] all models failed ({last_err})", flush=True)
     return None
 
 
 async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | None:
-    """Raw code text: local Ollama first, then OpenRouter failover models. None when all fail."""
+    """Raw code text: cloud TokenHarbor first (owner order), then local Ollama. None when all fail."""
     import asyncio as _aio
 
     async def _raw(base: str, key: str, model: str) -> str | None:
@@ -167,10 +166,6 @@ async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | No
             return None
 
     local_base = os.getenv("LOCAL_API_URL", "")
-    if local_base:
-        code = await _raw(local_base, "", os.getenv("LOCAL_MODEL", "qwen2.5:3b"))
-        if code:
-            return code
     if CLOUD_API_URL and CLOUD_API_KEY:
         for m in list(CLOUD_MODELS):
             code = await _raw(CLOUD_API_URL, CLOUD_API_KEY, m)
@@ -181,6 +176,10 @@ async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | No
             code = await _raw(CLOUD_API_URL, CLOUD_API_KEY, m)
             if code:
                 return code
+    if local_base:
+        code = await _raw(local_base, "", os.getenv("LOCAL_MODEL", "qwen2.5:3b"))
+        if code:
+            return code
     return None
 
 

@@ -388,9 +388,34 @@ async def _watcher() -> None:
 @app.on_event("startup")
 async def _start_watcher():
     try:
+        # resume normal searches killed mid-run by the restart (watches re-poll on their own)
+        resume: list[tuple[str, dict]] = []
+        try:
+            for sid, intent_json in store.db.execute(
+                    "SELECT id, intent FROM jobs WHERE status='running'").fetchall():
+                try:
+                    import json as _jj
+                    intent = _jj.loads(intent_json or "{}")
+                except Exception:
+                    continue
+                if intent.get("watch"):
+                    continue
+                if len(resume) < 5:
+                    resume.append((sid, intent))
+        except Exception:
+            pass
         n = store.job_interrupt_stale()
         if n:
             print(f"[startup] marked {n} stale running job(s) interrupted")
+        for old_sid, intent in resume:
+            try:
+                intent.pop("_sid", None)
+                r = await _start_job([intent], {"base": intent, "limit": intent.get("limit", 20),
+                                                "watch": False, "notify_done": False,
+                                                "resumed_from": old_sid})
+                print(f"[startup] resumed {old_sid} as {r['id']}")
+            except Exception as e:
+                print(f"[startup] resume failed for {old_sid}: {e}")
     except Exception:
         pass
     try:

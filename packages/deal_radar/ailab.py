@@ -21,8 +21,18 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 # Lab outputs live on the persisted volume (/data) so they survive rebuilds.
-LAB_DIR = Path(os.getenv("LAB_DIR", str(ROOT / "enrichers" / "custom")))
-LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(ROOT / "drivers" / "community")))
+def _lab_data_dir(name: str, fallback: Path) -> Path:
+    """Runtime-built plugins must survive image rebuilds: prefer /data when present."""
+    try:
+        cand = Path("/data") / name
+        cand.mkdir(parents=True, exist_ok=True)
+        return cand
+    except Exception:
+        return fallback
+
+
+LAB_DIR = Path(os.getenv("LAB_DIR", str(_lab_data_dir("lab-enrichers", ROOT / "enrichers" / "custom"))))
+LAB_DRIVERS = Path(os.getenv("LAB_DRIVERS", str(_lab_data_dir("lab-drivers", ROOT / "drivers" / "community"))))
 
 ENRICHER_PROMPT = """You write a deal-radar enricher plugin (Python, no new dependencies beyond httpx/pydantic).
 (Read docs/DRIVER_AUTHORING.md first if available — it is the contract.)

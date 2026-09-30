@@ -7,6 +7,7 @@ data/
 coverage.xml
 node_modules/
 .env
-deploy/*/.env
-!deploy/*/.env.sample
+# Lab-built runtime plugins (generated at runtime, persisted in /data on prod)
+enrichers/custom/
+drivers/community/
 drivers/community/.tmp-*
