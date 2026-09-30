@@ -1,30 +1,60 @@
-# Architecture (v0.1) — generic live-search engine, deals first
+# ARCHITECTURE.md — how deal-radar runs (generic: no hosts, IPs, or personal infra here)
 
-```
-intent DSL -> orchestrator -> drivers (ebay|willhaben|kleinanzeigen|...) [guarded: retry+breaker+proxy]
-  -> dedupe -> filter engine (per-field hard/black/white; missing=N/A)
-  -> Stage A heuristic -> risk % + evidence -> enrichment (cpu bench, ...) -> value/rank
-  -> Stage B Jev/Kev (borderline only) -> policy lane (top|good|review|risky|hidden)
-  -> store (immutable observations) -> SSE live + notifier -> PWA
+```mermaid
+flowchart LR
+    subgraph edge["edge (your infra)"]
+        A[authenticating reverse proxy] --> B[app container :8099]
+    end
+    subgraph app["app container (this image)"]
+        B --> API[FastAPI: searches, Lab, Store, Admin, metrics]
+        API --> Q[(sqlite WAL)]
+        API --> W[background jobs + watcher]
+        W --> D1[marketplace drivers]
+        W --> AI{AI cascade}
+    end
+    subgraph ai["AI backends (configure in Admin → Secrets)"]
+        AI --> C[OpenAI-compatible cloud]
+        AI --> K[SystemOne-compatible local/remote model]
+        AI --> L[on-device Ollama endpoint]
+    end
+    D1 --> |polite HTTPS, per-driver breaker| S[(public marketplaces)]
+    C --> M[(benchmark + catalog sites)]
 ```
 
-- Evidence-first: facts carry status (seller_stated|inferred|ocr|external|verified) + confidence + sources.
-- Verticals: replace keywords/category/attributes + enrichment plugins; pipeline unchanged (jobs, housing, cameras...).
-- Observability: /metrics exposes driver latency/errors, pipeline counters, AI stage counts.
-- Failure model: SOURCE_UNAVAILABLE|RATE_LIMITED|SCHEMA_CHANGED|PARSER_FAILED|TIMEOUT|CAPTCHA... ->
-  retry once -> mark degraded (breaker) -> continue other sources -> report in `driver_errors`.
-```
+Request flow: UI (Vue SPA, same origin) → `POST /searches` → job row in sqlite →
+asyncio worker fans out to drivers (guarded: retry → breaker with cooldown → clean
+per-source error, never fails the whole search) → cheap scoring → Stage B (model
+verification for borderline items) → detail/vision/benchmark enrichment → merged,
+flagged-not-dropped results + snapshot persisted. Polling (`GET /searches/{id}`) streams
+progressive partials; SSE `/stream` pushes matches and price events. Watches re-poll on
+schedule with per-watch rules; tracked products version every change (observations).
 
-# Search DSL (intent)
-```yaml
-keywords: "ThinkPad T14 Ryzen"
-sources: [willhaben, kleinanzeigen, ebay]
-hard: {max_price: 700, rules: [{fields: [title, description], op: not_regex, value: "defekt|bastler"}]}
-blacklist: [{fields: [title], op: not_contains, value: "für Teile"}]
-whitelist: []
-risk: {warning_threshold: 0.35, block_threshold: 0.85, hard_filter_enabled: false,
-       never_block_without_hard_signal: true}
-ranking: {match: 0.35, value: 0.35, risk: 0.2, completeness: 0.1}
-enrich: true
-limit: 20
-```
+## Drivers (all implement `MarketplaceDriver`: `search()` + `fetch_detail()`)
+
+| driver | access mode | pagination | categories | notes |
+|---|---|---|---|---|
+| willhaben | public web (`__NEXT_DATA__`) | walk to exhaustion | facet tree via `ATTRIBUTE_TREE` | unfiltered dumps detected + refused |
+| kleinanzeigen | public web (SSR) | pagination hrefs | slug map | 403 → clean error + proxy hint |
+| vinted | public web (SSR) | next-page links | `/catalog/<id>-<slug>` nav | shipping-first market |
+| shpock | public web (SSR apollo) | first page only | — (blocked: needs persisted-query hash) | keyword-ignored dumps raise loudly |
+| ricardo | — | blocked (403 wall) | — | clean error, never faked |
+| ebay | official Browse API | `limit` pages | API facets | needs App ID + Cert ID (auto-mints token) |
+
+New community drivers hot-load via the Store (contract test in `registry.check`), no restart.
+
+## Enrichment fabric (all implement `Enricher`: `supports()` + `enrich()`)
+
+- **cpu**: exact mention → verified fact; known model line + vague chip → labeled family
+  estimate + `cpu_candidates` suggestions (tap-to-set in drawer); truly unknown → honest empty.
+- **cpu_benchmark / gpu_benchmark**: live PassMark marks (disk-cached, ~1 req/s), static fallback table.
+- **market_cohort**: median/position vs the live result set.
+- **Lab-built**: generated from plain words, sandboxed, contract-checked, hot-loaded.
+
+## Hardening
+
+- Strict CSP (`script-src 'self'`, no inline), nosniff/SAMEORIGIN/referrer/HSTS headers.
+- SSRF guard on image downloads (no private/loopback/link-local, 3 redirects, 8 MB cap).
+- Lab code runs in a locked-down subprocess first (scrubbed env, rlimits, egress allowlist).
+- Input bounds everywhere (422s), login + rate limits + API key supported, `/docs` gated when auth is on.
+- Secrets only via env or Admin → Secrets UI (never returned by any endpoint, never in git).
+- Polite scraping: ≤1 req/s per driver, caching, small samples in tests; blocked drivers degrade honestly.

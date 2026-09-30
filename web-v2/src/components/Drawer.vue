@@ -28,7 +28,11 @@
           <small v-if="!hist.length">{{ histNote }}</small>
         </div>
         <div class="panel"><div class="eyebrow">correct the spec (AI re-checks)</div>
-          <div class="row"><input v-model="cpuFix" class="inp grow" placeholder="e.g. Ryzen 5 PRO 5650U" aria-label="correct CPU" />
+          <div v-if="cpuLine" class="lane" style="margin-bottom:0.375rem">{{ cpuLine }}</div>
+          <div v-if="cpuCands.length" class="chips" style="margin-bottom:0.375rem">
+            <button v-for="c in cpuCands" :key="c" class="chip" @click="cpuFix = c" :title="'Use ' + c">{{ c }}</button>
+          </div>
+          <div class="row"><input v-model="cpuFix" class="inp grow" placeholder="e.g. Ryzen 5 PRO 5650U" aria-label="correct CPU" @keyup.enter="setSpec" />
           <button class="btn btn-sm" @click="setSpec" title="Save override and re-run the AI check">set</button></div>
         </div>
       </div>
@@ -38,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ArrowLeft, ExternalLink, Star } from 'lucide-vue-next';
 import { api, safeUrl } from '@/api';
 import { useSearch } from '@/stores/search';
@@ -58,6 +62,17 @@ const cpuFix = ref('');
 const snapMode = ref(false);
 const snapWhen = ref('');
 const liveCopy = ref<Scored | null>(null);
+const cpuLine = computed(() => {
+  const f = d.value?.enrichments?.find((e) => e.field === 'cpu');
+  if (!f) return 'CPU unknown — pick a suggestion or type it below';
+  const conf = typeof f.confidence === 'number' ? ` (${Math.round(f.confidence * 100)}%)` : '';
+  return `CPU: ${f.value}${conf}`;
+});
+const cpuCands = computed(() => {
+  const f = d.value?.enrichments?.find((e) => e.field === 'cpu_candidates');
+  const v = typeof f?.value === 'string' ? f.value : '';
+  return v.split(';').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+});
 
 function imgGone(e: Event) { (e.target as HTMLElement).remove(); }
 async function toggleFav() { await search.toggleFav(props.id); isFav.value = search.favs.has(props.id); }
@@ -120,6 +135,8 @@ onMounted(async () => {
 .thumbs img { height: 7rem; border-radius: 0.5rem; }
 .desc { white-space: pre-wrap; font-size: var(--fs-sm); }
 ul { margin: 0; padding-left: 1.25rem; font-size: var(--fs-sm); }
+.chips { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+.chip { background: var(--bg2); border: 1px solid var(--acc); border-radius: 99px; padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; min-height: 32px; }
 .skel, .empty { opacity: 0.6; padding: 1rem; }
 .risk-low { background: #16a34a; color: #fff; } .risk-medium { background: #d97706; color: #fff; } .risk-high { background: #dc2626; color: #fff; }
 </style>

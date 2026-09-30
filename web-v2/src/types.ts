@@ -23,7 +23,7 @@ export interface Scored {
   lane?: string;
   risk?: { score: number; severity?: string };
   why?: string[];
-  enrichments?: { field: string; value: number }[];
+  enrichments?: { field: string; value: number | string; confidence?: number }[];
   deal_dna?: Record<string, number>;
 }
 export interface JobState {

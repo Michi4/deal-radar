@@ -130,7 +130,13 @@ def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
                         type="description",
                         detail=f"family estimate for '{seed_key}' (could be {base}"
                                f"{', ' + others if others else ''} — set exact CPU in drawer)",
-                        confidence=0.45)])]
+                        confidence=0.45)]),
+                    EnrichmentFact(
+                    field="cpu_candidates", value="; ".join(cands[:6]), confidence=0.5,
+                    status=FactStatus.AI_INFERRED,
+                    sources=[Evidence(type="description",
+                                      detail="tap a candidate in the drawer to set it",
+                                      confidence=0.5)])]
         return []
     bench = CPU_DB.get(cpu.lower())
     facts = [EnrichmentFact(field="cpu", value=cpu, confidence=conf,
