@@ -47,15 +47,40 @@ CLOUD_API_KEY = os.getenv("CLOUD_API_KEY", "")
 CLOUD_MODEL = os.getenv("CLOUD_MODEL", "")
 CLOUD_MODELS = [m.strip() for m in os.getenv(
     "CLOUD_MODELS",
-    "liquid/lfm-2.5-2.6b:free,nvidia/nemotron-3.5-lightning:free,"
-    "thinkingmachines/inkling-small:free,poolside/laguna-xs-2.1:free,"
-    "qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free,dots-studio/dots-3-note-preview:free,"
-    "google/gemma-4-26b-a4b-it:free,z-ai/glm-5.2:free").split(",") if m.strip()]
+    "deepseek/deepseek-v4-flash-free,tencent/hy3-free,orcarouter/free").split(",") if m.strip()]
 if CLOUD_MODEL and CLOUD_MODEL not in CLOUD_MODELS:
     CLOUD_MODELS.insert(0, CLOUD_MODEL)
 
 
-CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "qwen/qwen3.8-27b:free")  # free vision-language
+CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "z-ai/glm-5.3-flash-free")  # free vision-language
+
+
+def _providers() -> list[dict]:
+    """Configured OpenAI-compatible providers in failover order.
+
+    Provider 1: CLOUD_API_URL/KEY/MODELS/VISION. Optional 2/3 via _2/_3 suffix.
+    Entries without URL+key are skipped. Models default to CLOUD_MODELS for
+    provider 1 (backward compat), empty otherwise.
+    """
+    out: list[dict] = []
+
+    def _models(env_key: str, default: list[str]) -> list[str]:
+        raw = os.getenv(env_key, "")
+        if raw == "" and env_key == "CLOUD_MODELS":
+            return list(default)
+        return [m.strip() for m in raw.split(",") if m.strip()]
+
+    out.append({"url": os.getenv("CLOUD_API_URL", ""), "key": os.getenv("CLOUD_API_KEY", ""),
+                "models": _models("CLOUD_MODELS", CLOUD_MODELS),
+                "vision": os.getenv("CLOUD_MODEL_VISION", "")})
+    for i in ("2", "3"):
+        url = os.getenv(f"CLOUD_API_URL_{i}", "")
+        if not url:
+            continue
+        out.append({"url": url, "key": os.getenv(f"CLOUD_API_KEY_{i}", ""),
+                    "models": _models(f"CLOUD_MODELS_{i}", []),
+                    "vision": os.getenv(f"CLOUD_MODEL_VISION_{i}", "")})
+    return [p for p in out if p["url"] and p["key"]]
 
 
 async def _post_chat(base: str, key: str, model: str, system: str, user: str,
@@ -108,22 +133,23 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
     global _cloud_failures, _cloud_disabled_until
     import asyncio as _aio
     import time as _t
-    # 1) cloud primary with one retry round
-    if CLOUD_API_URL and CLOUD_API_KEY:
-        models = [model] if model else list(CLOUD_MODELS)
+    # 1) cloud providers in failover order, with one retry round
+    provs = _providers()
+    if provs:
         last_err: str = ""
         for round_no in range(2):
-            for m in models:
-                out = await _post_chat(CLOUD_API_URL, CLOUD_API_KEY, m, system, user, max_tokens)
-                if out is None:
-                    continue
-                if out.get("__rate_limited"):
-                    last_err = f"{m}: 429"
-                    continue
-                if out.get("__error"):
-                    last_err = f"{m}: {out['__error']}"
-                    continue
-                return out
+            for prov in provs:
+                for m in ([model] if model else list(prov["models"])):
+                    out = await _post_chat(prov["url"], prov["key"], m, system, user, max_tokens)
+                    if out is None:
+                        continue
+                    if out.get("__rate_limited"):
+                        last_err = f"{m}: 429"
+                        continue
+                    if out.get("__error"):
+                        last_err = f"{m}: {out['__error']}"
+                        continue
+                    return out
             if round_no == 0:
                 await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
         print(f"[cloud] all models failed ({last_err})", flush=True)
@@ -166,16 +192,17 @@ async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | No
             return None
 
     local_base = os.getenv("LOCAL_API_URL", "")
-    if CLOUD_API_URL and CLOUD_API_KEY:
-        for m in list(CLOUD_MODELS):
-            code = await _raw(CLOUD_API_URL, CLOUD_API_KEY, m)
-            if code:
-                return code
-        await _aio.sleep(5)
-        for m in list(CLOUD_MODELS):
-            code = await _raw(CLOUD_API_URL, CLOUD_API_KEY, m)
-            if code:
-                return code
+    for m in [mm for prov in _providers() for mm in prov["models"]]:
+        prov = next(p for p in _providers() if m in p["models"])
+        code = await _raw(prov["url"], prov["key"], m)
+        if code:
+            return code
+    await _aio.sleep(5)
+    for m in [mm for prov in _providers() for mm in prov["models"]]:
+        prov = next(p for p in _providers() if m in p["models"])
+        code = await _raw(prov["url"], prov["key"], m)
+        if code:
+            return code
     if local_base:
         code = await _raw(local_base, "", os.getenv("LOCAL_MODEL", "qwen2.5:3b"))
         if code:
