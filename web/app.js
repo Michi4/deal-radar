@@ -82,7 +82,7 @@ const retryable=e instanceof TypeError||(e.status>=500)||(e.status===429);
 if(retryable&&a<retries)await new Promise(x=>setTimeout(x,1500*(a+1)));else throw e}}
 throw last}
 function fmtErrors(err){const e=err||{};const ks=Object.keys(e);if(!ks.length)return '';return ' · '+(ks.length===1?'source note':'source notes')+': '+ks.map(k=>{let m=String(e[k]||'').slice(0,120);if(/cooling down/i.test(m))return k+' cooling down ('+m.slice(m.indexOf('retrying')||0)+')';if(/EBAY_APP_ID|EBAY_OAUTH_TOKEN/i.test(m))return k+' needs credentials (Admin -> Secrets)';if(/403|blocked/i.test(m))return k+' blocked by site — retry later or via proxy';return k+': '+m}).join(' · ')};
-function netMsg(e){const m=String((e&&e.message)||e);if(m.includes('Failed to fetch')||m.includes('NetworkError')||m.includes('Load failed'))return 'server unreachable (restarting?)';if(/server 429/.test(m))return 'too many requests — backing off, retrying…';return m}
+function netMsg(e){const m=String((e&&e.message)||e);if(m.includes('Failed to fetch')||m.includes('NetworkError')||m.includes('Load failed'))return 'server unreachable (restarting?)';if(/server 429/.test(m))return 'too many requests — backing off, retrying…';if(/invalid parameters|model_not_found|model not found|invalid_request_error/i.test(m))return 'AI backend rejected the request (model or quota?) — retrying with fallback…';if(/quota|rate limit|insufficient|overloaded|temporarily unavailable/i.test(m))return 'AI backend busy — using offline fallback for now…';return m}
 function safe(fn){return async(...a)=>{try{return await fn(...a)}catch(e){toast(netMsg(e))}}}
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.hasAttribute('data-rm'))t.remove()},true);
 document.addEventListener('click',e=>{

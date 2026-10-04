@@ -12,6 +12,8 @@ export function friendly(e: unknown): string {
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'server unreachable (restarting?)';
   if (/server 429/.test(m)) return 'too many requests — backing off, retrying…';
   if (/login required/i.test(m)) return 'session expired — log in again';
+  if (/invalid parameters|invalid_request_error|did not find|model_not_found|model not found/i.test(m)) return 'AI backend rejected the request (model or quota?) — retrying with fallback…';
+  if (/quota|rate limit|insufficient|overloaded|temporarily unavailable/i.test(m)) return 'AI backend busy — using offline fallback for now…';
   return m;
 }
 
