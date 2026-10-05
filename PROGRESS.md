@@ -1,6 +1,14 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- CLOUD AI SWITCH (2026-10-05): TokenHarbor 7-day trial exhausted → prod now on OrcaRouter
+  free tier (server-side .env only); laptop AI endpoints removed from prod. Stage B + vision
+  reordered cloud-first per owner order. Provider 400s auto-retry with stripped bodies.
+  LIVE PROOF on prod: NL "iphone with usb c charging" → iPhone 15/16 models, 6/6 real phones.
+- Zen REJECTED as server endpoint (3 probes, FreeTierError — in-OpenCode-only); OrcaRouter proven.
+  Owner's opencode.jsonc `reasoningEffort none→minimal` fix verified (muse-spark headless OK, 2.1s).
+- eBay: `/ebay/marketplace-deletion` webhook built + unit-tested; keyset DISABLED → documented
+  the exemption path (we store zero eBay user data) with exact clicks in BLOCKERS.
 - PURGE COMPLETE (owner-ordered): zero personal infra in tree AND history. Removed
   scripts/ops, deploy/, machine-specific deployment doc; sanitized all docs; test IPs
   → doc ranges; journeys default to localhost. History rewritten (369 commits) + verified
