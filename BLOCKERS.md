@@ -29,12 +29,31 @@
   Needed: permanent key → replace CLOUD_API_KEY in prod .env, then revoke the temp one.
   Key rotation hygiene: `grep -r REDACTED_` must stay empty across the repo (CI-greppable).
 
+- [ ] OpenCode Zen free tier as server-side AI: REJECTED after 3 live probes (2026-10-05) —
+  (1) `hy3-free` via /chat/completions → "Model hy3-free is not supported" (no such Zen ID);
+  (2) `nemotron-3.5-lightning-free` via /chat/completions with Bearer public →
+  `FreeTierError: OpenCode's free tier can only be used from within OpenCode`;
+  (3) `mimo-v2.6-flash-free` same → same FreeTierError; muse-spark via /responses → same.
+  The free tier is client-fingerprinted to the OpenCode app, not usable as a server-side
+  endpoint. Needed: nothing — OrcaRouter free tier (user key in prod .env, never in repo)
+  is the working cloud path, proven live 2026-10-05 (NL "iphone with usb c charging" →
+  iPhone 15/16 models, 6/6 real USB-C phones). If OpenCode ever opens server-side free
+  use, `_providers()` already supports a second failover provider via CLOUD_API_URL_2 etc.
+
 - [ ] eBay live proof: client-credentials mint implemented + unit-tested (mocked token + search),
-  App ID/Cert ID fields in Secrets UI. Owner's developer account is PENDING approval
-  (≥1 business day) — nothing to mint against until eBay approves. Then: paste App ID +
-  Cert ID in Admin -> Secrets, run one live search. (No scraping, ever: public pages serve
-  decoy cards to bots — scraping would inject FAKE listings, plus ToS bans bots. The
-  official Browse API path is the compliant one and it's ready.)
+  App ID/Cert ID fields in Secrets UI. Owner's keyset is DISABLED with the banner
+  "Comply with marketplace deletion/account closure notification process or apply for
+  an exemption" — nothing to mint against until that clears. FASTEST PATH (we store zero
+  eBay user data — only public listing search): apply for the EXEMPTION, not the endpoint:
+  developer.ebay.com → Application Keys → Alerts & Notifications → flip "Not persisting
+  eBay data" ON → Confirm → pick the reason matching "public catalog search only" →
+  Submit. Keyset activates, then: paste App ID + Cert ID in Admin -> Secrets, run one live
+  search. (The `/ebay/marketplace-deletion` challenge endpoint is built + unit-tested and
+  waiting for the day we ever DO persist eBay user data — `EBAY_VERIFY_TOKEN` (32-80 chars,
+  alnum/`_`/`-`) + `EBAY_PUBLIC_URL` go in Admin -> Secrets; endpoint must stay publicly
+  reachable, already bypassed in the auth gate.)
+  No scraping, ever: public pages serve decoy cards to bots — scraping would inject FAKE
+  listings, plus ToS bans bots. The official Browse API path is the compliant one.
 - [ ] Shpock deep pagination (2026-09-28, 4 polite attempts, first-page SSR ~60 stands):
   (1) ?page=2/&offset=40/&o=40 all return page 1 (same itemSearch key, ~60 summaries);
   (2) results page chunk has no query doc; (3) 3 shared data chunks hold only the Apollo

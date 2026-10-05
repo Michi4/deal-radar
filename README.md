@@ -23,9 +23,9 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 
 ## AI cascade (fast + cheap by default)
 - **Stage A (every listing):** heuristic match + kind classifier (offer/want/parts) + deterministic risk signals. µs, offline.
-- **Stage B (borderline/high-value only):** Kev (`KEV_URL`, self-hosted, SystemOne API) → cloud model (`CLOUD_*`, OpenAI-compatible, local-first via `LOCAL_API_URL` Ollama) verifies exact-product, risk, condition.
+- **Stage B (borderline/high-value only):** cloud model first (`CLOUD_*`, OpenAI-compatible, OrcaRouter free tier) → Kev (`KEV_URL`, self-hosted SystemOne) → local Ollama (`LOCAL_API_URL`) verifies exact-product, risk, condition.
 - **NL search** (`POST /searches/nl`): AI resolves product models (e.g. USB-C iPhones → 15/16/17) → per-model fan-out → merged ranked results. Offline fallback + 7-day intent cache.
-- **Vision:** tesseract OCR on photos + VLM photo↔description consistency (`LOCAL_MODEL_VISION`), concurrent bounded pass.
+- **Vision:** tesseract OCR on photos + cloud VLM photo↔description consistency (`CLOUD_MODEL_VISION`, default z-ai/glm-5.3-flash-free), local model fallback, concurrent bounded pass.
 - **Enrichment fabric** (`packages/deal_radar/enrich.py`): CPU→real PassMark scores, market-cohort stats, cross-source image-dupe hints.
 
 ## Environment (required vs optional)

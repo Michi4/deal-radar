@@ -113,3 +113,27 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
 - UI dropdown deferred to the frontend rebuild (port-every-page push); backend+tests+live done.
 - Rate discipline: top-level = zero fetches (static snapshot of a real capture); drill = 1 GET
   per parent per 7 days; live tests = 2 requests total.
+
+## 2026-10-05 — cloud AI: TokenHarbor → OrcaRouter; Zen rejected; cloud-first everywhere
+- TokenHarbor 7-day trial hit its limit (owner-reported). Switched prod `.env` (server-side
+  only, never repo): `CLOUD_API_URL=https://api.orcarouter.ai/v1`,
+  `CLOUD_MODELS=deepseek/deepseek-v4-flash-free,tencent/hy3-free`,
+  `CLOUD_MODEL_VISION=z-ai/glm-5.3-flash-free`; dead TokenHarbor key + `mimo-v2.5` refs +
+  laptop-bound endpoints (`KEV_URL`, `LOCAL_*`, incl. a `10.8.1.1` address) removed from prod env.
+- Owner order "cloud AI first, never the laptop": Stage B now tries cloud BEFORE Jev/Kev
+  (`orchestrator.py`), vision tries cloud VLM before the local model (`vision.py`).
+  Both keep honest fallbacks + breakers; nothing hangs when cloud is down.
+- Provider 400s ("invalid parameters") no longer fail the call: `_body_variants()` in
+  `decision.py` retries with optional fields stripped tier-by-tier (ollama-only `think`/
+  `options`, then `response_format`, then bare model+messages). Same stripping in vision.
+  Friendly UI mapping added (v1 `netMsg` + v2 `friendly()`) so a rejection reads as
+  "AI backend rejected the request — retrying with fallback", never a raw dump.
+- OpenCode Zen (`https://opencode.ai/zen/v1`, `Bearer public`) evaluated as a free
+  server-side endpoint and REJECTED (see BLOCKERS: 3 probes, all `FreeTierError` —
+  free tier is gated to in-OpenCode use). `_providers()` failover slots (`_2`/`_3` suffix)
+  stay ready if that ever changes. `muse-spark-1.3-contributor-free` therefore cannot back
+  deal-radar server-side; it works inside the OpenCode app (owner's `reasoningEffort: none`
+  → `minimal` fix verified headless in 2.1s).
+- eBay: added `GET+POST /ebay/marketplace-deletion` (SHA-256 challenge contract per eBay's
+  guide, unit-tested incl. public-while-locked); but since we persist zero eBay user data,
+  the documented recommendation is the EXEMPTION toggle, not the endpoint (BLOCKERS).
