@@ -177,13 +177,22 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
         if not (api and key and image_url):
             return _fail()
         async with httpx.AsyncClient(timeout=150.0) as c:
-            r = await c.post(f"{api.rstrip('/')}/chat/completions",
-                             headers={"Authorization": f"Bearer {key}"}, json=payload(vmodel))
-            if r.status_code == 429:
+            full = payload(vmodel)
+            # gateways 400 on ollama-only `think` / unsupported response_format -> strip tiers
+            noopt = {k: v for k, v in full.items() if k not in ("think", "response_format")}
+            bare = {"model": vmodel, "messages": full["messages"], "max_tokens": 400}
+            cr: httpx.Response | None = None
+            for b in (full, noopt, bare):
+                cr = await c.post(f"{api.rstrip('/')}/chat/completions",
+                                  headers={"Authorization": f"Bearer {key}"}, json=b)
+                if cr.status_code != 400:
+                    break
+            assert cr is not None
+            if cr.status_code == 429:
                 return _fail()
-            r.raise_for_status()
+            cr.raise_for_status()
             _ok()
-            return _parse_vision(r.json())
+            return _parse_vision(cr.json())
     except Exception:
         return _fail()
 

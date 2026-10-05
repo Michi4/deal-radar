@@ -100,11 +100,14 @@ _RL_PATHS = ("/searches", "/stream", "/lab", "/marketplace", "/favorites", "/lis
 
 @app.middleware("http")
 async def _gate(request: Request, call_next):
-    if API_KEY and request.url.path not in ("/health",) and not _hmac.compare_digest(
+    path = request.url.path
+    # eBay marketplace-deletion webhook authenticates itself (challenge hash + shared
+    # verification token), so it must stay reachable without our API key/session.
+    public_hook = path == "/ebay/marketplace-deletion"
+    if API_KEY and not public_hook and path not in ("/health",) and not _hmac.compare_digest(
             request.headers.get("x-api-key", ""), API_KEY):
         return JSONResponse({"detail": "unauthorized"}, status_code=401)
-    path = request.url.path
-    if LOGIN_PASSWORD and path not in ("/health", "/login", "/auth/status", "/static/favicon.svg"):
+    if LOGIN_PASSWORD and not public_hook and path not in ("/health", "/login", "/auth/status", "/static/favicon.svg"):
         if request.method == "GET" and path in ("/", "/admin"):
             if not _logged_in(request):
                 return _login_page()
@@ -160,6 +163,8 @@ SECRET_DEFS = [
     ("NOTIFIERS_JSON", "notifier specs JSON (may embed creds)", True),
     ("TRANSPORTS_JSON", "proxy transports JSON (may embed creds)", True),
     ("GH_TOKEN", "GitHub token (Lab PR publishing)", True),
+    ("EBAY_VERIFY_TOKEN", "eBay notification verification token (32-80 chars, alphanumeric _ -)", True),
+    ("EBAY_PUBLIC_URL", "public https URL of this app (used for eBay endpoint verification)", False),
     ("LAB_ENABLED", "AI Lab on/off (1/0)", False),
     ("LAB_PUBLISH", "Lab PR publishing on/off (1/0)", False),
     ("LOGIN_PASSWORD", "app login password (empty = off)", True),
@@ -1411,6 +1416,72 @@ def admin_reset(req: ResetConfirm):
 def clear_events():
     EVENT_LOG.clear()
     return {"ok": True}
+
+
+@app.get("/ebay/marketplace-deletion")
+async def ebay_deletion_challenge(request: Request, challenge_code: str = ""):
+    """eBay endpoint verification: `GET ?challenge_code=...` -> sha256 hash response.
+
+    Hash order is mandated by eBay (challengeCode + verificationToken + endpoint,
+    hex). Endpoint = the exact URL registered in Alerts & Notifications, so
+    EBAY_PUBLIC_URL must match what was pasted there (falls back to the request URL).
+    """
+    import hashlib
+    token = os.getenv("EBAY_VERIFY_TOKEN", "")
+    if not challenge_code or not token:
+        return JSONResponse(
+            {"detail": "EBAY_VERIFY_TOKEN not set (Admin -> Secrets) — cannot answer challenge"},
+            status_code=400)
+    # EBAY_PUBLIC_URL may be the app base URL or the full webhook URL — both normalize
+    # to the exact endpoint string eBay was given (a wrong string here fails eBay's check).
+    public = os.getenv("EBAY_PUBLIC_URL", "").rstrip("/")
+    if not public:
+        endpoint = str(request.url).split("?")[0]
+    elif public.endswith("/ebay/marketplace-deletion"):
+        endpoint = public
+    else:
+        endpoint = f"{public}/ebay/marketplace-deletion"
+    digest = hashlib.sha256((challenge_code + token + endpoint).encode()).hexdigest()
+    return JSONResponse({"challengeResponse": digest}, media_type="application/json")
+
+
+@app.post("/ebay/marketplace-deletion")
+async def ebay_deletion_notify(request: Request):
+    """Acknowledge eBay marketplace account-deletion notifications.
+
+    eBay requires an immediate 2xx ack (otherwise it resends and eventually marks
+    the endpoint down). The event is logged to the admin feed. Signature
+    verification needs live app credentials (see BLOCKERS) — until then the log
+    line says `unverified` instead of pretending it checked.
+    """
+    raw = await request.body()
+    try:
+        payload = json.loads(raw or b"{}")
+    except Exception:
+        return JSONResponse({"detail": "invalid json"}, status_code=400)
+    meta = payload.get("metadata") or {}
+    note = payload.get("notification") or {}
+    topic = str(meta.get("topic") or "MARKETPLACE_ACCOUNT_DELETION")
+    verified = ("signature verified" if _ebay_sig_ok(raw, request.headers.get("x-ebay-signature", ""))
+                else "unverified (app keyset not active yet)")
+    _log_event({"kind": f"ebay:{topic}",
+                "listing_id": str(note.get("notificationId", ""))[:160],
+                "title": f"account-deletion notification acked — {verified}"})
+    return JSONResponse({"ok": True})
+
+
+def _ebay_sig_ok(raw: bytes, sig_header: str) -> bool:
+    """False = not verified. Never claims a check happened that did not.
+
+    eBay signs the raw body with ECDSA P-256 and the public key comes from the
+    Notification API `getPublicKey` call — which needs an OAuth token from an
+    ENABLED keyset (currently disabled, see BLOCKERS). Without that there is
+    nothing to verify against, so every notification is acked and logged as
+    `unverified` rather than silently treated as authentic.
+    """
+    if not sig_header or not (os.getenv("EBAY_APP_ID", "") and os.getenv("EBAY_CERT_ID", "")):
+        return False
+    return False  # keyset disabled: getPublicKey unreachable, real check lands here after approval
 
 
 @app.get("/marketplace")

@@ -70,9 +70,12 @@ def _providers() -> list[dict]:
             return list(default)
         return [m.strip() for m in raw.split(",") if m.strip()]
 
-    out.append({"url": os.getenv("CLOUD_API_URL", ""), "key": os.getenv("CLOUD_API_KEY", ""),
+    # env wins (Admin -> Secrets writes os.environ at runtime), module globals are the
+    # fallback so tests/embedders can point at a provider without touching the environment
+    out.append({"url": os.getenv("CLOUD_API_URL", "") or CLOUD_API_URL,
+                "key": os.getenv("CLOUD_API_KEY", "") or CLOUD_API_KEY,
                 "models": _models("CLOUD_MODELS", CLOUD_MODELS),
-                "vision": os.getenv("CLOUD_MODEL_VISION", "")})
+                "vision": os.getenv("CLOUD_MODEL_VISION", "") or CLOUD_MODEL_VISION})
     for i in ("2", "3"):
         url = os.getenv(f"CLOUD_API_URL_{i}", "")
         if not url:
@@ -83,6 +86,29 @@ def _providers() -> list[dict]:
     return [p for p in out if p["url"] and p["key"]]
 
 
+def _body_variants(model: str, system: str, user: str, max_tokens: int, raw: bool) -> list[dict]:
+    """Request bodies from richest to barest.
+
+    Gateways reject unknown/unsupported fields with 400 "invalid parameters"
+    (ollama-only `think`/`options`, or `response_format` on models without JSON
+    mode). We try the full body first, then strip optional fields one tier at a
+    time instead of failing the whole call.
+    """
+    msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    bare: dict = {"model": model, "messages": msgs}
+    std: dict = {**bare, "temperature": 0.2, "max_tokens": max_tokens}
+    full: dict = {**std, "think": False, "options": {"num_predict": max_tokens}}
+    if not raw:
+        full = {**full, "response_format": {"type": "json_object"}}
+        std = {**std, "response_format": {"type": "json_object"}}
+    out = [full, {k: v for k, v in full.items() if k != "response_format"}, std, bare]
+    dedup: list[dict] = []
+    for b in out:
+        if b not in dedup:
+            dedup.append(b)
+    return dedup
+
+
 async def _post_chat(base: str, key: str, model: str, system: str, user: str,
                    max_tokens: int, timeout: float = 150.0, raw: bool = False) -> dict | None:
     import json as _json
@@ -90,18 +116,17 @@ async def _post_chat(base: str, key: str, model: str, system: str, user: str,
         headers = {"Content-Type": "application/json"}
         if key:
             headers["Authorization"] = f"Bearer {key}"
-        body: dict = {"model": model,
-                      "messages": [{"role": "system", "content": system},
-                                   {"role": "user", "content": user}],
-                      "temperature": 0.2, "max_tokens": max_tokens,
-                      "think": False,  # ollama: skip chain-of-thought, answer directly
-                      "options": {"num_predict": max_tokens}}
-        if not raw:
-            body["response_format"] = {"type": "json_object"}
         async with httpx.AsyncClient(timeout=timeout) as c:
-            r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers, json=body)
+            r = None
+            for body in _body_variants(model, system, user, max_tokens, raw):
+                r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers, json=body)
+                if r.status_code != 400:  # 400 = field/param rejection -> strip and retry
+                    break
+            assert r is not None
             if r.status_code == 429:
                 return {"__rate_limited": True}
+            if r.status_code == 400:
+                return {"__error": f"invalid parameters (all body variants): {r.text[:120]}"}
             r.raise_for_status()
             msg = r.json()["choices"][0]["message"]
             content = (msg.get("content") or "").strip()
@@ -178,12 +203,12 @@ async def cloud_code(system: str, user: str, max_tokens: int = 2000) -> str | No
             if key:
                 headers["Authorization"] = f"Bearer {key}"
             async with httpx.AsyncClient(timeout=180.0) as c:
-                r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers,
-                                 json={"model": model,
-                                       "messages": [{"role": "system", "content": system},
-                                                    {"role": "user", "content": user}],
-                                       "temperature": 0.2, "max_tokens": max_tokens, "think": False,
-                                       "options": {"num_predict": max_tokens}})
+                r = None
+                for body in _body_variants(model, system, user, max_tokens, raw=True):
+                    r = await c.post(f"{base.rstrip('/')}/chat/completions", headers=headers, json=body)
+                    if r.status_code != 400:  # param rejected -> strip optional fields, retry
+                        break
+                assert r is not None
                 if r.status_code == 429:
                     return None
                 r.raise_for_status()

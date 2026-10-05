@@ -869,3 +869,71 @@ def test_fav_by_url_validation_and_flow():
         favs = c.get("/favorites").json()
         assert any(f["listing_id"] == "t:link1" for f in favs)
         c.delete("/favorites/t:link1")
+
+
+def test_ebay_marketplace_deletion_endpoint():
+    """eBay's endpoint-verification contract, per developer.ebay.com marketplace
+    user account deletion guide: GET ?challenge_code= -> 200 application/json with
+    sha256(challengeCode + verificationToken + endpoint); POST notification -> 2xx ack."""
+    import hashlib
+    import os
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    import api.main as m
+    from fastapi.testclient import TestClient
+
+    c = TestClient(m.app)
+    token = "dR9xQ2pLmN4vT7sB1cZ6aE3fH5jK8gU"  # 32 chars: alnum + _ -
+    endpoint = "https://example.net/ebay/marketplace-deletion"
+    os.environ["EBAY_VERIFY_TOKEN"] = token
+    os.environ["EBAY_PUBLIC_URL"] = endpoint
+    try:
+        r = c.get("/ebay/marketplace-deletion", params={"challenge_code": "c0ffee42"})
+        assert r.status_code == 200, r.text
+        assert r.headers["content-type"].startswith("application/json")
+        expect = hashlib.sha256(("c0ffee42" + token + endpoint).encode()).hexdigest()
+        assert r.json() == {"challengeResponse": expect}, r.json()
+
+        # base-URL form of the same setting normalizes to the identical endpoint string
+        os.environ["EBAY_PUBLIC_URL"] = "https://example.net"
+        r_base = c.get("/ebay/marketplace-deletion", params={"challenge_code": "c0ffee42"})
+        assert r_base.json() == {"challengeResponse": expect}, r_base.json()
+        os.environ["EBAY_PUBLIC_URL"] = endpoint
+
+        # unconfigured token -> honest 400, never a hash eBay could accept by accident
+        os.environ["EBAY_VERIFY_TOKEN"] = ""
+        r2 = c.get("/ebay/marketplace-deletion", params={"challenge_code": "c0ffee42"})
+        assert r2.status_code == 400 and "EBAY_VERIFY_TOKEN" in r2.text
+        os.environ["EBAY_VERIFY_TOKEN"] = token
+
+        # POST notification: immediate 2xx ack (else eBay resends) + admin event
+        before = len(m.EVENT_LOG)
+        payload = {"metadata": {"topic": "MARKETPLACE_ACCOUNT_DELETION", "schemaVersion": "1.0",
+                                "deprecated": False},
+                   "notification": {"notificationId": "nid-1", "eventDate": "2026-10-04T00:00:00Z",
+                                    "publishDate": "2026-10-04T00:00:01Z", "publishAttemptCount": 1,
+                                    "data": {"username": "u", "userId": "uid", "eiasToken": "eias"}}}
+        r3 = c.post("/ebay/marketplace-deletion", json=payload)
+        assert r3.status_code == 200, r3.text
+        new_events = m.EVENT_LOG[before:]
+        assert any("MARKETPLACE_ACCOUNT_DELETION" in str(e.get("kind", "")) for e in new_events), \
+            [e.get("kind") for e in new_events]
+        assert any("unverified" in str(e.get("title", "")) for e in new_events)  # never fake a check
+        # unparsable body -> 400, not a 500
+        assert c.post("/ebay/marketplace-deletion", content=b"not json").status_code == 400
+
+        # webhook stays public while the rest of the app is locked (API key + login)
+        old_key, old_pw = m.API_KEY, m.LOGIN_PASSWORD
+        m.API_KEY, m.LOGIN_PASSWORD = "sekret", "pw"
+        try:
+            assert c.get("/health").status_code == 200
+            assert c.get("/searches").status_code == 401      # everything else gated
+            assert c.get("/ebay/marketplace-deletion",
+                         params={"challenge_code": "abc"}).status_code == 200
+            assert c.post("/ebay/marketplace-deletion", json=payload).status_code == 200
+        finally:
+            m.API_KEY, m.LOGIN_PASSWORD = old_key, old_pw
+    finally:
+        os.environ.pop("EBAY_VERIFY_TOKEN", None)
+        os.environ.pop("EBAY_PUBLIC_URL", None)
