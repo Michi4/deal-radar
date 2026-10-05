@@ -119,15 +119,15 @@ _vision_disabled_until = 0.0
 
 async def vision_check(image_url: str, title: str, description: str) -> dict:
     """Ask a vision-language model: does the photo show the described item?
-    Local vision model first (free, private), then OpenRouter free VLM.
-    Backend circuit breaker: 3 consecutive failures -> skip for 10 min (laptop asleep etc).
+    Cloud free VLM first (owner order: cloud AI before local), local model as fallback.
+    Backend circuit breaker: 3 consecutive failures -> skip for 10 min (host asleep etc).
     Returns {shows_item 0..1, is_stock 0..1, visible_text, note}. {} when unavailable."""
     import os
     import time as _t
     if _t.time() < _vision_disabled_until:
         return {}
     api, key = os.getenv("CLOUD_API_URL", ""), os.getenv("CLOUD_API_KEY", "")
-    vmodel = os.getenv("CLOUD_MODEL_VISION", "mimo-v2.5:free")
+    vmodel = os.getenv("CLOUD_MODEL_VISION") or "z-ai/glm-5.3-flash-free"
     local_base, local_vl = os.getenv("LOCAL_VISION_API_URL", "") or os.getenv("LOCAL_API_URL", ""), os.getenv("LOCAL_MODEL_VISION", "")
 
     def _fail() -> dict:
@@ -156,7 +156,28 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
                              "temperature": 0.1, "max_tokens": 400, "think": False}
     try:
         import httpx
-        # 1) local (ollama needs base64 data URLs — it won't fetch remote URLs itself)
+        # 1) cloud free VLM first (owner order: cloud AI runs before any local model)
+        if api and key and image_url:
+            try:
+                async with httpx.AsyncClient(timeout=150.0) as c:
+                    full = payload(vmodel)
+                    # gateways 400 on ollama-only `think` / unsupported response_format -> strip tiers
+                    noopt = {k: v for k, v in full.items() if k not in ("think", "response_format")}
+                    bare = {"model": vmodel, "messages": full["messages"], "max_tokens": 400}
+                    cr: httpx.Response | None = None
+                    for b in (full, noopt, bare):
+                        cr = await c.post(f"{api.rstrip('/')}/chat/completions",
+                                          headers={"Authorization": f"Bearer {key}"}, json=b)
+                        if cr.status_code != 400:
+                            break
+                    assert cr is not None
+                    if cr.status_code != 429:  # rate-limited -> try local, then honest fail
+                        cr.raise_for_status()
+                        _ok()
+                        return _parse_vision(cr.json())
+            except Exception:
+                pass  # cloud down/rate-limited: local still gets its chance
+        # 2) local fallback (ollama needs base64 data URLs — it won't fetch remote URLs itself)
         if local_base and local_vl:
             try:
                 img = download_image(image_url)
@@ -172,27 +193,8 @@ async def vision_check(image_url: str, title: str, description: str) -> dict:
                         _ok()
                         return _parse_vision(r.json())
             except Exception:
-                pass  # local down: cloud still gets its chance; only total failure trips the breaker
-        # 2) cloud free VLM
-        if not (api and key and image_url):
-            return _fail()
-        async with httpx.AsyncClient(timeout=150.0) as c:
-            full = payload(vmodel)
-            # gateways 400 on ollama-only `think` / unsupported response_format -> strip tiers
-            noopt = {k: v for k, v in full.items() if k not in ("think", "response_format")}
-            bare = {"model": vmodel, "messages": full["messages"], "max_tokens": 400}
-            cr: httpx.Response | None = None
-            for b in (full, noopt, bare):
-                cr = await c.post(f"{api.rstrip('/')}/chat/completions",
-                                  headers={"Authorization": f"Bearer {key}"}, json=b)
-                if cr.status_code != 400:
-                    break
-            assert cr is not None
-            if cr.status_code == 429:
-                return _fail()
-            cr.raise_for_status()
-            _ok()
-            return _parse_vision(cr.json())
+                pass  # both unavailable: only total failure trips the breaker
+        return _fail()
     except Exception:
         return _fail()
 

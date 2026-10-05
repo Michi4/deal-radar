@@ -455,12 +455,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     l = sc.listing
                     state = {"title": l.title, "description": (l.description or "")[:2000],
                              "price": l.price, "images": len(l.images), "ocr": l.ocr_texts[:3]}
-                    ans = await jev_decide(state, STAGE_B_QUESTIONS, api_key=jev_key) if jev_key \
-                        else await kev_decide(state, STAGE_B_QUESTIONS)
-                    sb = stage_b_to_scores(ans)
-                    if not sb and os.getenv("CLOUD_API_KEY"):
-                        metrics.inc("stage_b_cloud")
+                    # owner order: cloud AI first (fast, smart), hosted Jev/Kev only as fallback
+                    if os.getenv("CLOUD_API_KEY"):
                         sb = await stage_b_via_cloud(l.title, l.description, l.price, keywords)
+                        if sb:
+                            metrics.inc("stage_b_cloud")
+                    if not sb:
+                        ans = await jev_decide(state, STAGE_B_QUESTIONS, api_key=jev_key) if jev_key \
+                            else await kev_decide(state, STAGE_B_QUESTIONS)
+                        sb = stage_b_to_scores(ans)
             except Exception:
                 sb = {}
             if not sb:
