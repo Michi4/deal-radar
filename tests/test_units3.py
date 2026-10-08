@@ -1414,12 +1414,18 @@ def _cli_proc(payload: bytes):
     return m
 
 
-def test_opencode_cli_disabled_is_free():
-    import os
-    os.environ.pop("OPENCODE_CLI_MODEL", None)
+def test_opencode_cli_disabled_is_free(monkeypatch):
+    import shutil as _sh
+    monkeypatch.setenv("OPENCODE_CLI_MODEL", "")  # explicitly off
     with patch("asyncio.create_subprocess_exec", new=AsyncMock()) as sp:
         assert run(D._cli_json("s", "u")) is None
         sp.assert_not_called()
+    # binary missing -> None fast, never spawned
+    monkeypatch.setenv("OPENCODE_CLI_MODEL", "opencode/x")
+    monkeypatch.setattr(_sh, "which", lambda *a: None)
+    with patch("asyncio.create_subprocess_exec", new=AsyncMock()) as sp2:
+        assert run(D._cli_json("s", "u")) is None
+        sp2.assert_not_called()
 
 
 def test_opencode_cli_parses_and_fails_cleanly(monkeypatch):
@@ -1458,3 +1464,66 @@ def test_cloud_json_uses_cli_when_cloud_down(monkeypatch):
         AC.return_value.__aexit__ = AsyncMock(return_value=False)
         with patch("asyncio.sleep", new=AsyncMock()):
             assert run(D.cloud_json("s", "u", model="m")) == {"keywords": "x"}
+
+
+def test_model_ranking_prefers_proven_fast(monkeypatch):
+    D._MH.clear()
+    try:
+        assert D._order_models("u", ["a", "b", "c"]) == ["a", "b", "c"]  # no data: stable
+        D.apply_health([
+            {"candidate": "cloud:u:b", "ok": True, "latency": 0.5},
+            {"candidate": "cloud:u:a", "ok": True, "latency": 5.0},
+        ])
+        assert D._order_models("u", ["a", "b", "c"]) == ["b", "a", "c"]  # fast proven first
+        D.apply_health([{"candidate": "cloud:u:c", "ok": False, "latency": 1.0}])
+        assert D._order_models("u", ["a", "b", "c"]) == ["b", "a", "c"]  # failing benched
+        snap = D.health_snapshot()
+        assert snap["cloud:u:b"]["ok"] >= 1 and snap["cloud:u:c"]["fail"] >= 3
+        D.restore_health({})
+        D._MH.clear()
+        D.restore_health(snap)
+        assert D._order_models("u", ["a", "b", "c"]) == ["b", "a", "c"]  # survives restart
+    finally:
+        D._MH.clear()
+
+
+def test_modelcheck_pool_and_probe_shapes(monkeypatch):
+    from deal_radar import modelcheck as MC
+    monkeypatch.setenv("CLOUD_API_URL", "http://x")
+    monkeypatch.setenv("CLOUD_API_KEY", "k")
+    monkeypatch.setenv("OPENCODE_CLI_MODEL", "opencode/spark")
+    monkeypatch.delenv("MODELCHECK_MODELS", raising=False)
+    pool = MC.candidates()
+    assert pool[0]["kind"] == "cloud" and pool[-1]["kind"] == "cli"
+    assert MC.ckey(pool[0]).startswith("cloud:http://x:")
+    # unconfigured cloud candidate fails honestly without network
+    monkeypatch.setenv("CLOUD_API_URL", "")
+    bad = {"kind": "cloud", "url": "", "key": "", "model": "m"}
+    r = run(MC.probe_one(bad, timeout=5))
+    assert r["ok"] is False and "no url/key" in r["note"]
+    # env override pool parsing
+    monkeypatch.setenv("MODELCHECK_MODELS", "cli:opencode/mymodel,cloud:deepseek/x,bare/y")
+    pool2 = MC.candidates()
+    assert [(c["kind"], c["model"]) for c in pool2] == [
+        ("cli", "opencode/mymodel"), ("cloud", "deepseek/x"), ("cloud", "bare/y")]
+
+
+def test_models_endpoints_live_cycle(monkeypatch):
+    import sys
+    sys.path.insert(0, "apps")
+    import api.main as m
+    from fastapi.testclient import TestClient
+
+    from deal_radar import decision as D
+    D._MH.clear()
+    try:
+        c = TestClient(m.app)
+        h = c.get("/models/health").json()
+        assert "pool" in h and any("deepseek" in p for p in h["pool"])
+        fake = [{"candidate": "cloud:u:m", "ok": True, "latency": 0.3, "ts": 0.0}]
+        with patch("deal_radar.modelcheck.probe_all", new=AsyncMock(return_value=fake)):
+            r = c.post("/models/check").json()
+            assert r["results"] == fake and "cloud:u:m" in r["health"]
+        assert c.get("/models/health").json()["health"]["cloud:u:m"]["ok"] >= 1
+    finally:
+        D._MH.clear()

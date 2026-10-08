@@ -55,6 +55,85 @@ if CLOUD_MODEL and CLOUD_MODEL not in CLOUD_MODELS:
 CLOUD_MODEL_VISION = os.getenv("CLOUD_MODEL_VISION", "z-ai/glm-5.3-flash-free")  # free vision-language
 
 
+OPENCODE_CLI_DEFAULT_MODEL = "opencode/muse-spark-1.3-contributor-free"  # default free model
+
+
+def _cli_model() -> str:
+    """Configured CLI model (env wins, muse-spark default, never empty by default)."""
+    return os.getenv("OPENCODE_CLI_MODEL", OPENCODE_CLI_DEFAULT_MODEL)
+
+
+# ---- free-model health: learn which model answers best, prefer it automatically ----
+_MH: dict[str, dict] = {}  # ckey -> {ok, fail, latency, ts}
+_MH_FAILS_TRIP = 3
+_MH_COOLDOWN_S = 600.0
+
+
+def _mh_update(key: str, ok: bool, latency: float) -> None:
+    import time as _t
+    e = _MH.get(key) or {"ok": 0, "fail": 0, "latency": 0.0, "ts": 0.0}
+    if ok:
+        e["ok"] = int(e["ok"]) + 1
+        e["fail"] = 0
+        e["latency"] = float(latency)
+    else:
+        e["fail"] = int(e["fail"]) + 1
+    e["ts"] = _t.time()
+    _MH[key] = e
+
+
+def _mh_usable(out: dict | None) -> bool:
+    return bool(out) and not (out.get("__rate_limited") or out.get("__error"))  # type: ignore[union-attr]
+
+
+def _mh_rank_key(key: str, index: int) -> tuple:
+    """Proven-fast first, untried next, cooling-down failures last (stable)."""
+    import time as _t
+    e = _MH.get(key)
+    if not e:
+        return (1, 0.0, index)
+    if int(e.get("fail", 0)) >= _MH_FAILS_TRIP and (_t.time() - float(e.get("ts", 0.0))) < _MH_COOLDOWN_S:
+        return (2, 0.0, index)
+    return (0, float(e.get("latency", 0.0)), index)
+
+
+def _order_models(url: str, models: list[str]) -> list[str]:
+    return [m for _, m in sorted(
+        ((_mh_rank_key(f"cloud:{url}:{m}", i), m) for i, m in enumerate(models)),
+        key=lambda t: t[0])]
+
+
+def apply_health(results: list[dict]) -> None:
+    """Fold probe results ({candidate, ok, latency}) into the ranking."""
+    import time as _t
+    for r in results or []:
+        k = str(r.get("candidate", ""))
+        if not k:
+            continue
+        e = _MH.get(k) or {"ok": 0, "fail": 0, "latency": 0.0, "ts": 0.0}
+        if r.get("ok"):
+            e["ok"] = int(e["ok"]) + 1
+            e["fail"] = 0
+            e["latency"] = float(r.get("latency", 0.0))
+        else:
+            e["fail"] = _MH_FAILS_TRIP  # probe failure benches it until cooldown
+        e["ts"] = _t.time()
+        _MH[k] = e
+
+
+def restore_health(snapshot: dict) -> None:
+    """Restore a persisted health table (from store settings)."""
+    for k, v in (snapshot or {}).items():
+        if isinstance(v, dict):
+            _MH[str(k)] = {"ok": int(v.get("ok", 0)), "fail": int(v.get("fail", 0)),
+                           "latency": float(v.get("latency", 0.0)),
+                           "ts": float(v.get("ts", 0.0))}
+
+
+def health_snapshot() -> dict:
+    return {k: dict(v) for k, v in _MH.items()}
+
+
 def _providers() -> list[dict]:
     """Configured OpenAI-compatible providers in failover order.
 
@@ -163,7 +242,7 @@ async def _cli_json(system: str, user: str, timeout: float = 120.0) -> dict | No
     import re as _re
     import shutil as _sh
     import tempfile as _tf
-    model = os.getenv("OPENCODE_CLI_MODEL", "")
+    model = _cli_model()
     binary = os.getenv("OPENCODE_CLI_BIN", "opencode")
     if not model or not _sh.which(binary):
         return None
@@ -205,8 +284,11 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
         last_err: str = ""
         for round_no in range(2):
             for prov in provs:
-                for m in ([model] if model else list(prov["models"])):
+                attempt = [model] if model else _order_models(prov["url"], list(prov["models"]))
+                for m in attempt:
+                    _t0 = _t.time()
                     out = await _post_chat(prov["url"], prov["key"], m, system, user, max_tokens)
+                    _mh_update(f"cloud:{prov['url']}:{m}", _mh_usable(out), _t.time() - _t0)
                     if out is None:
                         continue
                     if out.get("__rate_limited"):
@@ -219,10 +301,13 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
             if round_no == 0:
                 await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
         print(f"[cloud] all models failed ({last_err})", flush=True)
-    # 1b) opencode CLI fallback (opt-in via OPENCODE_CLI_MODEL; CLI's own free-tier
-    # auth, no key needed; skipped instantly when unset or binary absent)
-    if os.getenv("OPENCODE_CLI_MODEL", ""):
+    # 1b) opencode CLI fallback (default muse-spark, override/clear via OPENCODE_CLI_MODEL;
+    # CLI's own free-tier auth, no key needed; skipped instantly when binary absent)
+    cli_model = _cli_model()
+    if cli_model:
+        _t0 = _t.time()
         cli_out = await _cli_json(system, user)
+        _mh_update(f"cli::{cli_model}", _mh_usable(cli_out), _t.time() - _t0)
         if cli_out:
             return cli_out
     # 2) local backend (ollama OpenAI-compatible, no key needed) as fallback

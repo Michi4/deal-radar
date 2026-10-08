@@ -25,6 +25,7 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 - **Stage A (every listing):** heuristic match + kind classifier (offer/want/parts) + deterministic risk signals. µs, offline.
 - **Stage B (borderline/high-value only):** cloud model first (`CLOUD_*`, OpenAI-compatible, OrcaRouter free tier) → Kev (`KEV_URL`, self-hosted SystemOne) → local Ollama (`LOCAL_API_URL`) verifies exact-product, risk, condition.
 - **NL search** (`POST /searches/nl`): AI resolves product models (e.g. USB-C iPhones → 15/16/17) → per-model fan-out → merged ranked results. Offline fallback + 7-day intent cache.
+- **Free-model picker** (`POST /models/check`, Admin → Models): probes every free model with a tiny exact-JSON task, ranks fastest-exact-first; every real AI call re-scores; failures rest 10 min. Auto-runs at startup. No key needed for the CLI entry.
 - **Vision:** tesseract OCR on photos + cloud VLM photo↔description consistency (`CLOUD_MODEL_VISION`, default z-ai/glm-5.3-flash-free), local model fallback, concurrent bounded pass.
 - **Enrichment fabric** (`packages/deal_radar/enrich.py`): CPU→real PassMark scores, market-cohort stats, cross-source image-dupe hints.
 
@@ -34,7 +35,8 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 | (none) | — | app runs: search, filters, risk %, favorites, watches work offline |
 | `EBAY_OAUTH_TOKEN` | no | ebay driver clean-errors, excluded from defaults |
 | `CLOUD_API_URL` + `CLOUD_API_KEY` | no | NL falls back to deterministic parser; Stage B uses Kev/heuristics |
-| `OPENCODE_CLI_MODEL` | no | keyless fallback AI off; set e.g. `opencode/muse-spark-1.3-contributor-free` to let the local opencode CLI answer when cloud is down/absent (own free-tier auth, skipped instantly if binary missing) |
+| `OPENCODE_CLI_MODEL` | no | keyless fallback AI (default `opencode/muse-spark-1.3-contributor-free`, empty = off); answers when cloud is down/absent via the CLI's own free-tier auth |
+| `MODELCHECK_MODELS` | no | checker pool override, comma separated (empty = 3 OrcaRouter free chat models + CLI default) |
 | `KEV_URL` | no | Stage B uses cloud/heuristic fallback |
 | `LOCAL_API_URL` / `LOCAL_MODEL_VISION` | no | NL/vision via cloud or skipped fast (breaker) |
 | `SIGNAL_NUMBER` / `NTFY_TOPIC_URL` / `WEBHOOK_URL` | no | alerts log only |

@@ -150,3 +150,32 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
 - Caveats (README): contributor-tier data use (prompts may train Meta models — our prompts
   are listing titles/descriptions, never secrets); free-tier rate limits unknown; works
   wherever the CLI binary runs (laptop here; prod has none, so prod stays OrcaRouter).
+
+## 2026-10-08 — prod standalone: opencode baked into image, muse default, model picker
+- Prod must not depend on the laptop: opencode CLI is now BUILT INTO the image
+  (Dockerfile multi-stage `ocbuild`: oven/bun:1.3-slim, pinned commit
+  687664c63b2bb4eb9b9c7e0dc37227869282ed80, `build.ts --single`, binary copied to
+  /usr/local/bin/opencode). No release tarball exists for v2 (only Arch builds from
+  source; anomalyco tags stop at v1.18.x) — source build is the only reproducible path.
+- `OPENCODE_CLI_MODEL` now DEFAULTS to `opencode/muse-spark-1.3-contributor-free`
+  (empty = off). tests/conftest.py blanks it autouse so unit tests stay hermetic.
+- Model picker (`packages/deal_radar/modelcheck.py`): pool = 3 OrcaRouter free chat
+  models + CLI default (override via MODELCHECK_MODELS). Each probe is one tiny
+  exact-`{"ping": 1}` task; only exact answers count. Ranking: proven-fast first,
+  untried next, tripped failures benched 10 min. Every real AI call re-scores
+  (latency + ok/fail); `POST /models/check` force-probes + persists to settings;
+  startup bootstrap restores + re-probes in background; `GET /models/health` is instant;
+  Admin → Models tab shows the table + a check button (v1 UI; v2 admin stays as-is).
+- Order in cloud_json stays cloud-first: providers (health-ordered) → CLI → local.
+
+## 2026-10-08 — opencode source-build lessons (proven by building it here)
+- `packages/cli` builds the WRONG binary (`lildax`, the v2 server tool, no `run`
+  subcommand). The agent CLI is `packages/opencode` (`build.ts --single --skip-install`
+  after a root `bun install`; output `dist/opencode-linux-x64/bin/opencode`, ~178MB).
+- Tagless source stamps version `0.0.0-…` and the free tier rejects it
+  ("1.18.0 or newer required"). Fix: `OPENCODE_VERSION=2.0.24` at build time
+  (same code as the distro 2.0.24 build, unmodified, pinned commit) — then muse-spark
+  answers headlessly in ~4s through the fresh binary (verified live, exact JSON).
+- bun compile needs GBs of temp space: laptop /tmp (tmpfs 7.6G) hit EDQUOT; build on a
+  real disk. Prod host build will take a while (2335 packages + full build) — chained
+  `build && up` so the old container keeps serving until the new image is ready.

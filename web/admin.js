@@ -7,7 +7,7 @@ document.getElementById('themebtn').onclick = () => {
   localStorage.setItem('drt', dark ? 'dark' : 'light');
 };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const TABS = ['Overview', 'Drivers', 'Secrets', 'Searches', 'Events', 'Danger'];
+const TABS = ['Overview', 'Drivers', 'Secrets', 'Models', 'Searches', 'Events', 'Danger'];
 let activeTab = 'Overview';
 function drawTabs() {
   document.getElementById('tabs').innerHTML = TABS.map(t =>
@@ -82,6 +82,17 @@ async function tick() {
     document.getElementById('events').innerHTML = (m.events_tail || []).slice().reverse()
       .map(e => `<div class="ev">${esc(e.kind || '?')}: ${esc((e.title || e.listing_id || '').slice(0, 100))}</div>`).join('') || 'none yet';
     document.getElementById('nev').textContent = m.events || 0;
+    try {
+      const mh = await api('/models/health');
+      const h = mh.health || {};
+      const rows = (mh.pool || []).map(p => {
+        const e = h[p] || {};
+        const state = e.fail >= 3 ? 'resting' : (e.ok ? 'answering' : 'untried');
+        return `<tr><td>${esc(p)}</td><td>${state}</td><td>${e.ok ?? 0}/${e.fail ?? 0}</td>` +
+          `<td>${e.latency != null ? esc(e.latency) + 's' : '—'}</td></tr>`;
+      }).join('');
+      document.getElementById('models').innerHTML = '<table><tr><th>model</th><th>state</th><th>ok/fail</th><th>latency</th></tr>' + rows + '</table>';
+    } catch (e) { document.getElementById('models').innerHTML = 'unavailable'; }
   } catch (e) {
     document.getElementById('updated').textContent = 'unreachable — retrying…';
   }
@@ -132,6 +143,19 @@ if (_rb) _rb.addEventListener('click', async () => {
     document.getElementById('resetmsg').innerHTML = `<div class="err">wiped: ${esc(JSON.stringify(r.wiped || {}))}</div>`;
     tick();
   } catch (e) { showMsg(String(e.message || e)); }
+});
+const _mcb = document.getElementById('modelcheckbtn');
+if (_mcb) _mcb.addEventListener('click', async () => {
+  const msg = document.getElementById('modelcheckmsg');
+  _mcb.disabled = true;
+  if (msg) msg.textContent = 'probing every free model… (up to ~1 min)';
+  try {
+    const r = await api('/models/check', { method: 'POST' });
+    const ok = (r.results || []).filter(x => x.ok).length;
+    if (msg) msg.textContent = `done: ${ok}/${(r.results || []).length} answering — ranking updated`;
+    tick();
+  } catch (e) { if (msg) msg.textContent = String(e.message || e); }
+  _mcb.disabled = false;
 });
 setInterval(tick, 15000);
 tick();

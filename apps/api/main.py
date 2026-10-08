@@ -153,7 +153,8 @@ SECRET_DEFS = [
     ("CLOUD_API_KEY", "cloud model API key", True),
     ("CLOUD_MODELS", "cloud models, comma separated", False),
     ("CLOUD_MODEL_VISION", "cloud vision model (e.g. mimo-v2.5:free)", False),
-    ("OPENCODE_CLI_MODEL", "opencode CLI model for keyless fallback AI (empty = off)", False),
+    ("OPENCODE_CLI_MODEL", "CLI fallback model (default muse-spark-1.3, empty = off)", False),
+    ("MODELCHECK_MODELS", "checker pool override, comma separated (empty = defaults)", False),
     ("KEV_URL", "Kev SystemOne endpoint", False),
     ("JEV_API_KEY", "Jev API key", True),
     ("LOCAL_API_URL", "local Ollama OpenAI endpoint", False),
@@ -430,6 +431,31 @@ async def _start_watcher():
     except Exception:
         pass
     asyncio.create_task(_watcher())
+    asyncio.create_task(_model_bootstrap())
+
+
+async def _model_bootstrap() -> None:
+    """Standalone in ~1 min: restore persisted model health, then re-probe in background."""
+    try:
+        await asyncio.sleep(20)
+        from deal_radar import decision as _dec
+        from deal_radar import modelcheck as _mc
+        try:
+            saved = store.setting_get("model_health", "")
+            if saved:
+                _dec.restore_health(json.loads(saved))
+        except Exception:
+            pass
+        try:
+            results = await _mc.probe_all()
+            _dec.apply_health(results)
+            store.setting_set("model_health", json.dumps(_dec.health_snapshot()))
+            ok = sum(1 for r in results if r.get("ok"))
+            print(f"[startup] model check: {ok}/{len(results)} free models answering")
+        except Exception as e:
+            print(f"[startup] model check failed: {e}")
+    except Exception:
+        pass
 
 
 BUILTIN_IDS = ("ebay", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo")
@@ -637,6 +663,33 @@ async def driver_categories(did: str, parent: str = ""):
 @app.get("/metrics")
 def metrics_ep():
     return PlainTextResponse(metrics.prometheus())
+
+
+@app.get("/models/health")
+def models_health():
+    """Cached free-model ranking (instant): which model answers best right now."""
+    from deal_radar import decision as _dec
+    from deal_radar import modelcheck as _mc
+    return {"health": _dec.health_snapshot(),
+            "pool": [_mc.ckey(c) for c in _mc.candidates()]}
+
+
+@app.post("/models/check")
+async def models_check():
+    """Probe every free model live and persist the ranking (best answers first)."""
+    from deal_radar import decision as _dec
+    from deal_radar import modelcheck as _mc
+    results = await _mc.probe_all()
+    _dec.apply_health(results)
+    try:
+        store.setting_set("model_health", json.dumps(_dec.health_snapshot()))
+    except Exception:
+        pass
+    try:
+        metrics.inc("model_checks")
+    except Exception:
+        pass
+    return {"results": results, "health": _dec.health_snapshot()}
 
 
 @app.get("/metrics.json")
