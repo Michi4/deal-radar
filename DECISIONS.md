@@ -179,3 +179,25 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
 - bun compile needs GBs of temp space: laptop /tmp (tmpfs 7.6G) hit EDQUOT; build on a
   real disk. Prod host build will take a while (2335 packages + full build) — chained
   `build && up` so the old container keeps serving until the new image is ready.
+
+## 2026-10-08 — unlimited everything + rich alerts + change tracking + cross-listings
+- v1 keyword search was HARD-CAPPED at 30 (`limit:30` in `intent()` spread AFTER the
+  user's `limit:limN` in the POST body — the input field could never win). Removed;
+  empty limit = unlimited everywhere (API already had None=unlimited, drivers already
+  walk to exhaustion, enrich_top_n=0 means all). Watches showing "40 hits" were carrying
+  their creation-time limit, not an app cap.
+- Cheap benchmark tier: CPU/GPU benchmark lookups now run for EVERY listing with a
+  usable CPU (PassMark disk-cached, videocard table memory-cached; only brand-new CPUs
+  cost a polite request). Details/OCR/vision/Stage-B stay deep-budget-gated. This is
+  what makes perf/€ ranking complete over unlimited result sets.
+- iGPU extraction: Arc 130V/140V/140T + Radeon 780M/880M/890M (+bare "780M", Vega).
+- `spec_line()` (orchestrator): CPU + MT/ST marks + RAM/storage regex + 140-char
+  description snippet. Used in price-drop/rise AND new-match alerts (Signal now shows
+  what the box is, not just price+link).
+- Change tracking: store.upsert now also diffs seller NAME (rating stored silently to
+  avoid fluctuation spam) + observations row; price/desc/images/title existed. Watch
+  forms (v1+v2) gained title/seller toggles (title defaults ON for new watches).
+- Cross-listings: dedupe drops were silent; now the first sighting is kept and every
+  other source's sighting attaches as `also_on` (+ why-line, metric). Shown as
+  "also on: X €Y" chips in v1 cards + v2 ResultCard (types + refilter mapping updated).
+  Lesson: attach MUST be a post-pass (scoring is inline, dupes arrive later).
