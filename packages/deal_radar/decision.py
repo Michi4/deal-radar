@@ -86,6 +86,12 @@ def _mh_usable(out: dict | None) -> bool:
     return bool(out) and not (out.get("__rate_limited") or out.get("__error"))  # type: ignore[union-attr]
 
 
+def _mh_usable_now(url: str, models: list[str]) -> bool:
+    """Any model not currently benched (proven, untried, or cooled down)?"""
+    return any(_mh_rank_key(f"cloud:{url}:{m}", i)[0] in (0, 1)
+               for i, m in enumerate(models))
+
+
 def _mh_rank_key(key: str, index: int) -> tuple:
     """Proven-fast first, untried next, cooling-down failures last (stable)."""
     import time as _t
@@ -278,8 +284,13 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
     global _cloud_failures, _cloud_disabled_until
     import asyncio as _aio
     import time as _t
-    # 1) cloud providers in failover order, with one retry round
-    provs = _providers()
+    # 1) cloud providers in failover order, with one retry round.
+    # Benched models (checker/cooldown) are skipped up-front instead of paying
+    # full failover latency on every call — straight to CLI/local instead.
+    provs = [p for p in _providers()
+             if _mh_usable_now(p["url"], ([model] if model else list(p["models"])))]
+    if _providers() and not provs:
+        print("[cloud] all models benched, skipping to fallback", flush=True)
     if provs:
         last_err: str = ""
         for round_no in range(2):

@@ -1625,3 +1625,23 @@ def test_seller_change_tracked():
     assert any(e["kind"] == "seller" and e["old"] == "alice" and e["new"] == "bob" for e in evs)
     obs = st.db.execute("SELECT kind FROM observations WHERE listing_id='t:1'").fetchall()
     assert ("seller",) in obs
+
+
+def test_cloud_json_skips_benched_models(monkeypatch):
+    from unittest.mock import patch
+    D._MH.clear()
+    try:
+        monkeypatch.setenv("CLOUD_API_URL", "http://x")
+        monkeypatch.setenv("CLOUD_API_KEY", "k")
+        monkeypatch.delenv("LOCAL_API_URL", raising=False)
+        D.apply_health([{"candidate": f"cloud:http://x:{m}", "ok": False, "latency": 1.0}
+                        for m in D.CLOUD_MODELS])
+        with patch.object(D.httpx, "AsyncClient") as AC:
+            inst = AsyncMock()
+            inst.post = AsyncMock(side_effect=Exception("must not be called"))
+            AC.return_value.__aenter__ = AsyncMock(return_value=inst)
+            AC.return_value.__aexit__ = AsyncMock(return_value=False)
+            assert run(D.cloud_json("s", "u", model="")) is None  # straight to (blanked) fallback
+            inst.post.assert_not_called()
+    finally:
+        D._MH.clear()
