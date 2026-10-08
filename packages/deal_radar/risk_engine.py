@@ -1,12 +1,18 @@
 """Risk engine: percentage + evidence, never boolean. Rescue lane so good deals survive."""
 from __future__ import annotations
 
+import re
+
 from .contracts import CanonicalListing, RiskAssessment
 
 SUSPICIOUS_PHRASES = ["vorkasse", "western union", "crypto", "bitcoin", "whatsapp only",
                       "off-platform", "ausserhalb", "schnell zahlen", "druck", "geschenkkarte",
                       "gift card", "moneygram", "pay now or"]
 STOCK_HINTS = ["stock photo", "stockfoto", "beispielfoto", "symbolfoto", "archivbild"]
+ES_HINTS = ["engineering sample", "es cpu", "es chip", "es-version", "es version",
+            "qs cpu", "qs chip", "qs version", "(es)", "stepping 0"]
+ES_RE = re.compile(r"engineering sample|stepping 0|\(es\)|es[- ]?(cpu|chip|version)|"
+                   r"qs[- ]?(cpu|chip|version)|\d[a-z]{0,2}\s+(es|qs)\b|\b(es|qs)\s+\d", re.IGNORECASE)
 
 
 def assess_risk(listing: CanonicalListing, market_median: float | None = None) -> RiskAssessment:
@@ -23,6 +29,18 @@ def assess_risk(listing: CanonicalListing, market_median: float | None = None) -
         if hint in text:
             score += 0.15
             reasons.append(f"stock-photo disclaimer: '{hint}'")
+    for hint in ES_HINTS:
+        if hint in text:
+            score += 0.25
+            reasons.append(f"engineering/QS sample chip ('{hint}'): no warranty, "
+                           "possible incompatibility, no official benchmarks")
+            break
+    else:
+        m = ES_RE.search(text)
+        if m:
+            score += 0.25
+            reasons.append(f"engineering/QS sample chip ('{m.group(0).strip()}'): no warranty, "
+                           "possible incompatibility, no official benchmarks")
 
     if listing.price is not None and market_median:
         if market_median > 0 and listing.price < market_median * 0.5:

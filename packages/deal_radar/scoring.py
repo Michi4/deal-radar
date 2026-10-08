@@ -74,8 +74,52 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
                 if re.search(r"m\s*\.\s*[1-4]|ssd|nvme|\bslot\b|2280|2230|2242", ctx):
                     continue  # M.2 SSD storage next to the match, not Apple Silicon
             return cpu, 0.9, f"mentioned '{cpu}'"
+    # Intel Core Ultra: "Ultra 5 235H", "Core Ultra 7 155H", "Ultra 9 285HX"
+    m = re.search(r"(?:core\s+)?ultra\s*([579])\s*(\d{3,4}\s*[a-z]*)", t)
+    if m:
+        num = re.sub(r"\s+", "", m.group(2)).upper()
+        g = f"Core Ultra {m.group(1)} {num}"
+        return g, 0.8, f"mentioned '{g}'"
+    # Ryzen AI: "Ryzen AI 9 HX 370", "Ryzen AI 7 PRO 350", "Ryzen AI 5 340"
+    m = re.search(r"ryzen\s+ai\s+(\d+)\s*(pro\s+)?(hx\s+)?(\d{3})\b", t)
+    if m:
+        parts = ["Ryzen", "AI", m.group(1)]
+        if m.group(2):
+            parts.append("PRO")
+        if m.group(3):
+            parts.append("HX")
+        parts.append(m.group(4))
+        g = " ".join(parts)
+        return g, 0.8, f"mentioned '{g}'"
+    # space-form Intel: "i7 12700H", "i5 12450H" (dash-form handled below)
+    m = re.search(r"\bi\s*([3579])\s+(\d{4,5}[a-z]{0,3})\b", t)
+    if m:
+        g = f"i{m.group(1)}-{m.group(2).upper()}"
+        return g, 0.7, f"mentioned '{g}'"
+    # explicit Ryzen with number: "Ryzen 5 PRO 5650U", "Ryzen 7 8845HS" (normalized)
+    m = re.search(r"ryzen\s+([579])(?:\s+(pro))?\s+(\d{3,4}\s*[a-z]*)", t)
+    if m:
+        g = f"Ryzen {m.group(1)} " + ("PRO " if m.group(2) else "") \
+            + re.sub(r"\s+", "", m.group(3)).upper()
+        return g, 0.85, f"mentioned '{g}'"
+    # bare AMD numbers: "8845HS", "R7 7840U", "7735 HS" -> tier from 2nd digit
+    # (5/6->Ryzen 5, 7/8->Ryzen 7, 9->Ryzen 9 across 4000-8000 series).
+    # Skipped when an explicit "Ryzen <tier>" prefix exists (handled above).
+    if not re.search(r"ryzen\s*[579]", t):
+        m = re.search(r"\br\s*([579])\s*(\d{4})\s*([a-z]{1,2})\b|\b(\d{4})\s*(hs|hx|h|u)\b", t)
+        if m:
+            if m.group(1):
+                tier, num, suf = m.group(1), m.group(2), m.group(3)
+            else:
+                num, suf = m.group(4), m.group(5)
+                tier = {"5": "5", "6": "5", "7": "7", "8": "7", "9": "9"}.get(num[1], "")
+            if tier and suf in ("h", "hs", "hx", "u"):
+                g = f"Ryzen {tier} {num}{suf.upper()}"
+                return g, 0.7, f"bare model '{num}{suf}' -> {g}"
     for m in re.finditer(r"(ryzen\s*\d+\s*\w*|i[3579]-\d{4,5}\w*|m[1-4](\s*pro|\s*max)?)", t):
         g = (m.group(1) or "").strip()
+        if re.match(r"i[3579]-", g, re.IGNORECASE):
+            g = g[0].lower() + g[1:].upper()  # i5-12450h -> i5-12450H
         # M.2 SSD slots are storage, not Apple Silicon — skip those matches
         ctx = t[max(0, m.start() - 8):m.end() + 8]
         if re.match(r"m[1-4]$", g, re.IGNORECASE) and (

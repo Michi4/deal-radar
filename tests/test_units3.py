@@ -1285,7 +1285,8 @@ def test_cpu_gpu_extract_and_benchmark_parsers():
     from deal_radar.scoring import enrich_cpu, enrich_gpu, extract_cpu, extract_gpu
 
     cpu, conf, _src = extract_cpu("ThinkPad with Ryzen 5 PRO 5650U notebook")
-    assert cpu and "ryzen" in cpu and conf > 0
+    assert cpu and "ryzen" in cpu.lower() and conf > 0
+    assert cpu == "Ryzen 5 PRO 5650U"
     assert extract_cpu("plain wooden chair")[0] is None
     gpu, _gconf, _ = extract_gpu("laptop with GeForce RTX 4060 graphics")
     assert gpu and "4060" in gpu
