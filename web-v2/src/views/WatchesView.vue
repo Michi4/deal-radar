@@ -17,6 +17,8 @@
         <label class="ck" :class="{ on: nPrice }"><input type="checkbox" v-model="nPrice" /> price drops</label>
         <label class="ck" :class="{ on: nDesc }"><input type="checkbox" v-model="nDesc" /> desc changes</label>
         <label class="ck" :class="{ on: nImg }"><input type="checkbox" v-model="nImg" /> image changes</label>
+        <label class="ck" :class="{ on: nTitle }"><input type="checkbox" v-model="nTitle" /> title changes</label>
+        <label class="ck" :class="{ on: nSeller }"><input type="checkbox" v-model="nSeller" /> seller changes</label>
       </div>
       <small>{{ channels }}</small>
     </div>
@@ -40,6 +42,8 @@ const nNew = ref(true);
 const nPrice = ref(true);
 const nDesc = ref(false);
 const nImg = ref(false);
+const nTitle = ref(true);
+const nSeller = ref(false);
 const locQ = ref('');
 const locR = ref('');
 const channels = ref('');
@@ -51,6 +55,8 @@ async function mkWatch() {
   if (nPrice.value) notifyOn.push('price_drop');
   if (nDesc.value) notifyOn.push('desc_change');
   if (nImg.value) notifyOn.push('image_change');
+  if (nTitle.value) notifyOn.push('title_change');
+  if (nSeller.value) notifyOn.push('seller_change');
   const rules: Record<string, unknown>[] = [];
   if (nPrice.value && +dropP.value > 0) rules.push({ kind: 'price_drop', min_drop_pct: +dropP.value });
   if (nNew.value && +riskP.value > 0) rules.push({ kind: 'new_match', max_risk: +riskP.value / 100 });

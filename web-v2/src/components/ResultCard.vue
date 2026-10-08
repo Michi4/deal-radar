@@ -17,6 +17,7 @@
         <span class="badge" :class="'risk-' + (s.risk?.severity || 'low')" :title="riskTip">{{ riskPct }}% risk</span>
       </div>
       <div class="lane">{{ laneTxt }}</div>
+      <div v-if="(s.also_on || []).length" class="lane">also on: {{ alsoTxt }}</div>
       <div class="row">
         <button class="btn btn-sm" :class="picked ? 'btn-primary' : ''" @click.stop="$emit('compare')" :aria-pressed="picked" title="Side-by-side compare (unlimited items)">
           <ArrowLeftRight :size="15" />{{ picked ? 'picked' : 'compare' }}
@@ -48,6 +49,8 @@ const laneTxt = computed(() => {
   const dist = l.distance_km != null ? ` · ${Math.round(l.distance_km)} km` : '';
   return `${props.s.lane || ''} · ${(props.s.final_score ?? 0).toFixed(2)} · ${l.source || ''} · ${l.location || ''}${dist}`;
 });
+const alsoTxt = computed(() => (props.s.also_on || []).slice(0, 3)
+  .map((a) => `${a.source} ${a.price ?? '?'}€`).join(' · '));
 function imgGone(e: Event) { (e.target as HTMLElement).remove(); }
 </script>
 

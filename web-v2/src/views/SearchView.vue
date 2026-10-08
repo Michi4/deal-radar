@@ -272,7 +272,7 @@ function refilter() {
   const payload = {
     items: plain.map((s) => ({
       listing: { id: s.listing.id, title: s.listing.title, description: s.listing.description, price: s.listing.price, source: s.listing.source, distance_km: s.listing.distance_km },
-      risk: s.risk, final_score: s.final_score, lane: s.lane, why: s.why, deal_dna: s.deal_dna, enrichments: s.enrichments
+      risk: s.risk, final_score: s.final_score, lane: s.lane, why: s.why, deal_dna: s.deal_dna, enrichments: s.enrichments, also_on: s.also_on
     })),
     opts: {
       hideKind: { ...search.hideKind }, hideLanes: [...search.hideLanes],

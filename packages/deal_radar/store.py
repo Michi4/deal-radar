@@ -98,6 +98,15 @@ class Store:
                 events.append({"kind": "title", "old": old_title, "new": l.title})
                 self.db.execute("INSERT INTO observations(listing_id,ts,kind,old_value,new_value) VALUES(?,?,?,?,?)",
                                 (l.id, now, "title", (old_title or "")[:500], (l.title or "")[:500]))
+            try:
+                old_seller = (_old.get("seller") or {}).get("name", "")
+            except Exception:
+                old_seller = ""
+            new_seller = (l.seller.name if l.seller else "") or ""
+            if old_seller != new_seller:
+                events.append({"kind": "seller", "old": old_seller, "new": new_seller})
+                self.db.execute("INSERT INTO observations(listing_id,ts,kind,old_value,new_value) VALUES(?,?,?,?,?)",
+                                (l.id, now, "seller", old_seller[:200], new_seller[:200]))
             self.db.execute("UPDATE listings SET url=?,title=?,price=?,last_seen=?,data=? WHERE id=?",
                             (l.url, l.title, l.price, now, data, l.id))
         self.db.commit()

@@ -25,6 +25,7 @@ export interface Scored {
   why?: string[];
   enrichments?: { field: string; value: number | string; confidence?: number }[];
   deal_dna?: Record<string, number>;
+  also_on?: { source?: string; price?: number; currency?: string; url?: string; title?: string }[];
 }
 export interface JobState {
   done: number;

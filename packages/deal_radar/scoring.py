@@ -155,6 +155,10 @@ GPU_PATS = [
     r"rtx\s*a\d{3,4}",
     r"quadro\s*\w+\d+",
     r"arc\s*a\d{3}",
+    r"arc\s*1[34]0[vt]",  # Lunar/Arrow Lake iGPU: Arc 130V/140V/140T
+    r"radeon\s*[678]8\d\s*m",  # RDNA iGPU: 780M/880M/890M
+    r"\b[678]80m\b",  # bare iGPU mention: "780M graphics"
+    r"rx\s*vega\s*\d+",
 ]
 
 

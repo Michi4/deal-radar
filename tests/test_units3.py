@@ -1528,3 +1528,100 @@ def test_models_endpoints_live_cycle(monkeypatch):
         assert c.get("/models/health").json()["health"]["cloud:u:m"]["ok"] >= 1
     finally:
         D._MH.clear()
+
+
+def test_cross_source_dupes_surfaced_not_silent():
+    import asyncio
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+    from deal_radar.orchestrator import run_search
+
+    def _mk2(src, price, url):
+        return CanonicalListing(id=f"{src}:1", source=src, native_id="1", url=url,
+                                title="Beelink 8845HS Mini PC 24GB",
+                                description="Some decent description text here for scoring",
+                                price=price, images=["http://img/x.jpg"], seller=Seller(name="s"))
+
+    class FA(MarketplaceDriver):
+        manifest = DriverManifest(id="a", display_name="a", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [_mk2("a", 300, "https://a/1")]
+
+    class FB(MarketplaceDriver):
+        manifest = DriverManifest(id="b", display_name="b", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [_mk2("b", 320, "https://b/1")]
+
+    reg = DriverRegistry()
+    reg.register(FA())
+    reg.register(FB())
+    out = asyncio.run(run_search(
+        {"keywords": "beelink", "sources": ["a", "b"], "limit": 10, "enrich": True,
+         "ocr": False, "benchmarks": False, "vision": False, "details": False},
+        reg, None, None))
+    assert len(out["results"]) == 1  # still deduped to one card
+    r = out["results"][0]
+    assert len(r["also_on"]) == 1 and r["also_on"][0]["source"] in ("a", "b")
+    assert any("also listed on" in w for w in r["why"])
+
+
+def test_cheap_benchmark_tier_covers_all():
+    import asyncio
+    from unittest.mock import patch
+
+    from deal_radar.orchestrator import run_search
+    items = [_mk("t:1", title="Beelink Ryzen 7 8845HS 24GB", price=300),
+             _mk("t:2", title="Geekom Ryzen 7 7840HS 16GB", price=320)]
+    with patch("deal_radar.benchmarks.fetch_passmark_cpu",
+               return_value={"multi": 28000, "single": 3700, "source": "t"}) as fp:
+        out = asyncio.run(run_search(
+            {"keywords": "mini pc ryzen", "sources": ["t"], "limit": 10, "enrich": True,
+             "enrich_top_n": 1,  # deep budget for 1 only; cheap tier must cover #2
+             "ocr": False, "benchmarks": True, "vision": False, "details": False},
+            _reg(items), None, None))
+    benches = [e for r in out["results"] for e in r["enrichments"] if e["field"] == "cpu_benchmark"]
+    assert len(benches) == 2, [r["enrichments"] for r in out["results"]]
+    assert fp.call_count == 2
+
+
+def test_spec_line_shapes():
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.orchestrator import spec_line
+    l = CanonicalListing(id="t:1", source="t", native_id="1", url="https://x/1",
+                         title="Beelink 8845HS 24GB RAM 1TB SSD", description="Top Zustand, wenig genutzt",
+                         price=300.0, seller=Seller(name="s"))
+    enr = [{"field": "cpu", "value": "Ryzen 7 8845HS"},
+           {"field": "cpu_benchmark", "value": 28261},
+           {"field": "cpu_single", "value": 3718}]
+    txt = spec_line(l, enr)
+    assert "Ryzen 7 8845HS" in txt and "28261" in txt and "3718" in txt
+    assert "24GB RAM" in txt and "1TB" in txt and "Top Zustand" in txt
+    assert "no CPU identified" in spec_line(
+        CanonicalListing(id="t:9", source="t", native_id="9", url="u", title="Holzstuhl",
+                         description="schlicht", price=10.0, seller=Seller(name="s")), [])
+
+
+def test_seller_change_tracked():
+    import os
+    import tempfile
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "s.db"))
+    l1 = CanonicalListing(id="t:1", source="t", native_id="1", url="u", title="Mini PC",
+                          description="d", price=100.0, seller=Seller(name="alice"))
+    assert st.upsert(l1) == []
+    l2 = CanonicalListing(id="t:1", source="t", native_id="1", url="u", title="Mini PC",
+                          description="d", price=100.0, seller=Seller(name="bob"))
+    evs = st.upsert(l2)
+    assert any(e["kind"] == "seller" and e["old"] == "alice" and e["new"] == "bob" for e in evs)
+    obs = st.db.execute("SELECT kind FROM observations WHERE listing_id='t:1'").fetchall()
+    assert ("seller",) in obs

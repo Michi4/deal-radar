@@ -125,3 +125,4 @@ class ScoredListing(BaseModel):
     final_score: float = 0.0
     lane: str = "top"  # top|good|review|risky|hidden
     why: list[str] = Field(default_factory=list)
+    also_on: list[dict] = Field(default_factory=list)  # cross-listings: same item on other sources

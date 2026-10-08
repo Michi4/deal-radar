@@ -32,6 +32,7 @@ from deal_radar import metrics
 from deal_radar.driver_sdk import DriverRegistry
 from deal_radar.notifications import notifier_from_env
 from deal_radar.orchestrator import run_search
+from deal_radar.orchestrator import spec_line as _spec_line
 from deal_radar.store import Store
 
 app = FastAPI(title="deal-radar", version="0.1.0")
@@ -372,7 +373,8 @@ async def _watcher() -> None:
                         await notifier.send(
                             f"New match {r['final_score']:.2f}: {(r['listing']['title'] or '')[:80]}",
                             f"{r['listing']['price']} {r['listing']['currency']} @ {r['listing']['source']} "
-                            f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n{r['listing']['url']}",
+                            f"({r['listing']['location']}) risk {r['risk']['score']:.0%}\n"
+                            f"{_spec_line(r['listing'], r.get('enrichments', []))}\n{r['listing']['url']}",
                             {"url": r["listing"]["url"]})
                 for _ev in (out.get("events", []) or []):  # price notifies are sent (rule-gated) by the orchestrator itself
                     _log_event(_ev)

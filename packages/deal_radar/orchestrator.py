@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import statistics
 import time
 from typing import Any
@@ -34,6 +35,41 @@ def dedupe_key(title: str, images: list[str]) -> str:
     norm = re.sub(r"[^a-z0-9]+", "", title.lower())[:48]
     img = (images[0].split("?")[0][-40:]) if images else "noimg"
     return f"{norm}|{img}"
+
+
+def spec_line(listing, enrichments) -> str:
+    """One rich spec line for notifications: CPU + multi/single benchmark +
+    RAM/storage + description snippet. Handles EnrichmentFact objects or dicts."""
+    def _ev(field: str):
+        for e in enrichments or []:
+            f = e.field if hasattr(e, "field") else e.get("field")
+            if f == field:
+                v = e.value if hasattr(e, "value") else e.get("value")
+                return v
+        return None
+
+    def _lg(key: str, default: str = ""):
+        if hasattr(listing, key):
+            return getattr(listing, key) or default
+        return (listing or {}).get(key, default) if isinstance(listing, dict) else default
+
+    parts = []
+    cpu = _ev("cpu")
+    if cpu:
+        parts.append(f"CPU {cpu}")
+    multi, single = _ev("cpu_benchmark"), _ev("cpu_single")
+    if multi:
+        parts.append(f"{multi} MT / {single or '?'} ST")
+    blob = f"{_lg('title')} {_lg('description')}"
+    m = re.search(r"(\d{2,3})\s*gb\s*(?:ddr\d?|lpddr\d?|ram|arbeitsspeicher)", blob, re.IGNORECASE)
+    if m:
+        parts.append(f"{m.group(1)}GB RAM")
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(tb|gb)\s*(?:ssd|nvme|hdd|festplatte|speicher)", blob, re.IGNORECASE)
+    if m:
+        parts.append(f"{m.group(1)}{m.group(2).upper()} {'SSD' if 'ssd' in m.group(0).lower() or 'nvme' in m.group(0).lower() else ''}".strip())
+    desc = re.sub(r"\s+", " ", str(_lg("description") or ""))[:140]
+    head = " · ".join(parts) if parts else "no CPU identified"
+    return head + (f'\n"{desc}…"' if desc else "")
 
 
 class _SearchStopped(Exception):
@@ -109,6 +145,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
 
     seen: set[str] = set()
     seen_title_price: set[tuple[str, str, float | None]] = set()  # identical reposts, per source
+    dupe_map: dict[str, list[dict]] = {}  # dedupe key -> all sightings (cross-listing surfacing)
     scored: list[ScoredListing] = []
     dupes_same = 0
     flagged: list[dict] = []  # kept (not dropped): client can unhide/re-filter post-search
@@ -138,8 +175,15 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         key = dedupe_key(l.title, l.images)
         if key in seen:
             metrics.inc("duplicates")
+            if key in dupe_map and l.source != dupe_map[key][0].get("source"):
+                dupe_map[key].append({"source": l.source, "price": l.price,
+                                      "currency": l.currency, "url": l.url,
+                                      "title": (l.title or "")[:80]})
             continue
         seen.add(key)
+        dupe_map[key] = [{"source": l.source, "price": l.price,
+                          "currency": l.currency, "url": l.url,
+                          "title": (l.title or "")[:80]}]
         _tp = (l.source, _re6.sub(r"[^a-z0-9]+", "", (l.title or "").lower())[:60], l.price)
         if _tp in seen_title_price:
             dupes_same += 1
@@ -307,8 +351,11 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                         r.score = min(1.0, r.score + 0.2)
                 except Exception:
                     pass
-        # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s)
-        if deep and intent.get("benchmarks", True) and cpu_fact:
+        # upgrade static benchmark to real PassMark scores (disk-cached, gentle 1 req/s).
+        # Runs for EVERY listing with a usable CPU, not just deep-enriched ones: cached
+        # hits are free, only brand-new CPUs cost a request — this is what makes
+        # perf/€ ranking complete over unlimited result sets.
+        if intent.get("benchmarks", True) and cpu_fact:
             import re as _re2
             if not _re2.search(r"\d{3,}", str(cpu_fact.value)):
                 bn_why.append(f"CPU '{cpu_fact.value}' too vague for benchmark lookup (no model number)")
@@ -348,8 +395,9 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                             bn_why.append(f"AI-check: {override} NOT found on PassMark (unverified)")
                 except Exception:
                     pass
-        # GPU path: extract -> videocardbenchmark G3D (same title-verified honesty as CPU)
-        if deep and intent.get("benchmarks", True):
+        # GPU path: extract -> videocardbenchmark G3D (same title-verified honesty as CPU).
+        # Same cheap tier as CPU: cached lookups for every listing with a GPU mention.
+        if intent.get("benchmarks", True):
             try:
                 from .benchmarks import lookup_gpu
                 from .scoring import enrich_gpu
@@ -428,7 +476,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                         if _ok:
                             _arrow = "▼" if _pct < 0 else "▲"
                             await notifier.send(f"Price {_kind.split('_')[1]} {_arrow}{abs(_pct):.0f}%: {l.title[:60]}",
-                                                f"{c['old']} -> {c['new']} {l.currency} :: {l.url}", ev)
+                                                f"{c['old']} -> {c['new']} {l.currency} :: {l.url}\n{spec_line(l, enrich)}", ev)
 
     scored.sort(key=lambda s: s.final_score, reverse=True)
     if progress:
@@ -675,6 +723,19 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 s.final_score = rank(s.match_score, s.value_score, s.risk.score,
                                      s.deal_dna.get("completeness", 0.5), intent.get("ranking", None))
         scored.sort(key=lambda s: s.final_score, reverse=True)
+    except Exception:
+        pass
+    # cross-listing surfacing (post-pass: dupes are only all seen after the loop)
+    try:
+        for s in scored:
+            others = [d for d in dupe_map.get(dedupe_key(s.listing.title, s.listing.images), [])
+                      if d.get("source") != s.listing.source or d.get("url") != s.listing.url]
+            if others:
+                s.also_on = others[:8]
+                s.why.append("also listed on " + ", ".join(
+                    f"{d.get('source')} ({d.get('price')} {d.get('currency', '')})".strip()
+                    for d in others[:4]))
+                metrics.inc("duplicates_surfaced")
     except Exception:
         pass
     # cross-listing same-item detection (same photo hash on multiple sources; capped for speed)
