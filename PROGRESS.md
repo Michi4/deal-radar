@@ -1,6 +1,10 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
+- OPENCODE CLI FALLBACK (2026-10-08, owner asked): `OPENCODE_CLI_MODEL` opt-in keyless AI
+  via the official CLI binary (raw Zen HTTP is client-gated, the binary is not). Order:
+  cloud → CLI → local. Unit (3) + live (2 real CLI calls, 5.8s) green; verify 181 passed;
+  deployed 65c053c, post-deploy smoke 3/3. Prod unchanged behaviorally (no CLI there).
 - CLOUD AI SWITCH (2026-10-05): TokenHarbor 7-day trial exhausted → prod now on OrcaRouter
   free tier (server-side .env only); laptop AI endpoints removed from prod. Stage B + vision
   reordered cloud-first per owner order. Provider 400s auto-retry with stripped bodies.
