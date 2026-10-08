@@ -3,6 +3,7 @@ FROM python:3.12-slim
 FROM oven/bun:1.3-slim AS ocbuild
 ARG OPENCODE_REF=687664c63b2bb4eb9b9c7e0dc37227869282ed80
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+    python3 make g++ \
  && rm -rf /var/lib/apt/lists/*
 RUN git init /oc && cd /oc && git remote add origin https://github.com/anomalyco/opencode \
  && git fetch --depth 1 origin $OPENCODE_REF && git checkout FETCH_HEAD
