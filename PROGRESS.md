@@ -1,7 +1,14 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
 ## What changed since last report
-- OPENCODE CLI FALLBACK (2026-10-08, owner asked): `OPENCODE_CLI_MODEL` opt-in keyless AI
+- PROD MOVED OFF HOMESERVER (2026-10-08, owner order): app + signal-api now run on the
+  cloud host behind its Traefik (existing wildcard cert, DNS-01, zero cert friction).
+  Migrated: server .env copy (login password generated, signal rewired next-door),
+  sqlite snapshot via live `.backup` (zero downtime), signal account data (number
+  re-verified), Lab plugins + caches. Old stack removed completely (down -v, dir gone).
+  Public proof post-cutover: login → search → 3/3 real results; /models/check ranks
+  deepseek (1.4s exact) + muse CLI (exact), congestion auto-benched.
+- OPENCODE CLI FALLBACK (2026-10-08, owner asked): `OPENCODE_CLI_MODEL` keyless AI
   via the official CLI binary (raw Zen HTTP is client-gated, the binary is not). Order:
   cloud → CLI → local. Unit (3) + live (2 real CLI calls, 5.8s) green; verify 181 passed;
   deployed 65c053c, post-deploy smoke 3/3. Prod unchanged behaviorally (no CLI there).
