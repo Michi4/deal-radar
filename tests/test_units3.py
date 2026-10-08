@@ -1406,3 +1406,55 @@ def test_accessory_round2_and_flagship_risk():
     assert r.score >= 0.4 and any("flagship" in x for x in r.reasons)
     r2 = assess_risk(mk("iPhone 17 Pro Max 256GB", 900))
     assert not any("flagship" in x for x in r2.reasons)
+
+
+def _cli_proc(payload: bytes):
+    m = AsyncMock()
+    m.communicate = AsyncMock(return_value=(payload, b""))
+    return m
+
+
+def test_opencode_cli_disabled_is_free():
+    import os
+    os.environ.pop("OPENCODE_CLI_MODEL", None)
+    with patch("asyncio.create_subprocess_exec", new=AsyncMock()) as sp:
+        assert run(D._cli_json("s", "u")) is None
+        sp.assert_not_called()
+
+
+def test_opencode_cli_parses_and_fails_cleanly(monkeypatch):
+    monkeypatch.setenv("OPENCODE_CLI_MODEL", "opencode/muse-spark-1.3-contributor-free")
+    import shutil as _sh
+    monkeypatch.setattr(_sh, "which", lambda *a: "/usr/bin/opencode")
+    hdr = b"\x1b[0m\n> build \xc2\xb7 muse-spark-1.3-contributor-free\n{\"a\": 1}\n"
+    with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=_cli_proc(hdr))) as sp:
+        assert run(D._cli_json("s", "u")) == {"a": 1}
+        args = sp.call_args[0]
+        assert args[:3] == ("opencode", "run", "--model")
+    # garbage output -> None, never raises
+    with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=_cli_proc(b"no json here"))):
+        assert run(D._cli_json("s", "u")) is None
+    # timeout -> None, proc killed
+    proc = _cli_proc(b"")
+    proc.communicate = AsyncMock(side_effect=TimeoutError())
+    with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=proc)):
+        assert run(D._cli_json("s", "u", timeout=1)) is None
+        proc.kill.assert_called_once()
+
+
+def test_cloud_json_uses_cli_when_cloud_down(monkeypatch):
+    monkeypatch.setenv("OPENCODE_CLI_MODEL", "opencode/muse-spark-1.3-contributor-free")
+    monkeypatch.setenv("CLOUD_API_URL", "http://x")
+    monkeypatch.setenv("CLOUD_API_KEY", "k")
+    monkeypatch.delenv("LOCAL_API_URL", raising=False)
+    import shutil as _sh
+    monkeypatch.setattr(_sh, "which", lambda *a: "/usr/bin/opencode")
+    with patch.object(D.httpx, "AsyncClient") as AC, \
+         patch("asyncio.create_subprocess_exec",
+               new=AsyncMock(return_value=_cli_proc(b"> h\n{\"keywords\": \"x\"}"))):
+        inst = AsyncMock()
+        inst.post = AsyncMock(side_effect=Exception("down"))
+        AC.return_value.__aenter__ = AsyncMock(return_value=inst)
+        AC.return_value.__aexit__ = AsyncMock(return_value=False)
+        with patch("asyncio.sleep", new=AsyncMock()):
+            assert run(D.cloud_json("s", "u", model="m")) == {"keywords": "x"}

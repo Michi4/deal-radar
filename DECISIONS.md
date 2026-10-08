@@ -137,3 +137,16 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
 - eBay: added `GET+POST /ebay/marketplace-deletion` (SHA-256 challenge contract per eBay's
   guide, unit-tested incl. public-while-locked); but since we persist zero eBay user data,
   the documented recommendation is the EXEMPTION toggle, not the endpoint (BLOCKERS).
+
+## 2026-10-08 — opencode CLI as opt-in keyless fallback AI (owner asked, proven live)
+- Raw Zen HTTP with `Bearer public` is gated to in-OpenCode use (FreeTierError, 3 probes
+  2026-10-05) — but the official `opencode run` CLI binary answers headlessly in ~2s with
+  clean JSON. So: `OPENCODE_CLI_MODEL` (empty = off) + optional `OPENCODE_CLI_BIN`.
+  `_cli_json()` in `decision.py`: temp cwd (no session pollution of the project), 120s
+  timeout with kill, ANSI/`>`-header stripping, `{...}` extraction, None on any failure.
+- Order in `cloud_json`: cloud providers → CLI (if enabled) → local Ollama → None.
+  Cloud-first preserved; CLI skipped instantly when unset/binary missing (prod unaffected).
+  JSON path only (NL + Stage B); Lab codegen untouched. In Secrets UI (non-secret).
+- Caveats (README): contributor-tier data use (prompts may train Meta models — our prompts
+  are listing titles/descriptions, never secrets); free-tier rate limits unknown; works
+  wherever the CLI binary runs (laptop here; prod has none, so prod stays OrcaRouter).

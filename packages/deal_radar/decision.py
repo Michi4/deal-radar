@@ -152,6 +152,47 @@ _cloud_failures = 0
 _cloud_disabled_until = 0.0
 
 
+async def _cli_json(system: str, user: str, timeout: float = 120.0) -> dict | None:
+    """Last-resort AI via the local opencode CLI (opt-in, empty = off).
+
+    Uses the CLI's own free-tier auth (e.g. opencode/muse-spark-1.3-contributor-free),
+    so no API key is needed. Returns None fast when disabled or the binary is absent.
+    """
+    import asyncio as _aio
+    import json as _json
+    import re as _re
+    import shutil as _sh
+    import tempfile as _tf
+    model = os.getenv("OPENCODE_CLI_MODEL", "")
+    binary = os.getenv("OPENCODE_CLI_BIN", "opencode")
+    if not model or not _sh.which(binary):
+        return None
+    prompt = f"{system}\n{user}\nReturn ONLY JSON, nothing else."
+    try:
+        with _tf.TemporaryDirectory(prefix="dr-cli-") as tmp:
+            proc = await _aio.create_subprocess_exec(
+                binary, "run", "--model", model, prompt,
+                cwd=tmp, stdout=_aio.subprocess.PIPE, stderr=_aio.subprocess.DEVNULL)
+            try:
+                out, _ = await _aio.wait_for(proc.communicate(), timeout)
+            except TimeoutError:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return None
+        text = out.decode(errors="replace")
+        text = _re.sub(r"\x1b\[[0-9;]*m", "", text)  # ANSI colors
+        lines = [ln for ln in text.splitlines() if not ln.strip().startswith(">")]
+        m = _re.search(r"(\{.*\})", "\n".join(lines), _re.DOTALL)
+        if not m:
+            return None
+        parsed = _json.loads(m.group(1))
+        return parsed if isinstance(parsed, dict) else None
+    except Exception:
+        return None
+
+
 async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str = "") -> dict | None:
     """Cloud-first (TokenHarbor per owner order) then local Ollama fallback.
     None when everything fails (offline-first deterministic fallback)."""
@@ -178,6 +219,12 @@ async def cloud_json(system: str, user: str, max_tokens: int = 600, model: str =
             if round_no == 0:
                 await _aio.sleep(8)  # free-tier congestion is transient; one breather then retry
         print(f"[cloud] all models failed ({last_err})", flush=True)
+    # 1b) opencode CLI fallback (opt-in via OPENCODE_CLI_MODEL; CLI's own free-tier
+    # auth, no key needed; skipped instantly when unset or binary absent)
+    if os.getenv("OPENCODE_CLI_MODEL", ""):
+        cli_out = await _cli_json(system, user)
+        if cli_out:
+            return cli_out
     # 2) local backend (ollama OpenAI-compatible, no key needed) as fallback
     local_base = os.getenv("LOCAL_API_URL", "")
     local_model = os.getenv("LOCAL_MODEL", "qwen2.5:3b")

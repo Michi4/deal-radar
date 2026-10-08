@@ -153,6 +153,7 @@ SECRET_DEFS = [
     ("CLOUD_API_KEY", "cloud model API key", True),
     ("CLOUD_MODELS", "cloud models, comma separated", False),
     ("CLOUD_MODEL_VISION", "cloud vision model (e.g. mimo-v2.5:free)", False),
+    ("OPENCODE_CLI_MODEL", "opencode CLI model for keyless fallback AI (empty = off)", False),
     ("KEV_URL", "Kev SystemOne endpoint", False),
     ("JEV_API_KEY", "Jev API key", True),
     ("LOCAL_API_URL", "local Ollama OpenAI endpoint", False),

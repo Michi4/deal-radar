@@ -34,6 +34,7 @@ per driver without touching driver code. Registry: `PYTHONPATH=packages python -
 | (none) | — | app runs: search, filters, risk %, favorites, watches work offline |
 | `EBAY_OAUTH_TOKEN` | no | ebay driver clean-errors, excluded from defaults |
 | `CLOUD_API_URL` + `CLOUD_API_KEY` | no | NL falls back to deterministic parser; Stage B uses Kev/heuristics |
+| `OPENCODE_CLI_MODEL` | no | keyless fallback AI off; set e.g. `opencode/muse-spark-1.3-contributor-free` to let the local opencode CLI answer when cloud is down/absent (own free-tier auth, skipped instantly if binary missing) |
 | `KEV_URL` | no | Stage B uses cloud/heuristic fallback |
 | `LOCAL_API_URL` / `LOCAL_MODEL_VISION` | no | NL/vision via cloud or skipped fast (breaker) |
 | `SIGNAL_NUMBER` / `NTFY_TOPIC_URL` / `WEBHOOK_URL` | no | alerts log only |
