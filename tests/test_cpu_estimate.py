@@ -72,3 +72,23 @@ def test_es_sample_risk():
     assert r.score >= 0.25 and any("engineering" in x for x in r.reasons)
     r2 = assess_risk(mk("Beelink 8845HS 24GB 1TB"))
     assert not any("engineering" in x for x in r2.reasons)
+
+
+def test_no_more_apple_false_positives():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("bmw m1 coupe modellauto 1:87")[0] is None
+    assert extract_cpu("peaq mini pc m100 windows")[0] is None
+    assert extract_cpu("igel m330c minipc")[0] is None
+    assert extract_cpu("acemagic am18 7840hs")[0] == "Ryzen 7 7840HS"
+    assert extract_cpu("thinkcentre m72e 3267-5m4")[0] is None
+    assert extract_cpu("macbook air m1 2020")[0] == "m1"
+    assert extract_cpu("macbook pro m2")[0] == "m2"
+
+
+def test_ryzen_desktop_and_r3():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("msi pro dp20z ryzen 5 5600g")[0] == "Ryzen 5 5600G"
+    assert extract_cpu("ryzen 7 5700g 32gb")[0] == "Ryzen 7 5700G"
+    assert extract_cpu("thinkcentre ryzen 7 pro 4750ge")[0] == "Ryzen 7 PRO 4750GE"
+    assert extract_cpu("soyo m5 ryzen 3 4300u")[0] == "Ryzen 3 4300U"
+    assert extract_cpu("ryzen 5 5500u 16gb")[0] == "Ryzen 5 5500U"

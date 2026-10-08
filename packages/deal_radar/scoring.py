@@ -66,10 +66,24 @@ async def resolve_cpu_candidates(model_name: str) -> list[str]:
 
 def extract_cpu(text: str) -> tuple[str | None, float, str]:
     t = text.lower()
+
+    def _apple_chip_ok(pos: int, length: int) -> bool:
+        """Apple Silicon needs word boundaries AND context: AM18/M100/M330C/BMW M1
+        are model numbers and cars, not M-chips."""
+        before = t[max(0, pos - 12):pos]
+        after = t[pos + length:pos + length + 12]
+        return bool(re.search(r"(apple|macbook|imac|mac\s*mini|mac\s*studio|ipad"
+                              r"|chip|soc|\d+\s*gb|ram|ssd|speicher)", before + " " + after))
+
     for cpu in CPU_DB:
         if cpu in t:
             if re.match(r"m[1-4]$", cpu):
-                i = t.find(cpu)
+                m0 = re.search(r"(?<![a-z0-9])" + re.escape(cpu) + r"(?![a-z0-9])", t)
+                if not m0:
+                    continue
+                if not _apple_chip_ok(m0.start(), len(cpu)):
+                    continue
+                i = m0.start()
                 ctx = t[max(0, i - 10):i + len(cpu) + 10]
                 if re.search(r"m\s*\.\s*[1-4]|ssd|nvme|\bslot\b|2280|2230|2242", ctx):
                     continue  # M.2 SSD storage next to the match, not Apple Silicon
@@ -96,35 +110,40 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
     if m:
         g = f"i{m.group(1)}-{m.group(2).upper()}"
         return g, 0.7, f"mentioned '{g}'"
-    # explicit Ryzen with number: "Ryzen 5 PRO 5650U", "Ryzen 7 8845HS" (normalized)
-    m = re.search(r"ryzen\s+([579])(?:\s+(pro))?\s+(\d{3,4}\s*[a-z]*)", t)
+    # explicit Ryzen with number: "Ryzen 5 PRO 5650U", "Ryzen 7 8845HS",
+    # "Ryzen 3 4300U", "Ryzen 5 5600G" (normalized)
+    m = re.search(r"ryzen\s*([3579])(?:\s+(pro))?\s*(\d{3,4}\s*[a-z]*)", t)
     if m:
         g = f"Ryzen {m.group(1)} " + ("PRO " if m.group(2) else "") \
             + re.sub(r"\s+", "", m.group(3)).upper()
         return g, 0.85, f"mentioned '{g}'"
-    # bare AMD numbers: "8845HS", "R7 7840U", "7735 HS" -> tier from 2nd digit
-    # (5/6->Ryzen 5, 7/8->Ryzen 7, 9->Ryzen 9 across 4000-8000 series).
+    # bare AMD numbers: "8845HS", "R7 7840U", "7735 HS", "5600G" -> tier from 2nd
+    # digit (2/3/4->Ryzen 3, 5/6->Ryzen 5, 7/8->Ryzen 7, 9->Ryzen 9).
     # Skipped when an explicit "Ryzen <tier>" prefix exists (handled above).
-    if not re.search(r"ryzen\s*[579]", t):
-        m = re.search(r"\br\s*([579])\s*(\d{4})\s*([a-z]{1,2})\b|\b(\d{4})\s*(hs|hx|h|u)\b", t)
+    if not re.search(r"ryzen\s*[3579]", t):
+        m = re.search(r"\br\s*([3579])\s*(\d{4})\s*([a-z]{1,2})\b"
+                      r"|\b(\d{4})\s*(hs|hx|h|u|g|ge)\b", t)
         if m:
             if m.group(1):
                 tier, num, suf = m.group(1), m.group(2), m.group(3)
             else:
                 num, suf = m.group(4), m.group(5)
-                tier = {"5": "5", "6": "5", "7": "7", "8": "7", "9": "9"}.get(num[1], "")
-            if tier and suf in ("h", "hs", "hx", "u"):
+                tier = {"2": "3", "3": "3", "4": "3", "5": "5", "6": "5",
+                        "7": "7", "8": "7", "9": "9"}.get(num[1], "")
+            if tier and suf in ("h", "hs", "hx", "u", "g", "ge"):
                 g = f"Ryzen {tier} {num}{suf.upper()}"
                 return g, 0.7, f"bare model '{num}{suf}' -> {g}"
-    for m in re.finditer(r"(ryzen\s*\d+\s*\w*|i[3579]-\d{4,5}\w*|m[1-4](\s*pro|\s*max)?)", t):
+    for m in re.finditer(r"(ryzen\s*\d+\s*\w*|i[3579]-\d{4,5}\w*|(?<![a-z0-9])m[1-4](\s*(pro|max))?(?![a-z0-9]))", t):
         g = (m.group(1) or "").strip()
         if re.match(r"i[3579]-", g, re.IGNORECASE):
             g = g[0].lower() + g[1:].upper()  # i5-12450h -> i5-12450H
         # M.2 SSD slots are storage, not Apple Silicon — skip those matches
         ctx = t[max(0, m.start() - 8):m.end() + 8]
-        if re.match(r"m[1-4]$", g, re.IGNORECASE) and (
-                re.search(r"m\s*\.\s*2|ssd|nvme|slot|2280|2230", ctx, re.IGNORECASE)):
-            continue
+        if re.match(r"m[1-4]", g, re.IGNORECASE):
+            if re.search(r"m\s*\.\s*2|ssd|nvme|slot|2280|2230", ctx, re.IGNORECASE):
+                continue
+            if not _apple_chip_ok(m.start(), len(g)):
+                continue  # BMW M1 and friends are not Apple Silicon
         return g, 0.45, f"pattern '{g}' (unverified)"
     return None, 0.0, ""
 
