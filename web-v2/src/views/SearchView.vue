@@ -96,6 +96,7 @@
           <option value="score">Score</option><option value="price">Price</option>
           <option value="ppe" :disabled="!hasBench">Perf/€{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
           <option value="mt" :disabled="!hasBench">Multithread{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
+          <option value="ppw" :disabled="!hasBench">Perf/Watt{{ hasBench ? '' : ' (re-run with benchmarks)' }}</option>
           <option value="gpe" :disabled="!hasGpu">GPU/€{{ hasGpu ? '' : ' (re-run with GPU benchmarks)' }}</option>
           <option value="dist">Distance</option><option value="tc">Total cost</option>
         </select>
@@ -112,6 +113,21 @@
       <button class="btn iconbtn" @click="ui.setView('list')" :class="{ active: ui.view === 'list' }" aria-label="list view" title="List view"><List :size="16" /></button>
       <span class="lane">{{ visibleIds.length }} items</span>
       <span v-if="unknownNote" class="lane warn" :title="unknownNote">{{ unknownNote }}</span>
+      <button class="btn" @click="askAdvise" :disabled="advBusy" title="AI buying advice: re-ranked verdicts + best buy over these results">AI advise</button>
+      <label class="ck" title="Include saved favorites in the advice"><input type="checkbox" v-model="advFavs" /> +favs</label>
+    </div>
+    <div v-if="adv" class="panel advise">
+      <div class="eyebrow">AI buying advice {{ adv.advice?.fallback ? '(rule-based — AI unreachable)' : '' }}</div>
+      <p>{{ adv.advice?.summary }}</p>
+      <div v-if="(adv.advice?.honest_flags || []).length" class="flags">flags: {{ adv.advice.honest_flags.join(' · ') }}</div>
+      <ol>
+        <li v-for="p in adv.advice?.picks || []" :key="p.url">
+          <b>#{{ p.rank }}</b> {{ p.verdict }}
+          <div><small>plus: {{ (p.pros || []).join(' · ') }}</small></div>
+          <div><small>minus: {{ (p.cons || []).join(' · ') }}</small></div>
+        </li>
+      </ol>
+      <button class="btn btn-sm" @click="adv = null">close</button>
     </div>
 
     <div v-if="search.searched" class="cols">
@@ -186,6 +202,18 @@ const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[
 const statusLine = ref('');
 const driverNotes = ref('');
 const unknownNote = ref('');
+const adv = ref<{ advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } } | null>(null);
+const advBusy = ref(false);
+const advFavs = ref(false);
+async function askAdvise() {
+  if (!search.sid) { ui.toast('run a search first'); return; }
+  advBusy.value = true;
+  try {
+    adv.value = await api('/advise', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ search_ids: [search.sid], include_favorites: advFavs.value }) });
+  } catch (e) { ui.toast('advise failed'); }
+  advBusy.value = false;
+}
 let refreshTimer: number | null = null;
 const weights = reactive({ match: 35, value: 35, risk: 20, comp: 10 });
 interface FieldRule { field: string; op: string; value: string }
@@ -211,7 +239,7 @@ const isValueSort = computed(() => search.sort === 'ppe');
 const hasBench = computed(() => search.results.some((s) => (s.enrichments || []).some((e) => e.field === 'cpu_benchmark' || e.field === 'gpu_benchmark')));
 const hasGpu = computed(() => search.results.some((s) => (s.enrichments || []).some((e) => e.field === 'gpu_benchmark')));
 const sortDown = computed(() => {
-  const descDefault = search.sort === 'score' || search.sort === 'ppe' || search.sort === 'mt' || search.sort === 'gpe';
+  const descDefault = search.sort === 'score' || search.sort === 'ppe' || search.sort === 'mt' || search.sort === 'gpe' || search.sort === 'ppw';
   return (descDefault ? -1 : 1) * search.sortDir === 1;
 });
 const pages = computed(() => Math.max(1, Math.ceil(visibleIds.value.length / search.perPage)));

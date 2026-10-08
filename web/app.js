@@ -33,7 +33,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;const _rd2=$('rDist');if(_rd2)_rd2.value='';RDIST=null;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),resetFilters:()=>resetFilters(),trackUrl:async()=>{const u=$('trackurl').value.trim();if(!u)return toast('paste a link first');const r=await api('/favorites/by-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u})},0).catch(e=>({ok:false,error:netMsg(e)}));toast(r.ok?`tracking: ${(r.title||'').slice(0,60)}`:`not trackable: ${r.error||'?'}`);if(r.ok)showFavs()},resumeJobId:(a)=>redoSearch(a),geoloc:()=>doGeoloc(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),advise:()=>advise(),resetFilters:()=>resetFilters(),trackUrl:async()=>{const u=$('trackurl').value.trim();if(!u)return toast('paste a link first');const r=await api('/favorites/by-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u})},0).catch(e=>({ok:false,error:netMsg(e)}));toast(r.ok?`tracking: ${(r.title||'').slice(0,60)}`:`not trackable: ${r.error||'?'}`);if(r.ok)showFavs()},resumeJobId:(a)=>redoSearch(a),geoloc:()=>doGeoloc(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -125,10 +125,12 @@ function isFav(id){return FAVS.has(id)}
 async function favAct(id,close){await api('/favorites/'+encodeURIComponent(id),{method:'POST'},0);await loadFavs();if(close)closeD();else render()}
 async function fav(id){return favAct(id,false)}
 async function unfav(id){await api('/favorites/'+encodeURIComponent(id),{method:'DELETE'},0);await loadFavs();showFavs()}
-const SORTS=[{id:'score',label:'Score',dir:-1},{id:'price',label:'Price',dir:1},{id:'ppe',label:'Perf/€',dir:-1,need:'bench'},{id:'mt',label:'Multithread',dir:-1,need:'bench'},{id:'gpe',label:'GPU/€',dir:-1,need:'gpu'},{id:'tc',label:'Total cost',dir:1},{id:'dist',label:'Distance',dir:1}];
+const SORTS=[{id:'score',label:'Score',dir:-1},{id:'price',label:'Price',dir:1},{id:'ppe',label:'Perf/€',dir:-1,need:'bench'},{id:'mt',label:'Multithread',dir:-1,need:'bench'},{id:'ppw',label:'Perf/W',dir:-1,need:'bench'},{id:'gpe',label:'GPU/€',dir:-1,need:'gpu'},{id:'tc',label:'Total cost',dir:1},{id:'dist',label:'Distance',dir:1}];
 let FLAGS={enrich:true,ocr:true,benchmarks:true,vision:true,details:true};
 function gpuPerEur(x){const e=(x.enrichments||[]).find(e=>e.field==='gpu_benchmark');return e&&x.listing.price?e.value/x.listing.price:0}
-const KEYFNS={score:s=>s.final_score??0,price:s=>s.listing.price??1e18,ppe:perfEur,mt:benchOf,gpe:gpuPerEur,tc:s=>((s.deal_dna||{}).total_cost??s.listing.price??1e18),dist:s=>s.listing.distance_km??1e18};
+function tdpOf(x){const e=(x.enrichments||[]).find(e=>e.field==='cpu_tdp');const m=/([\d.]+)\s*W/i.exec(String((e&&e.value)||''));return m?+m[1]:0}
+function perfWatt(x){const b=benchOf(x),t=tdpOf(x);return (b&&t)?b/t:0}
+const KEYFNS={score:s=>s.final_score??0,price:s=>s.listing.price??1e18,ppe:perfEur,mt:benchOf,ppw:perfWatt,gpe:gpuPerEur,tc:s=>((s.deal_dna||{}).total_cost??s.listing.price??1e18),dist:s=>s.listing.distance_km??1e18};
 function sortAvail(){const hasB=LAST.some(s=>(s.enrichments||[]).some(e=>e.field==='cpu_benchmark'||e.field==='gpu_benchmark'));
 const hasG=LAST.some(s=>(s.enrichments||[]).some(e=>e.field==='gpu_benchmark'));
 return {bench:hasB,gpu:hasG}}
@@ -365,6 +367,20 @@ async function cmp(){hideSearchChrome();markActive('compare');hideChrome();if(CM
 const r=await api('/searches/'+encodeURIComponent(SID)+'/compare',{},1);
 $('pageview').innerHTML=ptitle('Compare','side-by-side spec · price · risk')+Object.entries(r.groups||{}).map(([m,rows])=>`<div class="panel"><b>${m}</b> (${rows.length})<table class="cmp"><tr><th>price</th><th>src</th><th>risk</th><th>score</th><th>spec</th><th></th></tr>${rows.map(x=>`<tr><td>${x.price??'?'} ${x.currency||''}</td><td>${x.source}</td><td>${(x.risk*100).toFixed(0)}%</td><td>${x.score}</td><td>${x.cpu?x.cpu+' ('+x.benchmark+')':''}</td><td><a href="${x.url}" target="_blank">open</a></td></tr>`).join('')}</table></div>`).join('')||'<div class="empty">No groups.</div>';$('pager').style.display='none'}
 let CAR=[];
+async function advise(){
+if(!SID)return toast('run a search first');
+toast('AI is ranking these results…');
+try{
+const r=await api('/advise',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({search_ids:[SID]})},0);
+const a=r.advice||{};
+const pick=p=>{const u=safeUrl(p.url);return `<div class="card" style="margin:.5rem 0"><div class="body"><h4>#${p.rank} ${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:''}</h4><div>${esc(p.verdict||'')}</div>${(p.pros||[]).length?'<div><small>plus: '+p.pros.map(esc).join(' · ')+'</small></div>':''}${(p.cons||[]).length?'<div><small>minus: '+p.cons.map(esc).join(' · ')+'</small></div>':''}</div></div>`};
+$('sheet').innerHTML=`<div class="row"><button class="btn btn-ghost" data-act="closeD">${IC_LEFT} back</button></div>`
++`<h3>AI buying advice ${a.fallback?'<small>(rule-based — AI unreachable)</small>':''}</h3>`
++`<p style="white-space:pre-wrap;font-size:14px">${esc(a.summary||'no summary')}</p>`
++((a.honest_flags||[]).length?'<h4>Flags</h4><small>'+a.honest_flags.map(esc).join('<br/>')+'</small>':'')
++`<h4>Ranking</h4>`+((a.picks||[]).map(pick).join('')||'<small>no picks</small>');
+$('drawer').classList.add('open');
+}catch(e){toast('advise failed: '+netMsg(e))}}
 function openD(id){const s=LAST.find(x=>x.listing.id===id);if(!s)return toast('result expired — re-run search');const l=s.listing;CAR=l.images||[];let ci=0;
 const dna=Object.entries(s.deal_dna||{}).map(([k,v])=>`${esc(k)}<div class="bar"><i style="width:${(v*100).toFixed(0)}%"></i></div>`).join('');
 const fmtv=(f,v)=>{if(typeof v!=='number')return esc(v);const pct=/discount|risk|rate|ratio/.test(f);return pct?(v*100).toFixed(1)+'%':(+v.toFixed(2)).toString()};

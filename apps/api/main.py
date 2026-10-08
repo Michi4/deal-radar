@@ -190,6 +190,7 @@ notifier = notifier_from_env(os.environ)
 SEARCHES: dict[str, dict] = {}
 EVENT_LOG: list[dict] = []
 SEEN_IDS: dict[str, set[str]] = {}
+_WATCH_ERR: dict[str, int] = {}  # consecutive all-source failures per watch
 LAST_RUN: dict[str, float] = {}
 RESULT_CACHE: dict[str, tuple[float, dict]] = {}
 CACHE_TTL = float(os.getenv("CACHE_TTL_S", "120"))
@@ -327,6 +328,11 @@ async def _track_favorites() -> None:
         _FAV_MISS.pop(lid, None)
         det.id = lid  # keep stable id so history accumulates on the saved item
         try:
+            from deal_radar.orchestrator import spec_line as _spec_line
+            _fav_spec = _spec_line(det, [])
+        except Exception:
+            _fav_spec = ""
+        try:
             for c in store.upsert(det):
                 ev = {"kind": ("fav_" + c["kind"]), "listing_id": lid, "url": durl,
                       "title": det.title, "price": det.price}
@@ -334,7 +340,8 @@ async def _track_favorites() -> None:
                 try:
                     await notifier.send(
                         f"Tracked change ({c['kind']}): {(det.title or '')[:60]}",
-                        f"{c['kind']}: {str(c.get('old'))[:80]} → {str(c.get('new'))[:80]}\n{durl}",
+                        f"{c['kind']}: {str(c.get('old'))[:80]} → {str(c.get('new'))[:80]}\n"
+                        f"{_fav_spec}\n{durl}",
                         {"url": durl})
                 except Exception:
                     pass
@@ -355,6 +362,23 @@ async def _watcher() -> None:
                     continue
                 LAST_RUN[sid] = time.time()
                 out = await _run_cached(intent, force=True)
+                errs = out.get("driver_errors", {}) or {}
+                if errs and not out.get("results"):
+                    _WATCH_ERR[sid] = _WATCH_ERR.get(sid, 0) + 1
+                    if _WATCH_ERR[sid] == 3:
+                        _log_event({"kind": "watch_error", "listing_id": sid,
+                                    "title": f"watch '{intent.get('keywords', '')[:60]}' failing on all sources",
+                                    "url": ""})
+                        try:
+                            await notifier.send(
+                                f"Watch failing: {(intent.get('keywords') or '')[:60]}",
+                                "all sources errored 3 polls in a row: "
+                                + "; ".join(f"{k}: {str(v)[:80]}" for k, v in errs.items())[:300],
+                                {})
+                        except Exception:
+                            pass
+                else:
+                    _WATCH_ERR[sid] = 0
                 seen = SEEN_IDS.setdefault(sid, set())
                 fresh = [r for r in out.get("results", []) if r["listing"]["id"] not in seen]
                 for r in out.get("results", []):
@@ -1215,6 +1239,109 @@ def list_searches():
     except Exception:
         pass
     return out
+
+
+class AdviseReq(BaseModel):
+    search_ids: list[str] = Field(default=[], max_length=8)
+    include_favorites: bool = False
+    note: str = Field(default="", max_length=500)
+
+
+def _adv_item(r: dict) -> dict:
+    l = r.get("listing", r) if isinstance(r, dict) else {}
+    es = {}
+    for e in r.get("enrichments", []) if isinstance(r, dict) else []:
+        es[e.get("field")] = e.get("value")
+    price = l.get("price") if isinstance(l, dict) else None
+    try:
+        bench = float(es.get("cpu_benchmark") or 0) or None
+    except (TypeError, ValueError):
+        bench = None
+    try:
+        tdp = float(str(es.get("cpu_tdp") or "").split()[0]) if es.get("cpu_tdp") else None
+    except (TypeError, ValueError, IndexError):
+        tdp = None
+    rk = r.get("risk", {}) if isinstance(r, dict) else {}
+    return {"title": str(l.get("title", ""))[:120] if isinstance(l, dict) else "",
+            "price": price, "currency": l.get("currency", "EUR") if isinstance(l, dict) else "EUR",
+            "source": l.get("source", "") if isinstance(l, dict) else "",
+            "url": l.get("url", "") if isinstance(l, dict) else "",
+            "cpu": es.get("cpu"), "multi": bench,
+            "single": es.get("cpu_single"), "tdp_w": tdp,
+            "perf_euro": round(bench / price, 1) if bench and price else None,
+            "perf_watt": round(bench / tdp, 1) if bench and tdp else None,
+            "risk": rk.get("score") if isinstance(rk, dict) else rk}
+
+
+ADVISE_SYSTEM = ("You are a brutally honest used-hardware buying advisor. Rank the given "
+                 "listings for the user's goal and say what to buy. Prefer measured facts "
+                 "(benchmark marks, price, TDP) over marketing. Flag scams, ES/QS samples, "
+                 "missing RAM/storage (barebone), and prices far from plausible. "
+                 "Return ONLY JSON: {summary (3-5 sentences), best_buy_url, "
+                 "picks: [{url, rank, verdict (1 line), pros [max 3], cons [max 3]}] (best first, max 10), "
+                 "honest_flags [strings for shady items]}.")
+
+
+@app.post("/advise")
+async def advise(req: AdviseReq):
+    """AI buying advice over searches and/or favorites: re-ranked verdicts + best buy."""
+    items: list[dict] = []
+    seen_urls: set[str] = set()
+    for sid in req.search_ids or []:
+        job = JOBS.get(sid) or {}
+        snap = job.get("result") or store.load_snapshot(sid) or {}
+        for r in (snap.get("results", []) or [])[:80]:
+            it = _adv_item(r)
+            if it["url"] and it["url"] not in seen_urls:
+                seen_urls.add(it["url"])
+                items.append(it)
+    if req.include_favorites:
+        try:
+            for f in store.favorites_with_history()[:30]:
+                it = _adv_item({"listing": {"title": f.get("title"), "price": f.get("price"),
+                                                      "currency": f.get("currency", "EUR"),
+                                                      "source": f.get("source", ""),
+                                                      "url": f.get("url", "")},
+                                          "enrichments": f.get("enrichments", []),
+                                          "risk": {"score": f.get("risk")}})
+                if it["url"] and it["url"] not in seen_urls:
+                    seen_urls.add(it["url"])
+                    items.append(it)
+        except Exception:
+            pass
+    if not items:
+        return JSONResponse({"error": "nothing to advise on (unknown searches / no favorites)"},
+                            status_code=404)
+    items.sort(key=lambda x: -(x["perf_euro"] or 0))
+    cand = items[:30]
+    goal = req.note.strip() or "best raw performance per euro; barebone ok; efficiency (perf/watt) matters"
+    prompt = f"Goal: {goal}\nListings (JSON):\n{json.dumps(cand, ensure_ascii=False)[:12000]}"
+    advice: dict | None = None
+    model_used = ""
+    try:
+        from deal_radar import decision as _dec
+        model_used = "cloud"
+        advice = await _dec.cloud_json(ADVISE_SYSTEM, prompt, max_tokens=2000)
+    except Exception:
+        advice = None
+    if not isinstance(advice, dict) or not advice.get("picks"):
+        # honest rule-based fallback: perf/€ ranking, clearly labeled
+        picks = [{"url": it["url"], "rank": i + 1,
+                  "verdict": f"{it['cpu'] or 'unknown CPU'} at {it['price']}€ = {it['perf_euro']} pts/€",
+                  "pros": [f"{it['multi']} multithread marks"] if it.get("multi") else [],
+                  "cons": ["no benchmark data — CPU unverified"] if not it.get("multi") else []}
+                 for i, it in enumerate(cand[:10]) if it["url"]]
+        advice = {"summary": "AI unreachable right now — rule-based ranking by measured "
+                             "performance-per-euro below. Re-run advise when the AI is back.",
+                  "best_buy_url": picks[0]["url"] if picks else "",
+                  "picks": picks, "honest_flags": [], "fallback": True}
+    else:
+        advice = {**advice, "fallback": False}
+    try:
+        metrics.inc("advise_runs")
+    except Exception:
+        pass
+    return {"ok": True, "model": model_used, "items_considered": len(items), "advice": advice}
 
 
 @app.post("/searches/{sid}/redo")

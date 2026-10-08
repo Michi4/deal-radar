@@ -937,3 +937,46 @@ def test_ebay_marketplace_deletion_endpoint():
     finally:
         os.environ.pop("EBAY_VERIFY_TOKEN", None)
         os.environ.pop("EBAY_PUBLIC_URL", None)
+
+
+def test_advise_ranking_and_fallback():
+    import sys
+    from unittest.mock import AsyncMock, patch
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    import api.main as m
+    from fastapi.testclient import TestClient
+
+    c = TestClient(m.app)
+    res = [{"listing": {"id": "t:1", "title": "Beelink 8845HS 24GB 1TB", "price": 300.0,
+                        "currency": "EUR", "source": "ka", "url": "https://x/1"},
+            "enrichments": [{"field": "cpu", "value": "Ryzen 7 8845HS"},
+                            {"field": "cpu_benchmark", "value": 28261},
+                            {"field": "cpu_single", "value": 3718},
+                            {"field": "cpu_tdp", "value": "45 W"}],
+            "risk": {"score": 0.1}},
+           {"listing": {"id": "t:2", "title": "NoName N100 mini", "price": 150.0,
+                        "currency": "EUR", "source": "wh", "url": "https://x/2"},
+            "enrichments": [{"field": "cpu", "value": "N100"}],
+            "risk": {"score": 0.05}}]
+    m.JOBS["adv1"] = {"status": "done", "result": {"results": res, "filtered": []}}
+    try:
+        # AI path (mocked): shaped verdicts pass through
+        fake = {"summary": "Buy the Beelink.", "best_buy_url": "https://x/1",
+                "picks": [{"url": "https://x/1", "rank": 1, "verdict": "94 pts/€, proven chip",
+                           "pros": ["fast"], "cons": ["none"]}], "honest_flags": []}
+        with patch("deal_radar.decision.cloud_json", new=AsyncMock(return_value=fake)):
+            r = c.post("/advise", json={"search_ids": ["adv1"]}).json()
+            assert r["ok"] and r["advice"]["best_buy_url"] == "https://x/1"
+            assert r["advice"]["fallback"] is False
+            assert r["items_considered"] == 2
+        # fallback path (AI down): honest rule-based ranking by perf/euro
+        with patch("deal_radar.decision.cloud_json", new=AsyncMock(return_value=None)):
+            r2 = c.post("/advise", json={"search_ids": ["adv1"]}).json()
+            assert r2["advice"]["fallback"] is True
+            assert r2["advice"]["best_buy_url"] == "https://x/1"  # 94.2 > N100 unknown
+            assert "28261" in r2["advice"]["picks"][0]["verdict"] or "94" in r2["advice"]["picks"][0]["verdict"]
+        # unknown search -> honest 404
+        assert c.post("/advise", json={"search_ids": ["nope"]}).status_code == 404
+    finally:
+        m.JOBS.pop("adv1", None)

@@ -2,7 +2,7 @@
   <div class="loginwrap">
     <div class="panel">
       <h2>deal-radar login</h2>
-      <p><small>Simple shared-password login. Disabled on the main deployment (Authelia is in front).</small></p>
+      <p><small>Shared-password login for this deployment. Too many tries briefly locks you out — wait a minute, then try again.</small></p>
       <form @submit.prevent="doLogin">
         <input v-model="pw" class="inp" type="password" placeholder="password" aria-label="password" autocomplete="current-password" />
         <button class="btn btn-primary" type="submit">log in</button>
@@ -22,7 +22,10 @@ const router = useRouter();
 async function doLogin() {
   const r = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw.value }) });
   if (r.ok || r.redirected) router.push('/');
-  else err.value = 'wrong password';
+  else {
+    try { err.value = (await r.json()).error || 'wrong password'; }
+    catch { err.value = 'wrong password'; }
+  }
 }
 </script>
 

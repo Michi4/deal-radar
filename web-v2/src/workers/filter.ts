@@ -33,6 +33,11 @@ const gpuOf = (s: Item): number => {
   const b = (s.enrichments || []).find((e) => e.field === 'gpu_benchmark');
   return b ? b.value : 0;
 };
+const tdpOf = (s: Item): number => {
+  const b = (s.enrichments || []).find((e) => e.field === 'cpu_tdp');
+  const m = /([\d.]+)\s*W/i.exec(String(b?.value ?? ''));
+  return m ? parseFloat(m[1]) : 0;
+};
 
 self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
   const { items, opts } = e.data;
@@ -68,10 +73,11 @@ self.onmessage = (e: MessageEvent<{ items: Item[]; opts: FilterOpts }>) => {
       case 'ppe': key = (l.price && benchOf(s)) ? benchOf(s) / (l.price as number) : -1; break;
       case 'gpe': key = (l.price && gpuOf(s)) ? gpuOf(s) / (l.price as number) : -1; break;
       case 'mt': key = benchOf(s); break;
+      case 'ppw': key = (tdpOf(s) && benchOf(s)) ? benchOf(s) / tdpOf(s) : -1; break;
       default: key = score;
     }
     // default direction: score desc, price asc, dist asc
-    const desc = opts.sort === 'score' || opts.sort === 'ppe' || opts.sort === 'mt' ? -1 : 1;
+    const desc = opts.sort === 'score' || opts.sort === 'ppe' || opts.sort === 'mt' || opts.sort === 'ppw' ? -1 : 1;
     out.push({ id: l.id, key: key * desc * opts.dir });
   }
   out.sort((a, b) => a.key - b.key);
