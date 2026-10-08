@@ -92,3 +92,10 @@ def test_ryzen_desktop_and_r3():
     assert extract_cpu("thinkcentre ryzen 7 pro 4750ge")[0] == "Ryzen 7 PRO 4750GE"
     assert extract_cpu("soyo m5 ryzen 3 4300u")[0] == "Ryzen 3 4300U"
     assert extract_cpu("ryzen 5 5500u 16gb")[0] == "Ryzen 5 5500U"
+
+
+def test_storage_size_m2_rejected():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("hp 260 g3 mini pc, 8gb ram, 256 m2")[0] is None
+    assert extract_cpu("laptop 512 m2 ssd")[0] is None
+    assert extract_cpu("macbook air m2 2020 256gb")[0] == "m2"

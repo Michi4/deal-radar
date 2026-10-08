@@ -1290,7 +1290,7 @@ async def advise(req: AdviseReq):
     for sid in req.search_ids or []:
         job = JOBS.get(sid) or {}
         snap = job.get("result") or store.load_snapshot(sid) or {}
-        for r in (snap.get("results", []) or [])[:80]:
+        for r in snap.get("results", []) or []:
             it = _adv_item(r)
             if it["url"] and it["url"] not in seen_urls:
                 seen_urls.add(it["url"])
@@ -1327,7 +1327,9 @@ async def advise(req: AdviseReq):
     if not isinstance(advice, dict) or not advice.get("picks"):
         # honest rule-based fallback: perf/€ ranking, clearly labeled
         picks = [{"url": it["url"], "rank": i + 1,
-                  "verdict": f"{it['cpu'] or 'unknown CPU'} at {it['price']}€ = {it['perf_euro']} pts/€",
+                  "verdict": (f"{it['cpu'] or 'unknown CPU'} at {it['price']}€ = "
+                              f"{it['perf_euro']} pts/€" if it.get("perf_euro")
+                              else f"{it['cpu'] or 'unknown CPU'} at {it['price']}€ (no benchmark — verify CPU)"),
                   "pros": [f"{it['multi']} multithread marks"] if it.get("multi") else [],
                   "cons": ["no benchmark data — CPU unverified"] if not it.get("multi") else []}
                  for i, it in enumerate(cand[:10]) if it["url"]]

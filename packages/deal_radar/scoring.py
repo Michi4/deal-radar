@@ -69,7 +69,9 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
 
     def _apple_chip_ok(pos: int, length: int) -> bool:
         """Apple Silicon needs word boundaries AND context: AM18/M100/M330C/BMW M1
-        are model numbers and cars, not M-chips."""
+        are model numbers and cars, not M-chips. '256 M2' is an SSD size."""
+        if re.search(r"\d+\s*$", t[max(0, pos - 8):pos]):
+            return False  # storage size directly before: "256 M2", "512 M1" SSD
         before = t[max(0, pos - 12):pos]
         after = t[pos + length:pos + length + 12]
         return bool(re.search(r"(apple|macbook|imac|mac\s*mini|mac\s*studio|ipad"
