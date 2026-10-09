@@ -295,3 +295,18 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   EVO-X2-128 3000€ / A100-SXM4 1700€ (TRAP: socketed, not PCIe) / no PCIe-A100, no
   used-5090, no used-3090-cards (only want-ads) on reachable markets. eBay creds
   would unlock US PCIe-A100/3090 supply.
+
+## 2026-10-10 — 512GB AI-rig verdict: EPYC+DDR4+3090s beats minis and V100s
+- Memory math (rules everything): V4.1-Flash/284B fits 256GB up to Q6 (235GB) and
+  192GB at Q4; R1/V3/671B needs 512GB for Q4_K_M (~400GB), 256GB only fits IQ2/Q2
+  (~235GB, degraded). "512GB actually" is correct for full-fat 671B.
+- V100 cluster killed with numbers: 16x16GB can't hold Q4 (24GB/GPU needed) -> IQ2
+  max; pipeline across 16 stages ~300-500ms/token (~3 tok/s); 5kW + server chassis
+  + no NVLink on PCIe cards. 6000-11000 EUR all-in for a loud IQ2 space heater.
+- Cluster correction that matters: 2 nodes pipeline-parallel = 2x MEMORY, NOT 2x
+  speed (same FLOPs sequential + link overhead). 2x EVO-X2 buys 256GB capacity at
+  single-node speed minus overhead — good for bigger quants, not for 40 tok/s.
+- Live build sheet (all links verified in chat): dual 7302 190 EUR + used H11DSi +
+  16x32GB RDIMM ~800 EUR + chassis ~350 EUR + 2x used 3090 ~2400 EUR + NVLink 160 EUR
+  = ~4000-4800 EUR for 512GB + 48GB VRAM. Single-box shortcut: complete 7302+256GB
+  server 1150 EUR + 2x3090 = ~3700 EUR for the V4.1-Flash tier (256GB fits Q6).
