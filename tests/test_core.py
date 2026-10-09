@@ -1041,3 +1041,23 @@ def test_watch_poll_never_sends_search_done():
         for sid in ("w1", "m1"):
             m.JOBS.pop(sid, None)
             m.SEARCHES.pop(sid, None)
+
+
+def test_snapshot_survives_datetimes():
+    """Regression: snapshots silently never saved because model_dumps contain
+    datetime objects (observed_at) that raw json.dumps chokes on."""
+    import datetime
+    import os
+    import tempfile
+
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "snap.db"))
+    st.save_search("s1", {"keywords": "x"}, 1, 0)
+    payload = {"results": [{"listing": {"id": "t:1",
+                                          "observed_at": datetime.datetime.now(datetime.UTC)},
+                             "enrichments": []}],
+                 "filtered": [], "flags": {}}
+    st.save_snapshot("s1", payload)
+    snap = st.load_snapshot("s1")
+    assert snap and len(snap["results"]) == 1
+    assert snap["results"][0]["listing"]["id"] == "t:1"

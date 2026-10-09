@@ -142,7 +142,8 @@ class Store:
         try:
             raw = json.dumps({"results": payload.get("results", [])[:5000],
                               "filtered": payload.get("filtered", [])[:1000],
-                              "flags": payload.get("flags", {})}).encode()
+                              "flags": payload.get("flags", {})},
+                             default=str).encode()  # default=str: model_dumps carry datetimes
             blob = zlib.compress(raw, 1)
         except Exception:
             return
