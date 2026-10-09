@@ -283,3 +283,15 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   rated items climbing as warmup + seeds compound (1408 -> 1792).
 - Junk war, round 2: XMP/RAM-stick/cooler/keyboard demotion with bundle guard
   (real PCs with "+Tastatur+Maus" stay offers); non-offer value capped 5x.
+
+## 2026-10-09 — AI-rig hunt: cheapest 40 tok/s for DeepSeek V4.1 Flash (284B/13B act)
+- Physics first: Q4 ~160GB (fits 192GB, NOT 128GB boxes — those need Q3/IQ ~100-120GB);
+  ~7GB/token -> 40 tok/s needs ~280 GB/s effective. Ceilings = bw/7, real = 40-70%.
+- Shipped for it: GPU_SPECS table (VRAM+bw, est tok/s ceiling), multi-GPU + unified-mem
+  extraction, FX normalization in value scoring (dead code until eBay/ricardo return),
+  "ai-rig" hunt pack (studio/dgx + 30x90 + halo). Q3's bare "128gb" sub-query matched
+  phones/SD cards (junk) — narrowed to strix-halo/evo-x2 terms after.
+- Market (live): M1U-128 4600€ / M3U-128+AC 5100€ / M2U-192 8490€ / DGX new 4000€ /
+  EVO-X2-128 3000€ / A100-SXM4 1700€ (TRAP: socketed, not PCIe) / no PCIe-A100, no
+  used-5090, no used-3090-cards (only want-ads) on reachable markets. eBay creds
+  would unlock US PCIe-A100/3090 supply.
