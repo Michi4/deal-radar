@@ -127,3 +127,36 @@ def test_spec_line_cpu_fallback_and_gpu():
     txt = spec_line(mk("Mini PC", "arc 140t"), [{"field": "gpu", "value": "arc 140t"},
                                                 {"field": "gpu_benchmark", "value": 5000}])
     assert "arc 140t" in txt and "5000 G3D" in txt
+
+
+def test_bare_intel_and_x3d_and_xeon():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("thinkpad x1 carbon (8650-U) i7 16gb")[0] == "i7-8650U"
+    assert extract_cpu("thinkpad t14 gen 2 intel core i5 1145g7")[0] == "i5-1145G7"
+    assert extract_cpu("i7 1195g7 laptop")[0] == "i7-1195G7"
+    assert extract_cpu("mini pc i7 12700h")[0] == "i7-12700H"
+    assert extract_cpu("intel i5-12450h")[0] == "i5-12450H"
+    assert extract_cpu("amd ryzen 9 9950x3d prozessor")[0] == "Ryzen 9 9950X3D"
+    assert extract_cpu("ryzen 7 7800x3d 8 kerne")[0] == "Ryzen 7 7800X3D"
+    assert extract_cpu("ryzen 9 5900x 12 kerne")[0] == "Ryzen 9 5900X"
+    assert extract_cpu("xeon e-2276m workstation")[0] == "Xeon E-2276M"
+    assert extract_cpu("xeon w-10855m")[0] == "Xeon W-10855M"
+    # ambiguous bare mobile without context -> family estimate path (None here)
+    assert extract_cpu("5500u 16gb")[0] in (None, "Ryzen 5 5500U")
+
+
+def test_lineup_seeds_hit():
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.scoring import MODEL_CPU_SEED, enrich_cpu
+    mk = lambda t: CanonicalListing(id="t", source="t", native_id="t", url="u", title=t,
+                                    description="top", price=300.0, seller=Seller(name="s"))
+    fs = enrich_cpu(mk("Lenovo ThinkPad X1 Carbon Gen 8 | i7 | 16GB RAM"))
+    assert fs and fs[0].value in ("i5-10210U", "i7-10610U", "i5-10310U", "i7-10510U", "i7-10710U")
+    assert "estimate" in fs[0].sources[0].detail
+    fs = enrich_cpu(mk("ThinkPad T14 Gen 5 i7 laptop"))
+    assert fs and "Ultra" in str(fs[0].value)
+    fs = enrich_cpu(mk("Latitude 5440 i5 notebook"))
+    assert fs and fs[0].value in ("i5-1335U", "i5-1345U", "i7-1355U", "i7-1365U")
+    fs = enrich_cpu(mk("MacBook Air 2020"))
+    assert fs and fs[0].value == "M1"
+    assert len(MODEL_CPU_SEED) >= 150

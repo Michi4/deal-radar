@@ -34,8 +34,9 @@ def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple
             import json as _j
             blob = _j.loads(data or "{}")
             desc = blob.get("description", "") or ""
+            imgs = blob.get("images", []) or []
         except Exception:
-            desc = ""
+            desc, imgs = "", []
         cpu, _, _ = extract_cpu(f"{title}\n{desc}")
         bench = cached_cpu(cpu) if cpu else None
         multi = (bench or {}).get("multi")
@@ -54,6 +55,7 @@ def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple
             kind = "offer"
         items.append({"id": lid, "title": title[:100], "price": price,
                       "currency": cur or "EUR", "url": url, "source": src,
+                      "image": imgs[0] if imgs else "",
                       "cpu": cpu, "multi": multi, "single": single, "tdp_w": tdp,
                       "kind": kind, "fav": lid in favs,
                       "ppe": round(multi / price, 1) if price else 0,
