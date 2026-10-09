@@ -1169,3 +1169,22 @@ def test_benchmark_warmup_only_misses():
          patch("asyncio.sleep", new=AsyncMock()):
         n = asyncio.run(MC.warmup_benchmarks(st, cap=10))
     assert n == 1 and calls == ["Ryzen 7 8845HS"]
+
+
+def test_job_ids_unique_under_burst():
+    """Regression (journey caught live): three hunt-pack jobs created in the same
+    millisecond shared one sid and overwrote each other in JOBS."""
+    import asyncio
+    import sys
+    from unittest.mock import AsyncMock, patch
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    import api.main as m
+    base = {"keywords": "x", "sources": [], "limit": 1}
+    with patch.object(m, "_run_job", new=AsyncMock()):
+        ids = set()
+        for _ in range(10):
+            r = asyncio.run(m._start_job([dict(base)], {"base": dict(base)}))
+            ids.add(r["id"])
+        assert len(ids) == 10, ids
+        for sid in ids:
+            m.JOBS.pop(sid, None)

@@ -969,10 +969,13 @@ def _merge_outs(outs: list[dict], limit: int | None) -> dict:
 
 JOBS: dict[str, dict] = {}
 _DELETED: set[str] = set()  # sids deleted mid-run: completion must not re-save them
+_SID_SEQ = 0  # collision guard: same-ms jobs must not share an id (hunt pack caught this live)
 
 
 async def _start_job(intents: list[dict], meta: dict) -> dict:
-    sid = f"s_{int(time.time() * 1000)}"
+    global _SID_SEQ
+    _SID_SEQ += 1
+    sid = f"s_{int(time.time() * 1000)}_{_SID_SEQ % 1000:03d}"
     base = meta.get("base", intents[0] if intents else {})
     JOBS[sid] = {"status": "running", "done": 0, "total": len(intents),
                  "intent": base, "control": "run", "detail": "queued",
