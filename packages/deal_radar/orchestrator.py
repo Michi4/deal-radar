@@ -434,6 +434,10 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         if bench is None:
             bench = next((e.value for e in enrich if e.field == "gpu_benchmark"), None)
         val, val_why = value_score(l.price, bench, median)
+        if h.get("kind", "offer") != "offer":
+            # boxes/coolers/cables/parts can never top a value ranking, however cheap
+            val = round(val * 0.2, 3)
+            val_why.append(f"{h['kind']} aren\u2019t buyable systems -> value capped")
         completeness = min(1.0, (bool(l.title) + bool(l.description and len(l.description) > 50)
                                   + bool(l.images) + bool(l.price)) / 4.0)
         lane = apply_risk_policy(r, val, risk_policy)

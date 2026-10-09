@@ -126,12 +126,17 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
         m = re.search(r"\br\s*([3579])\s*(\d{4})\s*([a-z]{1,2})\b"
                       r"|\b(\d{4})\s*(hs|hx|h|u|g|ge)\b", t)
         if m:
-            if m.group(1):
-                tier, num, suf = m.group(1), m.group(2), m.group(3)
-            else:
-                num, suf = m.group(4), m.group(5)
-                tier = {"2": "3", "3": "3", "4": "3", "5": "5", "6": "5",
-                        "7": "7", "8": "7", "9": "9"}.get(num[1], "")
+            # RAM-speed markings are not CPUs ("PC2-5300U", "667 MHz DIMM")
+            _ctx = t[max(0, m.start() - 10):m.end() + 10]
+            _is_ram = bool(re.search(r"pc\d*-\d+|\d+\s*mhz|\bdimm\b|\bsodimm\b", _ctx, re.IGNORECASE))
+            tier, num, suf = "", "", ""
+            if not _is_ram:
+                if m.group(1):
+                    tier, num, suf = m.group(1), m.group(2), m.group(3)
+                else:
+                    num, suf = m.group(4), m.group(5)
+                    tier = {"2": "3", "3": "3", "4": "3", "5": "5", "6": "5",
+                            "7": "7", "8": "7", "9": "9"}.get(num[1], "")
             if tier and suf in ("h", "hs", "hx", "u", "g", "ge"):
                 g = f"Ryzen {tier} {num}{suf.upper()}"
                 return g, 0.7, f"bare model '{num}{suf}' -> {g}"
@@ -146,6 +151,11 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
                 continue
             if not _apple_chip_ok(m.start(), len(g)):
                 continue  # BMW M1 and friends are not Apple Silicon
+        # RAM-speed markings are not CPUs ("PC2-5300U", "667 MHz DIMM")
+        # ...unless a real Ryzen tier prefix leads ("Ryzen 5 5600U ... DDR4")
+        if re.search(r"pc\d*-\d+|\d+\s*mhz|\bdimm\b|\bsodimm\b", ctx, re.IGNORECASE) \
+                and not re.search(r"ryzen\s*[3579]", t[max(0, m.start() - 24):m.start()]):
+            continue
         return g, 0.45, f"pattern '{g}' (unverified)"
     return None, 0.0, ""
 

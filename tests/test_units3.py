@@ -1645,3 +1645,33 @@ def test_cloud_json_skips_benched_models(monkeypatch):
             inst.post.assert_not_called()
     finally:
         D._MH.clear()
+
+
+def test_accessory_kinds_and_value_cap():
+    import asyncio
+
+    from deal_radar.decision import heuristic_decide
+    assert heuristic_decide("NUR LEERVERPACKUNG OVP Ryzen 9", "", 10, "mini pc")["kind"] == "accessory"
+    assert heuristic_decide("Alpenföhn Brocken 3 AM4", "", 15, "cooler")["kind"] == "accessory"
+    assert heuristic_decide("Dissipateur HP EliteBook", "", 5, "x")["kind"] == "accessory"
+    assert heuristic_decide("HP EliteBook 845 G8 Tastatur", "", 3, "keyboard")["kind"] == "accessory"
+    # bundles with real computers stay offers
+    assert heuristic_decide("Beelink EQR5 Windows 11 Plus Tastatur Maus", "", 349, "mini pc")["kind"] == "offer"
+    assert heuristic_decide("Mini PC Ryzen 7 8845HS 24GB", "", 300, "mini pc")["kind"] == "offer"
+    # non-offer kinds can never top value rankings
+    from deal_radar.orchestrator import run_search
+    from tests.test_units3 import _mk, _reg
+    items = [_mk("t:1", title="Ryzen 9 5900XT leere OVP Box", price=5),
+             _mk("t:2", title="Beelink Ryzen 7 8845HS 24GB Mini PC", price=300)]
+    out = asyncio.run(run_search(
+        {"keywords": "ryzen", "sources": ["t"], "limit": 10, "enrich": True,
+         "ocr": False, "benchmarks": False, "vision": False, "details": False},
+        _reg(items), None, None))
+    vals = {r["listing"]["id"]: r["value_score"] for r in out["results"]}
+    assert vals["t:2"] > vals.get("t:1", 1.0), vals
+
+
+def test_ram_speed_not_cpu():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("verkaufe 2x 512 mb ddr2 ram pc2-5300u")[0] is None
+    assert extract_cpu("ryzen 5 5600u 16gb ddr4")[0] == "Ryzen 5 5600U"
