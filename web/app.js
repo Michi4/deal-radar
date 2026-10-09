@@ -33,7 +33,7 @@ gotoPage:()=>{PAGE=Math.max(0,(+$('goto').value||1)-1);render()},
 applyRefine:()=>render(),clearRefine:()=>{rMin.value=rMax.value=rBlack.value=rReq.value='';rRisk.value=100;rScore.value=0;const _rd2=$('rDist');if(_rd2)_rd2.value='';RDIST=null;wMa.value=35;wVa.value=35;wRi.value=20;wCo.value=10;
 FRISK=100;FSCORE=0;WW={match:.35,value:.35,risk:.2,comp:.1};SHOWHID=false;const sh=$('showHidden');if(sh)sh.checked=false;paintDeck();rerank()},
 run:()=>run(),runNL:()=>runNL(),setView:(a)=>setView(a),theme:()=>theme(),toggleKind:toggleKind,
-closeD:()=>closeD(),advise:()=>advise(),resetFilters:()=>resetFilters(),trackUrl:async()=>{const u=$('trackurl').value.trim();if(!u)return toast('paste a link first');const r=await api('/favorites/by-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u})},0).catch(e=>({ok:false,error:netMsg(e)}));toast(r.ok?`tracking: ${(r.title||'').slice(0,60)}`:`not trackable: ${r.error||'?'}`);if(r.ok)showFavs()},resumeJobId:(a)=>redoSearch(a),geoloc:()=>doGeoloc(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
+closeD:()=>closeD(),advise:()=>advise(),huntPack:()=>huntPack(),gemsAdv:()=>gemsAdv(),resetFilters:()=>resetFilters(),trackUrl:async()=>{const u=$('trackurl').value.trim();if(!u)return toast('paste a link first');const r=await api('/favorites/by-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u})},0).catch(e=>({ok:false,error:netMsg(e)}));toast(r.ok?`tracking: ${(r.title||'').slice(0,60)}`:`not trackable: ${r.error||'?'}`);if(r.ok)showFavs()},resumeJobId:(a)=>redoSearch(a),geoloc:()=>doGeoloc(),openLive:(a)=>openSearch(a),cmpClear:()=>{CMP.clear();drawTray();const c=$('cmpn');if(c)c.style.display='none';render()},redoId:(a)=>redoSearch(a),followLab:()=>followLab(),saveTrack:safe(async()=>{const vv=$('favPoll');const v=Math.max(5,Math.min(1440,+(vv&&vv.value)||30));await api('/settings/tracking',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({fav_poll_min:v})});toast('tracking every '+v+' min')}),stopJob:safe(async(a)=>{ABORTSET.set(a,Date.now());try{await api('/searches/'+encodeURIComponent(a)+'/stop',{method:'POST'})}catch(e){}toast('stopping…')}),pauseJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/pause',{method:'POST'});toast('paused')}),resumeJob:safe(async(a)=>{await api('/searches/'+encodeURIComponent(a)+'/resume',{method:'POST'});toast('resumed')}),uninstallX:(a,el)=>uninstallX(el.dataset.kind,a,el),toggleDir:()=>toggleDir(),logout:async()=>{await fetch('/logout',{method:'POST'});location.href='/login'},cgo:(a)=>cgo(+a),installX:(a,el)=>installX(el.dataset.kind,a),mkLab:()=>mkLab(),
 mkWatch:()=>mkWatch(),setCpu:()=>setCpu(),setPP:a=>setPP(+a),setSort:setSort,toggleLane:toggleLane,toggleSrc:toggleSrc};
 document.addEventListener('change',e=>{const c=e.target.closest('.ck>input');if(c)c.closest('.ck').classList.toggle('on',c.checked)});
 function paintDeck(){const pairs=[['rRisk','rRiskV',v=>{FRISK=+v}],['rScore','rScoreV',v=>{FSCORE=+v}],
@@ -294,7 +294,43 @@ function hideChrome(){['toolbar','refinebar','pagertop','pager'].forEach(id=>{co
 let HISTT=null;
 function showPage(search){for(const id of ['searchpanel','status','refinebar','pagertop','results','pager'])pv(id,search);pv('pageview',!search);const ap=$('applied');if(ap)ap.style.display=(search&&ap.innerHTML.trim())?'':'none'}
 function pv(id,show){const e=$(id);if(e)e.style.display=show?'':'none'}
-function tab(t){markActive(t);LABLIVE=null;if(HISTT){clearInterval(HISTT);HISTT=null}if(t!=='search')hideChrome();showPage(t==='search');if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='search'){$('status').innerHTML='';render()}}
+function tab(t){markActive(t);LABLIVE=null;if(HISTT){clearInterval(HISTT);HISTT=null}if(t!=='search')hideChrome();showPage(t==='search');if(t==='watches')showWatches();if(t==='store')showStore();if(t==='history')showHistory();if(t==='lab')showLab();if(t==='gems')showGems();if(t==='search'){$('status').innerHTML='';render()}}
+async function showGems(){
+hideSearchChrome();markActive('gems');hideChrome();showPage(false);
+$('pageview').innerHTML=ptitle('Gems','best measured value across everything seen · live links')+'<div class="panel"><div class="row"><button class="btn btn-primary" data-act="huntPack">start value hunt (3 searches)</button><button class="btn btn-ghost" data-act="gemsAdv">AI summary of it all</button><label class="ck"><input type="checkbox" id="gemsFav"/> favorites only</label></div><div id="gemsout"><small>loading…</small></div></div>';
+$('pager').style.display='none';
+loadGems();
+const gf=$('gemsFav');if(gf)gf.addEventListener('change',loadGems);
+}
+async function loadGems(){
+const fav=$('gemsFav')&&$('gemsFav').checked;
+try{
+const g=await api('/gems?limit=25&favs='+(fav?'1':'0'),{},1);
+const row=x=>{const u=safeUrl(x.url);return `<tr><td>${esc(x.cpu||'?')}</td><td><b>${esc(x.price??'?')} €</b></td><td>${esc((x.title||'').slice(0,70))}</td><td>${esc(x.source||'')}</td><td>${x.multi||'?'}</td><td>${x.ppe||'?'}</td><td>${x.ppw||'?'}</td><td>${u?`<a href="${u}" target="_blank" rel="noopener">open</a>`:''}</td></tr>`};
+const tbl=(t,rows)=>'<h4>'+t+' ('+rows.length+')</h4><div class="tscroll"><table><tr><th>CPU</th><th>price</th><th>title</th><th>src</th><th>MT</th><th>pts/€</th><th>pts/W</th><th></th></tr>'+rows.map(row).join('')+'</table></div>';
+$('gemsout').innerHTML='<small>'+g.items+' rated items · '+g.unrated+' without benchmark data</small>'
++tbl('Top perf/€',g.ppe)+tbl('Efficient + cheap (≥700 pts/W)',g.efficient)+tbl('Top perf/Watt',g.ppw)+tbl('Raw champs',g.raw);
+}catch(e){$('gemsout').innerHTML='<div class="err">gems failed: '+esc(netMsg(e))+'</div>'}
+}
+async function gemsAdv(){
+const el=$('gemsout');if(!el)return;
+el.innerHTML='<small>AI is ranking everything…</small>';
+try{
+const fav=$('gemsFav')&&$('gemsFav').checked;
+const r=await api('/gems?limit=30&favs='+(fav?'1':'0')+'&advise=1',{},0);
+const a=r.advice||{};
+el.innerHTML='<h4>AI summary '+(a.fallback?'<small>(rule-based — AI unreachable)</small>':'')+'</h4><p style="white-space:pre-wrap;font-size:14px">'+esc(a.summary||'no summary')+'</p>'
++((a.honest_flags||[]).length?'<h4>Flags</h4><small>'+a.honest_flags.map(esc).join('<br/>')+'</small>':'')
++'<h4>Ranking</h4>'+((a.picks||[]).map(p=>{const u=safeUrl(p.url);return `<div class="card" style="margin:.5rem 0"><div class="body"><b>#${p.rank}</b> ${esc(p.verdict||'')}<br/><small>plus: ${(p.pros||[]).map(esc).join(' · ')}</small><br/><small>minus: ${(p.cons||[]).map(esc).join(' · ')}</small><br/>${u?`<a href="${u}" target="_blank" rel="noopener">open listing</a>`:''}</div></div>`}).join('')||'<small>no picks</small>');
+}catch(e){el.innerHTML='<div class="err">advise failed: '+esc(netMsg(e))+'</div>'}
+}
+async function huntPack(){
+try{
+const r=await api('/hunt',{method:'POST'},0);
+toast('value hunt started: '+((r.ids||[]).length)+' searches — watch them land, then AI summary');
+tab('history');
+}catch(e){toast('hunt failed: '+netMsg(e))}
+}
 async function showLab(){hideSearchChrome();hideChrome();let st={};try{st=await(await fetch('/lab/status')).json()}catch(e){}
 $('pageview').innerHTML=ptitle('Lab','describe a driver or enrichment · AI builds, tests & hot-loads it')+`<div class="panel"><h3>AI Lab — chat-built plugins</h3><small>Tip: coding agents read <b>docs/DRIVER_AUTHORING.md</b> (interfaces, categories, pagination contract) — just describe what you want.</small><small>${st.enabled?'enabled':'disabled (LAB_ENABLED=0)'} · enrichers: ${(st.enrichers||[]).join(', ')}</small><div class="row" style="margin-top:8px"><select id="labkind" class="inp" style="max-width:140px" aria-label="plugin kind"><option value="enricher">enricher</option><option value="driver">driver</option></select><input id="labq" class="inp" placeholder="e.g. flag listings with missing charger as incomplete" style="flex:3" aria-label="build instruction"/><button id="labbtn" class="btn btn-primary" data-act="mkLab">Build</button></div><div id="labout"></div></div>`;$('pager').style.display='none'}
 const LABSTAGES=['prompting','waiting_model','validating','saving','contract_check','done'];

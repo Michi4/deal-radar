@@ -8,6 +8,7 @@ export default createRouter({
     { path: '/saved', name: 'saved', component: () => import('@/views/SavedView.vue') },
     { path: '/watches', name: 'watches', component: () => import('@/views/WatchesView.vue') },
     { path: '/compare', name: 'compare', component: () => import('@/views/CompareView.vue') },
+    { path: '/gems', name: 'gems', component: () => import('@/views/GemsView.vue') },
     { path: '/store', name: 'store', component: () => import('@/views/StoreView.vue') },
     { path: '/history', name: 'history', component: () => import('@/views/HistoryView.vue') },
     { path: '/lab', name: 'lab', component: () => import('@/views/LabView.vue') },

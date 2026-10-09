@@ -1061,3 +1061,54 @@ def test_snapshot_survives_datetimes():
     snap = st.load_snapshot("s1")
     assert snap and len(snap["results"]) == 1
     assert snap["results"][0]["listing"]["id"] == "t:1"
+
+
+def test_gems_board_and_hunt_pack():
+    import sys
+    import tempfile
+    from unittest.mock import AsyncMock, patch
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    import os
+
+    import api.main as m
+    from fastapi.testclient import TestClient
+
+    from deal_radar import gems as G
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.store import Store
+
+    st = Store(os.path.join(tempfile.mkdtemp(), "g.db"))
+    l1 = CanonicalListing(id="t:1", source="t", native_id="1", url="https://x/1",
+                          title="Beelink 8845HS 24GB Mini PC", description="top",
+                          price=300.0, seller=Seller(name="s"))
+    l2 = CanonicalListing(id="t:2", source="t", native_id="2", url="https://x/2",
+                          title="NUR LEERVERPACKUNG OVP Ryzen 9 5900X", description="box",
+                          price=5.0, seller=Seller(name="s"))
+    st.upsert(l1)
+    st.upsert(l2)
+    fake_bench = {"v2:ryzen 7 8845hs": {"multi": 28261, "single": 3718, "tdp": "45 W",
+                                        "source": "t", "ts": 9999999999.0},
+                  "v2:ryzen 9 5900x": {"multi": 43826, "single": 3493, "tdp": "105 W",
+                                        "source": "t", "ts": 9999999999.0}}
+    with patch.dict("deal_radar.benchmarks._mem", {}, clear=True), \
+         patch("deal_radar.benchmarks._load", return_value=dict(fake_bench)):
+        items, unrated_n = G.collect(st, days=30)
+        assert unrated_n == 0
+        by_id = {x["id"]: x for x in items}
+        assert by_id["t:1"]["multi"] == 28261 and by_id["t:1"]["ppe"] == round(28261 / 300, 1)
+        assert by_id["t:1"]["kind"] == "offer" and by_id["t:2"]["kind"] == "accessory"
+        b = G.board(items, min_bench=8000)
+        assert b["ppe"][0]["id"] == "t:1"  # box never tops systems-only board
+        b2 = G.board(items, min_bench=8000, systems_only=False)
+        assert any(x["id"] == "t:2" for x in b2["ppe"])
+    # /gems endpoint serves the board shape
+    c = TestClient(m.app)
+    with patch("deal_radar.gems.collect", return_value=([], 3)):
+        r = c.get("/gems").json()
+        assert r["ok"] and r["unrated"] == 3 and r["ppe"] == []
+    # /hunt pack starts three searches
+    with patch.object(m, "create_search", new=AsyncMock(side_effect=[{"id": "a"}, {"id": "b"}, {"id": "c"}])):
+        r = c.post("/hunt", params={"pack": "value"}).json()
+        assert r["ok"] and r["ids"] == ["a", "b", "c"]
+        assert c.post("/hunt", params={"pack": "nope"}).status_code == 404

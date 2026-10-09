@@ -119,7 +119,7 @@
     <div v-if="adv" class="panel advise">
       <div class="eyebrow">AI buying advice {{ adv.advice?.fallback ? '(rule-based — AI unreachable)' : '' }}</div>
       <p>{{ adv.advice?.summary }}</p>
-      <div v-if="(adv.advice?.honest_flags || []).length" class="flags">flags: {{ adv.advice.honest_flags.join(' · ') }}</div>
+      <div v-if="(adv.advice?.honest_flags || []).length" class="flags">flags: {{ (adv.advice?.honest_flags || []).join(' · ') }}</div>
       <ol>
         <li v-for="p in adv.advice?.picks || []" :key="p.url">
           <b>#{{ p.rank }}</b> {{ p.verdict }}

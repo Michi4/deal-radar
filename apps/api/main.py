@@ -1348,6 +1348,81 @@ async def advise(req: AdviseReq):
     return {"ok": True, "model": model_used, "items_considered": len(items), "advice": advice}
 
 
+HUNT_PACKS = {
+    "value": [
+        {"keywords": "mini pc", "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+        {"keywords": "thinkpad OR elitebook OR latitude OR probook OR gaming pc OR office pc",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+        {"keywords": "ryzen 9 OR ultra 7 OR ultra 9 OR server OR workstation",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+    ],
+}
+
+
+@app.post("/hunt")
+async def start_hunt_pack(pack: str = "value"):
+    """One click, three broad unlimited searches (mini PCs, laptops/desktops, high-end).
+    Then POST /advise with the returned ids for the full AI summary."""
+    if pack not in HUNT_PACKS:
+        return JSONResponse({"error": "unknown pack (try 'value')"}, status_code=404)
+    ids = []
+    for q in HUNT_PACKS[pack]:
+        intent = SearchIntent(keywords=q["keywords"], sources=q["sources"],
+                              limit=q["limit"], max_pages=q["max_pages"],
+                              enrich_top_n=q["enrich_top_n"], details=q["details"],
+                              vision=q["vision"], ocr=q["ocr"], benchmarks=q["benchmarks"])
+        job = await create_search(intent)
+        ids.append(job.get("id"))
+    return {"ok": True, "pack": pack, "ids": ids,
+            "note": "three searches running; POST /advise {search_ids: [...]} when done"}
+
+
+@app.get("/gems")
+async def gems(min_bench: int = 8000, days: float = 14.0, limit: int = 30,
+               systems_only: bool = True, favs: bool = False, advise: bool = False,
+               note: str = ""):
+    """Value board over everything seen recently: ranked perf/€, efficient, perf/W,
+    raw lists with links + optional AI summary. No re-search, instant."""
+    from deal_radar import gems as _g
+    fav_ids: set[str] = set()
+    if favs:
+        try:
+            fav_ids = {r[0] for r in
+                       store.db.execute("SELECT listing_id FROM favorites").fetchall()}
+        except Exception:
+            pass
+    items, unrated = _g.collect(store, days=days,
+                                fav_ids=fav_ids if favs else None)
+    if favs:
+        items = [x for x in items if x.get("fav")]
+    out = _g.board(items, min_bench=min_bench, limit=max(1, min(100, limit)),
+                   systems_only=systems_only)
+    out["unrated"] = unrated
+    out["items"] = len(items)
+    if advise:
+        cand = sorted(items, key=lambda z: -z["ppe"])[:30]
+        goal = (note.strip() or "best raw performance per euro; barebone ok; "
+                                   "efficiency (perf/watt) matters")
+        prompt = f"Goal: {goal}\nListings (JSON):\n{json.dumps(cand, ensure_ascii=False)[:12000]}"
+        try:
+            from deal_radar import decision as _dec
+            adv = await _dec.cloud_json(ADVISE_SYSTEM, prompt, max_tokens=2000)
+            out["advice"] = {**(adv or {}), "fallback": False} if isinstance(adv, dict) and adv.get("picks") \
+                else {"summary": "AI unreachable — rule-based lists above stand.",
+                      "best_buy_url": (cand[0]["url"] if cand else ""), "picks": [], "fallback": True}
+        except Exception:
+            out["advice"] = {"summary": "AI unreachable — rule-based lists above stand.",
+                             "best_buy_url": (cand[0]["url"] if cand else ""), "picks": [], "fallback": True}
+        try:
+            metrics.inc("advise_runs")
+        except Exception:
+            pass
+    return {"ok": True, **out}
+
+
 @app.post("/searches/{sid}/redo")
 async def redo_search(sid: str):
     intent = SEARCHES.get(sid)

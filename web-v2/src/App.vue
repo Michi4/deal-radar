@@ -57,7 +57,7 @@
 import { computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import {
-  Compass, Search, Star, Bell, Columns2, Store, FlaskConical, History, Moon, Sun
+  Compass, Search, Star, Bell, Columns2, Gem, Store, FlaskConical, History, Moon, Sun
 } from 'lucide-vue-next';
 import { useUi } from '@/stores/ui';
 import { useSearch } from '@/stores/search';
@@ -74,6 +74,7 @@ const nav = computed(() => [
   { to: '/saved', label: 'Saved', icon: Star, tip: 'Tracked favorites with price/change history', badge: search.favs.size || '' },
   { to: '/watches', label: 'Watches', icon: Bell, tip: 'Background re-polls with alert rules' },
   { to: '/compare', label: 'Compare', icon: Columns2, tip: 'Side-by-side spec, price and risk', badge: search.compare.size || '' },
+  { to: '/gems', label: 'Gems', icon: Gem, tip: 'Best measured value across everything seen' },
   { to: '/store', label: 'Store', icon: Store, tip: 'Install drivers and enrichers' },
   { to: '/lab', label: 'Lab', icon: FlaskConical, tip: 'Describe a plugin, AI builds and hot-loads it' },
   { to: '/history', label: 'Searches', icon: History, tip: 'Every past search, reopenable instantly' }
