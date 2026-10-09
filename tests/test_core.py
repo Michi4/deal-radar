@@ -1131,6 +1131,15 @@ def test_vue_cutover_routes():
     rv = c.get("/v2")
     assert rv.status_code in (301, 302, 307, 308) and rv.headers["location"] == "/"
     assert c.get("/favicon.ico").status_code == 204
+    # logged-out: client routes show the login page, data APIs stay 401
+    old_pw = m.LOGIN_PASSWORD
+    m.LOGIN_PASSWORD = "pw"
+    try:
+        assert "login" in c.get("/gems").text.lower()
+        assert c.get("/gems/board").status_code == 401
+        assert c.post("/hunt").status_code == 401
+    finally:
+        m.LOGIN_PASSWORD = old_pw
 
 
 def test_benchmark_warmup_only_misses():

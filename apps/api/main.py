@@ -102,6 +102,8 @@ _RL_PATHS = ("/searches", "/stream", "/lab", "/marketplace", "/favorites", "/lis
 @app.middleware("http")
 async def _gate(request: Request, call_next):
     path = request.url.path
+    if path == "/v2" or path.startswith("/v2/"):
+        return RedirectResponse("/" + path[3:].lstrip("/"), status_code=301)
     # eBay marketplace-deletion webhook authenticates itself (challenge hash + shared
     # verification token), so it must stay reachable without our API key/session.
     public_hook = path == "/ebay/marketplace-deletion"
