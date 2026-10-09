@@ -233,3 +233,17 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   780M/880M/890M, Vega) with full confidence.
 - Benchmark cache moved next to the DB (persistent volume) — rebuilds used to wipe it.
 - Snapshot datetime fix shipped: old searches reopen instantly, advise works on them.
+
+## 2026-10-09 — Gems value board + hunt pack (owner: "exactly this on the website")
+- `GET /gems`: ranks everything seen recently (listings table, 14d window) by measured
+  perf/€, efficient+cheap, perf/Watt, raw — CPU extraction + cached benchmarks +
+  kind classification, zero network. `advise=1` adds the AI summary over the top 30.
+  `favs=1` restricts to saved favorites (manual additions via track-by-URL count).
+- `POST /hunt` ("value" pack): one click starts the same 3 broad unlimited searches
+  the big hunt used (mini PCs / laptops+desktops / high-end+servers); advise on the
+  returned ids for the full summary. v1 Gems tab + v2 GemsView with tables, links,
+  hunt + AI-summary buttons.
+- Missing-link lesson: the fabled "7900 gaming PC 450€" couldn't be re-found after
+  the hunt (likely sold within a day — gems go fast, or a bundle title). Reported
+  honestly with live alternatives instead of inventing a URL. Takeaway logged: for
+  time-critical gems, advise snapshots + `also_on` at hunt time, don't trust recall.
