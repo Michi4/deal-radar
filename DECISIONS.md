@@ -272,3 +272,14 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   (journeys got homeserver-Traefik 404s) -> repointed to 127.0.0.1; journey login
   snippets now always POST /login (server login page has no `.loginwrap` marker;
   empty password = dev passthrough).
+
+## 2026-10-09 — gems cards + recognition jump (owner reviewed screenshot)
+- Gems is now sortable cards (perf/€, perf/W, MT, price, CPU, source) with thumbnails,
+  title links, open-listing + fav buttons, section tabs, live counts. Proven in
+  browser: 100 cards, 100 thumbs, 200 links, zero JS errors.
+- Recognition: +150 lineup seeds (ThinkPad/Latitude/EliteBook/ZBook/MacBook-years/
+  office micros), bare-Intel inference (8650U/1145G7/12450H + X3D/X/F/G parts via
+  first-two-digit tiers), Xeon patterns, split i-prefix forms. Screenshot-verified:
+  rated items climbing as warmup + seeds compound (1408 -> 1792).
+- Junk war, round 2: XMP/RAM-stick/cooler/keyboard demotion with bundle guard
+  (real PCs with "+Tastatur+Maus" stay offers); non-offer value capped 5x.
