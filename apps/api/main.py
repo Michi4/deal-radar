@@ -151,6 +151,8 @@ SECRET_DEFS = [
     ("EBAY_APP_ID", "eBay App ID / client ID (auto token mint)", True),
     ("EBAY_CERT_ID", "eBay Cert ID / client secret (auto token mint)", True),
     ("EBAY_MARKETPLACE", "eBay marketplace (default EBAY_AT)", False),
+    ("ALLEGRO_CLIENT_ID", "Allegro Client ID (auto token mint, apps.developer.allegro.pl)", True),
+    ("ALLEGRO_CLIENT_SECRET", "Allegro Client Secret (auto token mint)", True),
     ("CLOUD_API_URL", "OpenAI-compatible base URL", False),
     ("CLOUD_API_KEY", "cloud model API key", True),
     ("CLOUD_MODELS", "cloud models, comma separated", False),
@@ -204,6 +206,9 @@ def default_sources() -> list[str]:
         if d.id == "ebay" and not (_os.getenv("EBAY_OAUTH_TOKEN") or
                                    (_os.getenv("EBAY_APP_ID") and _os.getenv("EBAY_CERT_ID"))):
             continue  # needs credentials; configure App ID + Cert ID in Secrets
+        if d.id == "allegro" and not (_os.getenv("ALLEGRO_CLIENT_ID") and
+                                      _os.getenv("ALLEGRO_CLIENT_SECRET")):
+            continue  # needs credentials; configure Client ID + Secret in Secrets
         out.append(d.id)
     return out or registry.ids()
 
@@ -490,7 +495,7 @@ async def _model_bootstrap() -> None:
         pass
 
 
-BUILTIN_IDS = ("ebay", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo")
+BUILTIN_IDS = ("ebay", "allegro", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo")
 
 
 def disabled_drivers() -> set[str]:
@@ -504,6 +509,7 @@ def disabled_drivers() -> set[str]:
 def load_drivers() -> None:
     import json as _json
 
+    from allegro.driver import AllegroDriver
     from ebay.driver import EbayDriver
     from kleinanzeigen.driver import KleinanzeigenDriver
     from ricardo.driver import RicardoDriver
@@ -520,6 +526,8 @@ def load_drivers() -> None:
     off = disabled_drivers()
     if "ebay" not in off:
         registry.register(EbayDriver(transport_from_config(cfg.get("ebay"))))
+    if "allegro" not in off:
+        registry.register(AllegroDriver(transport_from_config(cfg.get("allegro"))))
     if "willhaben" not in off:
         registry.register(WillhabenDriver(transport_from_config(cfg.get("willhaben"))))
     if "kleinanzeigen" not in off:

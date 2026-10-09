@@ -1723,3 +1723,105 @@ def test_gpu_specs_vram_bw_multigpu_unified_fx():
     v_eur, _ = value_score(500, 15000, 600)
     v_usd, _ = value_score(540, 15000, 600, "USD")  # 540 USD ~= 500 EUR
     assert abs(v_eur - v_usd) < 0.05, (v_eur, v_usd)
+
+
+def test_allegro_driver_contract():
+    """Allegro.pl official-API driver: token mint, listing shapes, pagination,
+    clean error without credentials. HTTP fully mocked (no network)."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+
+    from allegro.driver import AllegroDriver, _parse_item, mint_token, resolve_token
+
+    from deal_radar.driver_sdk import SearchQuery
+
+    async def fake_post(url, **kw):
+        class R:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"access_token": "tok123", "expires_in": 43200}
+        assert "allegro.pl/auth/oauth/token" in url
+        assert kw.get("data", {}).get("grant_type") == "client_credentials"
+        return R()
+
+    with patch("httpx.AsyncClient") as AC:
+        inst = AsyncMock()
+        inst.post = fake_post
+        AC.return_value.__aenter__ = AsyncMock(return_value=inst)
+        AC.return_value.__aexit__ = AsyncMock(return_value=False)
+        tok, exp = asyncio.run(mint_token("id", "sec"))
+        assert tok == "tok123" and exp > 0
+
+    # item shapes: full, minimal, garbage
+    full = {"id": "111", "name": "Mac Studio M1 Ultra 128GB", "price": {"amount": "4600.00", "currency": "PLN"},
+            "images": [{"url": "https://a.allegroimg.com/x.jpg"}],
+            "seller": {"id": "s1"}, "category": {"id": "c1"}}
+    p = _parse_item(full)
+    assert p and p.id == "allegro:111" and p.price == 4600.0 and p.currency == "PLN"
+    assert p.url == "https://allegro.pl/oferta/111" and p.images == ["https://a.allegroimg.com/x.jpg"]
+    assert _parse_item({"id": "", "name": "x"}) is None
+    assert _parse_item({}) is None
+    alt = {"id": "222", "name": "RAM", "sellingMode": {"price": {"amount": "200", "currency": "PLN"}},
+           "primaryImage": {"url": "https://i/y.jpg"}}
+    p2 = _parse_item(alt)
+    assert p2 and p2.price == 200.0 and p2.images == ["https://i/y.jpg"]
+
+    # no credentials -> clean error naming the secrets
+    with patch.dict("os.environ", {}, clear=False):
+        for k in ("ALLEGRO_CLIENT_ID", "ALLEGRO_CLIENT_SECRET"):
+            pass
+        import os as _os
+        _os.environ.pop("ALLEGRO_CLIENT_ID", None)
+        _os.environ.pop("ALLEGRO_CLIENT_SECRET", None)
+        try:
+            asyncio.run(resolve_token())
+            raise SystemExit("must raise")
+        except RuntimeError as e:
+            assert "ALLEGRO_CLIENT_ID" in str(e)
+        finally:
+            pass
+
+    # search walks pages, stops on short page; token from env creds (mint mocked)
+    import os as _os2
+    _os2.environ["ALLEGRO_CLIENT_ID"] = "id"
+    _os2.environ["ALLEGRO_CLIENT_SECRET"] = "sec"
+    try:
+        page1 = {"items": {"regular": [dict(full, id=f"a{i}") for i in range(1, 121)]},
+                 "searchMeta": {"totalCount": 123}}
+        page2 = {"items": {"regular": [dict(full, id="a121"), dict(full, id="a122")]},
+                 "searchMeta": {"totalCount": 123}}
+        calls = []
+
+        class FakeT:
+            async def get(self, url, headers=None):
+                calls.append(url)
+                n = 1 if "offset=0" in url or "offset" not in url else 2
+                class R:
+                    status_code = 200
+
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return page1 if n == 1 else page2
+                return R()
+
+        from allegro.driver import _TOKEN_CACHE
+        _TOKEN_CACHE["token"] = "tok123"
+        _TOKEN_CACHE["expires_at"] = 9999999999.0
+        try:
+            d = AllegroDriver(transport=FakeT())
+            out = asyncio.run(d.search(SearchQuery(keywords="mac studio", limit=122, max_pages=5)))
+            assert [x.native_id for x in out] == [f"a{i}" for i in range(1, 123)]
+            assert all("phrase=mac+studio" in u or "phrase=mac%20studio" in u for u in calls)
+            assert len(calls) == 2  # second page fetched, then short page stops
+        finally:
+            _TOKEN_CACHE.clear()
+    finally:
+        _os2.environ.pop("ALLEGRO_CLIENT_ID", None)
+        _os2.environ.pop("ALLEGRO_CLIENT_SECRET", None)
+    assert AllegroDriver.configured() is False

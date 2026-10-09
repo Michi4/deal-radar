@@ -90,3 +90,18 @@
 - [ ] Lab auto-PR publish: mechanism implemented (`lab_publish` via GitHub Contents+Pulls API) but untested — needs GH_TOKEN + LAB_PUBLISH=1. PR flow itself proven separately (PR #1 opened+merged via gh CLI). Needed: token to run one end-to-end publish.
 
 - [ ] Telegram/email notifiers: implemented + unit-tested, never sent a real message. Needed: bot token+chat ID or SMTP creds for one live send each.
+
+- [ ] New-market drivers evaluated 2026-10-10 (owner: search everywhere, incl. new):
+  SHIPPED: Allegro.pl official-API driver (client-creds, self-serve, mocked tests green,
+  clean-errors until creds). Needs: ALLEGRO_CLIENT_ID + ALLEGRO_CLIENT_SECRET
+  (apps.developer.allegro.pl -> register app, read-only, NO approval wait) in
+  Admin -> Secrets, then one live search to verify. Unlocks PL new+used supply (PLN,
+  FX-normalized, ships to AT cheap).
+  REJECTED (documented, no fake drivers): bazos(.sk/.cz/.at) — robots.txt disallows
+  /search.php + all query params (polite scraping off the table); Back Market —
+  product API is partner-only (no self-serve); Amazon PA-API (needs approved associate
+  + sales); Geizhals/idealo (no API, JS-walled); leboncoin/marktplaats/subito
+  (protected, no API); Wallapop (internal API only, ToS gray). eBay still needs YOUR
+  exemption clicks (developer.ebay.com -> Keys -> Alerts & Notifications -> flip
+  "Not persisting eBay data" ON -> Confirm -> reason "public catalog search only" ->
+  Submit) — biggest remaining unlock (global new+used incl. US PCIe-A100/3090 supply).

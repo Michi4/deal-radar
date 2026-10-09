@@ -310,3 +310,9 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   16x32GB RDIMM ~800 EUR + chassis ~350 EUR + 2x used 3090 ~2400 EUR + NVLink 160 EUR
   = ~4000-4800 EUR for 512GB + 48GB VRAM. Single-box shortcut: complete 7302+256GB
   server 1150 EUR + 2x3090 = ~3700 EUR for the V4.1-Flash tier (256GB fits Q6).
+
+## 2026-10-10 — Allegro.pl driver shipped; bazos/backmarket rejected with reasons
+- 7th source: Allegro official REST API (client-credentials mint cached to disk,
+  defensive parsing of promoted/regular shapes, PLN via FX table, pagination to
+  exhaustion). Same honest pattern as eBay: real code, mocked contract tests, clean
+  error until the owner pastes 2 self-serve values. Live proof pending creds.
