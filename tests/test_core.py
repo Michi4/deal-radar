@@ -980,3 +980,64 @@ def test_advise_ranking_and_fallback():
         assert c.post("/advise", json={"search_ids": ["nope"]}).status_code == 404
     finally:
         m.JOBS.pop("adv1", None)
+
+
+def test_watch_poll_never_sends_search_done():
+    """Regression: watches spammed 'Search done' on every re-poll. Only one-shot
+    searches (notify_done, not watches) may send it."""
+    import asyncio
+    import sys
+    from unittest.mock import AsyncMock, patch
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "drivers"))
+    import api.main as m
+
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.driver_sdk import (
+        DriverManifest,
+        DriverRegistry,
+        MarketplaceDriver,
+        SearchQuery,
+    )
+
+    class F(MarketplaceDriver):
+        manifest = DriverManifest(id="t", display_name="t", capabilities=["search"])
+
+        async def search(self, query: SearchQuery):
+            return [CanonicalListing(id="t:1", source="t", native_id="1", url="https://x/1",
+                                     title="ThinkPad bag", description="bag for laptop",
+                                     price=10.0, seller=Seller(name="s"))]
+
+    reg = DriverRegistry()
+    reg.register(F())
+    sent = []
+
+    async def fake_send(title, body="", extra=None):
+        sent.append(title)
+        return True
+
+    with patch.object(m, "registry", reg), \
+         patch.object(m, "notifier", AsyncMock(send=fake_send)):
+        base = {"keywords": "thinkpad", "sources": ["t"], "limit": 5, "watch": True,
+                "poll_interval_s": 60, "notify_on": ["new_top", "price_drop"],
+                "enrich": False, "ocr": False, "benchmarks": False, "vision": False,
+                "details": False}
+        m.JOBS["w1"] = {"status": "running", "done": 0, "total": 1, "control": "run",
+                        "detail": "", "result": {}}
+        m.SEARCHES["w1"] = dict(base)
+        asyncio.run(m._run_job("w1", [dict(base)], {"base": dict(base), "limit": 5,
+                                                   "watch": True}))
+        assert not any("Search done" in t for t in sent), sent
+        # one-shot manual search still notifies
+        sent.clear()
+        m.JOBS["m1"] = {"status": "running", "done": 0, "total": 1, "control": "run",
+                        "detail": "", "result": {}}
+        asyncio.run(m._run_job("m1", [dict(base, watch=False)],
+                               {"base": dict(base, watch=False), "limit": 5,
+                                "watch": False, "notify_done": True}))
+        assert any("Search done" in t for t in sent), sent
+        for sid in ("w1", "m1"):
+            m.JOBS.pop(sid, None)
+            m.SEARCHES.pop(sid, None)

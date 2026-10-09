@@ -54,13 +54,25 @@ def spec_line(listing, enrichments) -> str:
         return (listing or {}).get(key, default) if isinstance(listing, dict) else default
 
     parts = []
+    blob = f"{_lg('title')} {_lg('description')}"
     cpu = _ev("cpu")
+    if not cpu:
+        try:
+            from .scoring import extract_cpu as _xc
+            _c, _conf, _ = _xc(blob)
+            # storage sizes are not CPUs ("238GB SSD", "512GB Speichermedien")
+            if _c and not re.search(r"^\d+\s*(gb|tb)$", _c.strip(), re.IGNORECASE):
+                cpu = _c + " (?)"
+        except Exception:
+            pass
     if cpu:
         parts.append(f"CPU {cpu}")
     multi, single = _ev("cpu_benchmark"), _ev("cpu_single")
     if multi:
         parts.append(f"{multi} MT / {single or '?'} ST")
-    blob = f"{_lg('title')} {_lg('description')}"
+    gpu, gbench = _ev("gpu"), _ev("gpu_benchmark")
+    if gpu or gbench:
+        parts.append(f"GPU {gpu or '?'} ({gbench} G3D)" if gbench else f"GPU {gpu}")
     m = re.search(r"(\d{2,3})\s*gb\s*(?:ddr\d?|lpddr\d?|ram|arbeitsspeicher)", blob, re.IGNORECASE)
     if m:
         parts.append(f"{m.group(1)}GB RAM")
@@ -469,6 +481,8 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                     _pct = (_new - _old) / _old * 100
                     _kind = "price_drop" if _pct < 0 else "price_rise"
                     if _kind in (intent.get("notify_on", ["new_top", "price_drop"])):
+                        if lane == "hidden":
+                            continue  # junk lane (bags/docks/cables): logged, never pinged
                         try:
                             _ok = _rules_ok(intent.get("notify_rules", []), _kind, ev=ev)
                         except Exception:

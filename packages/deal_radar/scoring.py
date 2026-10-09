@@ -161,7 +161,12 @@ GPU_PATS = [
     r"radeon\s*[678]8\d\s*m",  # RDNA iGPU: 780M/880M/890M
     r"\b[678]80m\b",  # bare iGPU mention: "780M graphics"
     r"rx\s*vega\s*\d+",
+    r"\bvega\s*(?:graphics\s*)?\d+\b",  # bare "Vega 7", "Vega8 Graphics"
 ]
+
+
+_IGPU_FULL = re.compile(r"arc\s*1[34]0[vt]|radeon\s*[678]8\d\s*m|\b[678]80m\b|rx\s*vega\s*\d+|"
+                        r"\bvega\s*(?:graphics\s*)?\d+", re.IGNORECASE)
 
 
 def extract_gpu(text: str) -> tuple[str | None, float, str]:
@@ -170,7 +175,7 @@ def extract_gpu(text: str) -> tuple[str | None, float, str]:
         m = re.search(pat, t)
         if m:
             g = re.sub(r"\s+", " ", m.group(0)).strip()
-            full = len(re.findall(r"\d", g)) >= 3
+            full = len(re.findall(r"\d", g)) >= 3 or bool(_IGPU_FULL.search(g))
             return g, (0.8 if full else 0.45), f"mentioned '{g}'"
     return None, 0.0, ""
 

@@ -1135,7 +1135,9 @@ async def _run_job(sid: str, intents: list[dict], meta: dict) -> None:
             _log_event({"kind": "search_done", "listing_id": sid,
                               "title": f"search finished: {len(merged['results'])} results"})
             JOBS[sid].update({"status": "done", "result": merged})
-        if base.get("watch") or meta.get("notify_done"):
+        if meta.get("notify_done") and not base.get("watch"):
+            # one-shot searches only: watch polls notify via new_match/price_drop/
+            # change events, never with a "done" ping (that spammed every poll).
             await notifier.send(f"Search done: {len(merged['results'])} results",
                                 f"{base.get('keywords', '')} :: {len(merged['results'])} hits, "
                                 f"{merged['filtered_out']} filtered", {"url": "/?sid=" + sid})
