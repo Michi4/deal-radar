@@ -260,3 +260,15 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   app-login gate (empty = dev). verify.sh asserts v1 stays gone.
 - Startup now also warms the benchmark disk cache (distinct CPUs from recent
   listings, polite 1/s) so /gems is rated minutes after a deploy instead of empty.
+
+## 2026-10-09 — journeys green on Vue-only prod (incl. sid-collision catch)
+- Full trio GREEN against prod post-deploy: layout audit (9 pages x 4 viewports x
+  2 themes, incl. /gems), journey smoke (mini-pc search -> Perf/EUR sort -> drawer ->
+  Gems 103 rows -> hunt pack -> cleanup), v2 smoke (core loop, refilter, compare).
+- Journey caught a real bug: hunt-pack jobs created in the same millisecond shared
+  one sid and overwrote each other (seen as duplicate ids). `_start_job` now has a
+  per-process sequence suffix (`s_<ms>_<seq>`); unit-tested with 10 same-ms starts.
+- Frankfurt kinescope: /etc/hosts pinned the domain to the dead homeserver
+  (journeys got homeserver-Traefik 404s) -> repointed to 127.0.0.1; journey login
+  snippets now always POST /login (server login page has no `.loginwrap` marker;
+  empty password = dev passthrough).
