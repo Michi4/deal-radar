@@ -1102,13 +1102,61 @@ def test_gems_board_and_hunt_pack():
         assert b["ppe"][0]["id"] == "t:1"  # box never tops systems-only board
         b2 = G.board(items, min_bench=8000, systems_only=False)
         assert any(x["id"] == "t:2" for x in b2["ppe"])
-    # /gems endpoint serves the board shape
+    # /gems/board endpoint serves the board shape
     c = TestClient(m.app)
     with patch("deal_radar.gems.collect", return_value=([], 3)):
-        r = c.get("/gems").json()
+        r = c.get("/gems/board").json()
         assert r["ok"] and r["unrated"] == 3 and r["ppe"] == []
     # /hunt pack starts three searches
     with patch.object(m, "create_search", new=AsyncMock(side_effect=[{"id": "a"}, {"id": "b"}, {"id": "c"}])):
         r = c.post("/hunt", params={"pack": "value"}).json()
         assert r["ok"] and r["ids"] == ["a", "b", "c"]
         assert c.post("/hunt", params={"pack": "nope"}).status_code == 404
+
+
+def test_vue_cutover_routes():
+    """Vue-only: / serves the SPA, /v2 redirects home, client routes serve the
+    SPA shell, favicon is a quiet 204."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    import api.main as m
+    from fastapi.testclient import TestClient
+    c = TestClient(m.app, follow_redirects=False)
+    r = c.get("/")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert "/v2assets/" in r.text  # built Vue bundle, not v1
+    assert "app.js" not in r.text and "modeseg" not in r.text
+    for p in ("/saved", "/watches", "/compare", "/gems", "/store", "/history", "/lab", "/admin", "/login"):
+        assert c.get(p).status_code == 200, p
+    rv = c.get("/v2")
+    assert rv.status_code in (301, 302, 307, 308) and rv.headers["location"] == "/"
+    assert c.get("/favicon.ico").status_code == 204
+
+
+def test_benchmark_warmup_only_misses():
+    import asyncio
+    import os
+    import tempfile
+    from unittest.mock import AsyncMock, patch
+
+    from deal_radar import modelcheck as MC
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "w.db"))
+    st.upsert(CanonicalListing(id="t:1", source="t", native_id="1", url="u",
+                               title="Beelink 8845HS 24GB", description="d",
+                               price=300.0, seller=Seller(name="s")))
+    st.upsert(CanonicalListing(id="t:2", source="t", native_id="2", url="u2",
+                               title="vague thing", description="d",
+                               price=10.0, seller=Seller(name="s")))
+    calls = []
+
+    def fake_fetch(cpu):
+        calls.append(cpu)
+        return {"multi": 1, "source": "t", "ts": 0.0}
+
+    with patch("deal_radar.benchmarks.cached_cpu", return_value=None), \
+         patch("deal_radar.benchmarks.fetch_passmark_cpu", side_effect=fake_fetch), \
+         patch("asyncio.sleep", new=AsyncMock()):
+        n = asyncio.run(MC.warmup_benchmarks(st, cap=10))
+    assert n == 1 and calls == ["Ryzen 7 8845HS"]

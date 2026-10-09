@@ -1,8 +1,9 @@
-// v2-smoke.mjs — Vue rebuild core loop vs BASE/v2 (default: local preview).
+// v2-smoke.mjs — Vue core loop vs BASE (default: local preview).
 // Fresh profile: kw search → cards → compare table → drawer → saved badge. Exit 1 on failure.
 import { chromium } from 'playwright';
 
-const BASE = (process.argv[2] || 'http://127.0.0.1:8128/v2').replace(/\/$/, '');
+const BASE = (process.argv[2] || 'http://127.0.0.1:8128').replace(/\/$/, '');
+const PW = process.env.DR_PASSWORD || '';
 const OUT = process.argv[3] || '/tmp/opencode/journeys';
 
 let fail = 0;
@@ -16,6 +17,11 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
 const page = await ctx.newPage();
 const perr = [];
 page.on('pageerror', (e) => perr.push(String(e).slice(0, 160)));
+await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+await page.evaluate(async (pw) => {
+  if (!document.querySelector('.loginwrap')) return;
+  await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+}, PW);
 await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction(() => !!document.querySelector('.modeseg'), null, { timeout: 30000 });
 await page.waitForTimeout(1500);
@@ -91,7 +97,7 @@ try {
     url: location.href
   }));
   console.log('INFO backnav: ' + JSON.stringify(backDbg));
-  await page.evaluate(() => { const a = document.querySelector('.topnav a[href="/v2/"]'); if (a) a.click(); });
+  await page.evaluate(() => { const a = document.querySelector('.topnav a[href="/"]'); if (a) a.click(); });
   await page.waitForTimeout(1500);
   await page.evaluate(() => document.querySelector('.rgrid .res').click());
   await page.waitForTimeout(1200);
@@ -100,7 +106,7 @@ try {
   check('v2 drawer has title', title.length > 3, title);
 
   // views render without errors
-  for (const v of ['saved', 'watches', 'store', 'history', 'lab']) {
+  for (const v of ['saved', 'watches', 'gems', 'store', 'history', 'lab']) {
     await page.evaluate((vv) => { [...document.querySelectorAll('.topnav a')].find((a) => a.getAttribute('href').endsWith('/' + vv)).click(); }, v);
     await page.waitForTimeout(1200);
   }

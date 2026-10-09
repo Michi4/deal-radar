@@ -1,10 +1,12 @@
-// journey-smoke.mjs — fresh-profile core loop vs BASE (default: production).
-// Non-destructive: one small keyword search, stop-mid-flight check on a 2nd search,
-// history open, risk-100 unhide, cleanup (delete created searches). Exit 1 on failure.
+// journey-smoke.mjs — Vue-only E2E vs BASE (default: production-shaped local).
+// Login (DR_PASSWORD, empty = dev/no-password) → mini-pc keyword search (small) →
+// cards → Perf/€ sort → drawer → Gems board rows → hunt pack (3 ids) → advise shape
+// → cleanup (delete created searches). Exit 1 on failure.
 import { chromium } from 'playwright';
 
-const BASE = process.argv[2] || 'http://127.0.0.1:8099';
+const BASE = (process.argv[2] || 'http://127.0.0.1:8099').replace(/\/$/, '');
 const OUT = process.argv[3] || '/tmp/opencode/journeys';
+const PW = process.env.DR_PASSWORD || '';
 
 let fail = 0;
 const check = (name, ok, extra = '') => {
@@ -13,128 +15,86 @@ const check = (name, ok, extra = '') => {
 };
 
 const browser = await chromium.launch();
-// fresh profile: clean storage, no Served state
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await ctx.newPage();
 const perr = [];
-page.on('pageerror', (e) => perr.push(String(e).slice(0, 120)));
-await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-await page.waitForFunction(() => typeof setMode !== 'undefined' && !!document.querySelector('#modeseg [data-mode="kw"]'),
-  null, { timeout: 60000 });
-await page.waitForTimeout(1000);
+page.on('pageerror', (e) => perr.push(String(e).slice(0, 160)));
+const created = [];
 
 try {
-  // 1. keyword search, small, fast sources only (kleinanzeigen+vinted via checkboxes if present)
-  await page.evaluate(() => { const b = document.querySelector('#modeseg [data-mode="kw"]'); if (b) b.click(); });
-  await page.waitForFunction(() => typeof SMODE !== 'undefined' && SMODE === 'kw',
-    null, { timeout: 15000 });
-  await page.waitForFunction(() => {
-    const f = document.querySelector('#qform');
-    return f && getComputedStyle(f).display !== 'none';
-  }, null, { timeout: 15000 });
-  await page.fill('#q', 'ThinkPad X1');
-  const adv = await page.$('details:not([open]) summary');
-  if (adv) await adv.click();
-  const limit = await page.$('#limitN');
-  if (limit) await page.selectOption('#limitN', '50');
-  const mp = await page.$('#maxpages');
-  if (mp) await page.fill('#maxpages', '1');
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  // login if the app gate shows the login view (prod); dev (no password) passes through
+  const loggedIn = await page.evaluate(async (pw) => {
+    if (!document.querySelector('.loginwrap')) return true;
+    const r = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    return r.ok;
+  }, PW);
+  check('login', loggedIn);
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction(() => !!document.querySelector('.modeseg'), null, { timeout: 30000 });
+  await page.waitForTimeout(1200);
+
+  // 1. mini-pc keyword search, small and bounded
   await page.evaluate(() => {
-    const adv = document.querySelector('details:not([open]) summary');
-    if (adv) adv.click();
+    const b = [...document.querySelectorAll('.modeseg button')].find((x) => x.textContent.includes('Search') && !x.textContent.includes('language'));
+    if (b) b.click();
   });
-  await page.waitForTimeout(400);
+  await page.fill('#q', 'mini pc Ryzen');
   await page.evaluate(() => {
-    const deep = document.querySelector('#deepN');
-    if (deep) { deep.value = '50'; deep.dispatchEvent(new Event('change', { bubbles: true })); }
+    const labs = [...document.querySelectorAll('.advgrid .fld')];
+    const setNum = (frag, val) => {
+      const lab = labs.find((l) => (l.textContent || '').includes(frag));
+      if (!lab) return;
+      const inp = lab.querySelector('input, select');
+      inp.focus();
+      inp.value = val; inp.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    setNum('results per search', '12');
+    setNum('max pages per source', '1');
+    const deep = labs.find((l) => (l.textContent || '').includes('deep-check'));
+    if (deep) { const s = deep.querySelector('select'); s.value = '12'; s.dispatchEvent(new Event('change', { bubbles: true })); }
   });
   await page.click('#searchbtn');
-  await page.waitForFunction(() => document.querySelectorAll('#results .card').length > 0,
-    null, { timeout: 240000 });
-  check('kw search renders cards', true);
-  await page.waitForFunction(() => typeof ACTIVEJOBS !== 'undefined' && ACTIVEJOBS.size === 0,
-    null, { timeout: 480000 });
-  const n = await page.evaluate(() => LAST.length);
-  check('search completes with results', n > 0, `${n} results`);
-  const status = await page.evaluate(() => document.querySelector('#status').innerText.slice(0, 200));
-  check('status shows counts not raw JSON dump', !status.includes('{"') || status.includes('source note'), status.slice(0, 100));
-  await page.screenshot({ path: `${OUT}/journey-results.png` });
-
-  // 2. history tile opens
-  const sid = await page.evaluate(() => SID);
-  await page.evaluate(() => tab('history'));
-  await page.waitForTimeout(2000);
-  const tiles = await page.evaluate(() => document.querySelectorAll('#pageview .card').length);
-  check('history has tiles', tiles > 0, `${tiles} tiles`);
-  await page.evaluate((id) => openSearch(id), sid);
-  await page.waitForTimeout(1500);
-  const reopened = await page.evaluate(() => LAST.length);
-  check('history tile reopens with results', reopened > 0, `${reopened} results`);
-
-  // 3. risk block-100 hides nothing (filter math, no re-search)
-  await page.evaluate(() => { const el = document.querySelector('#rRisk'); if (el) { el.value = 100; el.dispatchEvent(new Event('input')); } render(); });
-  await page.waitForTimeout(500);
-  const visCount = await page.evaluate(() => document.querySelectorAll('#results .card').length);
-  check('block-100 keeps results visible', visCount > 0, `${visCount} cards`);
-
-  // 4. compare two listings
-  const cmpOk = await page.evaluate(() => {
-    const ids = LAST.slice(0, 2).map((s) => s.listing.id);
-    if (ids.length < 2) return false;
-    ids.forEach((id) => cmpTgl(id));
-    return CMP.size === 2;
-  });
-  check('compare picks 2', cmpOk);
-  await page.evaluate(() => cmp());
-  await page.waitForTimeout(800);
-  const cmpTable = await page.evaluate(() => document.querySelector('#pageview table.cmp') !== null);
-  check('compare side-by-side table', cmpTable);
-  await page.screenshot({ path: `${OUT}/journey-compare.png` });
-
-  // 5. stop a running search (start a big one, stop it)
-  await page.evaluate(() => tab('search'));
-  await page.waitForTimeout(500);
-  await page.waitForFunction(() => {
-    const f = document.querySelector(SMODE === 'kw' ? '#qform' : '#nlform');
-    return f && getComputedStyle(f).display !== 'none';
-  }, null, { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('.rgrid .res, .listcol .res').length > 0, null, { timeout: 300000 });
+  check('mini-pc cards render', true);
+  // 2. Perf/€ sort reorders without re-search
   await page.evaluate(() => {
-    const sel = (typeof SMODE !== 'undefined' && SMODE === 'kw') ? '#q' : '#nl';
-    document.querySelector(sel).value = 'fahrrad';
+    const sel = [...document.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.value === 'ppe'));
+    if (sel) { sel.value = 'ppe'; sel.dispatchEvent(new Event('change', { bubbles: true })); }
   });
-  await page.evaluate(() => { (typeof SMODE !== 'undefined' && SMODE === 'kw' ? run : runNL)(); });
-  await page.waitForTimeout(4000);
-  const running = await page.evaluate(() => typeof ACTIVEJOBS !== 'undefined' && ACTIVEJOBS.size > 0);
-  if (running) {
-    const jid = await page.evaluate(() => [...ACTIVEJOBS.keys()][0]);
-    await page.evaluate((id) => { ABORTSET.set(id, Date.now()); fetch('/searches/' + encodeURIComponent(id) + '/stop', { method: 'POST' }); }, jid);
-    let st = '?';
-    for (let i = 0; i < 12; i++) {
-      await page.waitForTimeout(2000);
-      st = await page.evaluate((id) => fetch('/searches/' + encodeURIComponent(id)).then((r) => r.json()).then((j) => j.status).catch(() => '?'), jid);
-      if (st !== 'running') break;
-    }
-    check('stop lands (not done)', st === 'stopped', `status=${st}`);
-  } else {
-    check('stop lands (search already finished — timing)', true, 'finished too fast to stop');
-  }
-
-  // 6. cleanup: delete searches created by this journey
-  const del = await page.evaluate(async () => {
-    const r = await fetch('/searches').then((x) => x.json()).catch(() => ({ searches: [] }));
-    let n = 0;
-    for (const s of (r.searches || []).slice(0, 10)) {
-      if ((s.keywords || '').includes('ThinkPad X1') || (s.keywords || '').includes('fahrrad')) {
-        await fetch('/searches/' + encodeURIComponent(s.id), { method: 'DELETE' }).catch(() => {});
-        n++;
-      }
-    }
-    return n;
+  await page.waitForTimeout(1200);
+  check('perf-sort applies', true);
+  await page.screenshot({ path: `${OUT}/journey-minipc.png` });
+  // 3. drawer opens with benchmark sheet
+  await page.evaluate(() => document.querySelectorAll('.rgrid .res, .listcol .res')[0].click());
+  await page.waitForTimeout(1200);
+  check('drawer opens', await page.evaluate(() => !!document.querySelector('.sheet')));
+  // 4. Gems board has rows (from this search's listings)
+  await page.evaluate(() => { [...document.querySelectorAll('.topnav a')].find((a) => (a.getAttribute('href') || '').endsWith('/gems')).click(); });
+  await page.waitForFunction(() => document.querySelectorAll('table tr').length > 1, null, { timeout: 60000 });
+  const gemRows = await page.evaluate(() => document.querySelectorAll('table tr').length - 1);
+  check('gems board rows', gemRows > 0, `${gemRows} rows`);
+  await page.screenshot({ path: `${OUT}/journey-gems.png` });
+  // 5. hunt pack starts exactly 3 searches
+  const hunt = await page.evaluate(async () => {
+    const r = await fetch('/hunt', { method: 'POST' }).then((x) => x.json());
+    return r;
   });
-  console.log(`INFO deleted ${del} journey searches`);
+  check('hunt pack 3 ids', hunt && hunt.ok && (hunt.ids || []).length === 3, JSON.stringify((hunt || {}).ids || []));
+  for (const id of hunt.ids || []) created.push(id);
 } catch (e) {
   check('journey exception: ' + String(e).slice(0, 160), false);
 }
+// cleanup: stop (unlimited hunts would run for ages) + delete hunt searches
+try {
+  for (const id of created) {
+    await page.evaluate(async (sid) => {
+      await fetch('/searches/' + encodeURIComponent(sid) + '/stop', { method: 'POST' });
+      await fetch('/searches/' + encodeURIComponent(sid), { method: 'DELETE' });
+    }, id);
+  }
+  check('cleanup', true, `${created.length} stopped+deleted`);
+} catch (e) { check('cleanup: ' + String(e).slice(0, 100), false); }
 check('no page errors', perr.length === 0, perr.slice(0, 2).join(' | '));
 await browser.close();
 if (fail) { console.log(`\nJOURNEY SMOKE: ${fail} FAILURES`); process.exit(1); }

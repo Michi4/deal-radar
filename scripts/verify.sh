@@ -12,20 +12,12 @@ if [ -x .venv/bin/mypy ]; then MYPY=.venv/bin/mypy; else MYPY=".venv/bin/python 
 $MYPY packages/deal_radar
 echo "== pytest + coverage =="
 .venv/bin/python -m pytest -q --cov --cov-report=term-missing --cov-fail-under=85
-echo "== web HTML balance =="
-.venv/bin/python -c "
-import re,sys
-src = open('web/index.html').read()
-i = src.index('id=\"searchpanel\"'); j = src.index('</main>'); reg = src[i:j]
-bad = [t for t in ('div','form','details') if len(re.findall(r'<%s[\s>]' % t, reg)) + (1 if t == 'div' else 0) != reg.count('</%s>' % t)]
-assert not bad, f'unbalanced tags in search region: {bad}'
-print('HTML balance OK')
-"
+echo "== no-v1 gate =="
+if [ -e web/index.html ] || [ -e web/app.js ]; then echo "FAIL: v1 frontend still present (Vue-only since 2026-10-09)"; exit 1; else echo "v1 gone OK"; fi
 echo "== no-emoji gate =="
-if grep -rPn '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' web/index.html web/app.js web/admin.html web/admin.js 2>/dev/null > /tmp/opencode/emoji_hits.txt; then head -n 5 /tmp/opencode/emoji_hits.txt; echo "FAIL: emoji/pictographs in web/"; exit 1; else echo "no-emoji OK"; fi
 if grep -rPn '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]' web-v2/src web-v2/index.html 2>/dev/null > /tmp/opencode/emoji_hits2.txt; then head -n 5 /tmp/opencode/emoji_hits2.txt; echo "FAIL: emoji/pictographs in web-v2/"; exit 1; else echo "no-emoji v2 OK"; fi
 if command -v node >/dev/null 2>&1; then
-  node --check web/app.js && node --check web/admin.js && echo "JS OK"
+  echo "SKIP: v1 JS gone (Vue-only; v2 typechecked in build)"
 else
   echo "SKIP: node missing (E2E covers this in CI)"
 fi

@@ -39,6 +39,20 @@
       <small>{{ secMsg }}</small>
       <div><small>Saved to the server database and applied live (no restart). Server env stays the fallback.</small></div>
     </div>
+    <div v-if="tab === 'Models'" class="panel">
+      <div class="eyebrow">Free models — best answering first</div>
+      <div class="row">
+        <button class="btn btn-sm" @click="checkModels" :disabled="modelBusy">check all models now</button>
+        <small>{{ modelMsg }}</small>
+      </div>
+      <table>
+        <tr><th>model</th><th>state</th><th>ok/fail</th><th>latency</th></tr>
+        <tr v-for="m in modelRows" :key="m.name">
+          <td>{{ m.name }}</td><td>{{ m.state }}</td><td>{{ m.ok }}/{{ m.fail }}</td><td>{{ m.latency }}</td>
+        </tr>
+      </table>
+      <small>Probes every free model with a tiny task and ranks the fastest exact answer first. Auto-runs at startup; every real AI call re-scores. Failing models rest 10 min.</small>
+    </div>
     <div v-if="tab === 'Searches'" class="panel">
       <div class="eyebrow">Searches &amp; jobs</div>
       <div v-for="s in searches" :key="s.id" class="srow">
@@ -68,11 +82,36 @@ import { api } from '@/api';
 import { useUi } from '@/stores/ui';
 
 const ui = useUi();
-const tabs = ['Overview', 'Drivers', 'Secrets', 'Searches', 'Events', 'Danger'];
+const tabs = ['Overview', 'Drivers', 'Secrets', 'Models', 'Searches', 'Events', 'Danger'];
 const tab = ref('Overview');
 const stats = ref<[string | number, string][]>([]);
 const metricRows = ref<[string, string][]>([]);
 const drivers = ref<{ id: string; display_name?: string; disabled?: boolean; configured?: boolean; transport?: string }[]>([]);
+const modelRows = ref<{ name: string; state: string; ok: number; fail: number; latency: string }[]>([]);
+const modelMsg = ref('');
+const modelBusy = ref(false);
+async function loadModels() {
+  try {
+    const r = await api<{ health?: Record<string, { ok?: number; fail?: number; latency?: number }>; pool?: string[] }>('/models/health', {}, 1);
+    const h = r?.health || {};
+    modelRows.value = (r?.pool || []).map((p) => {
+      const e = h[p] || {};
+      return { name: p, state: (e.fail ?? 0) >= 3 ? 'resting' : (e.ok ? 'answering' : 'untried'),
+               ok: e.ok ?? 0, fail: e.fail ?? 0, latency: e.latency != null ? `${e.latency}s` : '—' };
+    });
+  } catch { /* offline */ }
+}
+async function checkModels() {
+  modelBusy.value = true;
+  modelMsg.value = 'probing every free model… (up to ~1 min)';
+  try {
+    const r = await api<{ results?: { ok?: boolean }[] }>('/models/check', { method: 'POST' });
+    const ok = (r?.results || []).filter((x) => x.ok).length;
+    modelMsg.value = `done: ${ok}/${(r?.results || []).length} answering — ranking updated`;
+    loadModels();
+  } catch { modelMsg.value = 'check failed'; }
+  modelBusy.value = false;
+}
 const health = ref<Record<string, { ok?: boolean; consecutive_failures?: number; last_error?: string }>>({});
 const secrets = ref<{ key: string; label: string; secret?: boolean; configured?: boolean }[]>([]);
 const secVals = reactive<Record<string, string>>({});
@@ -133,7 +172,7 @@ async function resetAll() {
   resetWord.value = '';
   tick(); loadSearches();
 }
-onMounted(async () => { await tick(); loadSecrets(); loadSearches(); timer = window.setInterval(tick, 15000); });
+onMounted(async () => { await tick(); loadSecrets(); loadSearches(); loadModels(); timer = window.setInterval(tick, 15000); });
 onUnmounted(() => { if (timer != null) clearInterval(timer); });
 </script>
 

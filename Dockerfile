@@ -26,7 +26,6 @@ COPY pyproject.toml README.md ./
 COPY packages packages/
 COPY drivers drivers/
 COPY apps apps/
-COPY web web/
 COPY web-v2/dist web-v2/dist/
 COPY marketplace marketplace/
 RUN pip install --no-cache-dir -e .

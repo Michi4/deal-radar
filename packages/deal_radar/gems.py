@@ -10,18 +10,8 @@ import time
 
 def cached_cpu(cpu: str) -> dict | None:
     """PassMark entry from disk/memory cache only (None when never fetched)."""
-    from . import benchmarks as _b
-    key = "v2:" + cpu.strip().lower()
-    mem = getattr(_b, "_mem", {})
-    if key in mem:
-        return mem[key]
-    try:
-        disk = _b._load()
-        if key in disk:
-            return disk[key]
-    except Exception:
-        pass
-    return None
+    from .benchmarks import cached_cpu as _cc
+    return _cc(cpu)
 
 
 def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple[list[dict], int]:

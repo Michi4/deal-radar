@@ -247,3 +247,16 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   the hunt (likely sold within a day — gems go fast, or a bundle title). Reported
   honestly with live alternatives instead of inventing a URL. Takeaway logged: for
   time-critical gems, advise snapshots + `also_on` at hunt time, don't trust recall.
+
+## 2026-10-09 — Vue-only: v1 deleted (owner: "stop programming 2 things")
+- `web/` (index.html, app.js, admin.html/js, css) deleted; `/` + `/admin` +
+  client routes serve the Vue SPA; `/v2*` 301-redirects home; `/static` mount,
+  favicon allowlist entry, `_page`/`_asset` helpers gone; `/favicon.ico` -> 204.
+- v2 AdminView gained the Models tab (health table + check-all button) for parity
+  with the removed v1 admin; router base is `/` everywhere now.
+- Journeys follow: journey-smoke rewritten as the mini-pc E2E on Vue (search small
+  -> Perf/€ sort -> drawer -> Gems rows -> hunt pack 3 ids -> stop+delete cleanup);
+  layout-audit walks Vue routes incl. /gems; all three take DR_PASSWORD for the
+  app-login gate (empty = dev). verify.sh asserts v1 stays gone.
+- Startup now also warms the benchmark disk cache (distinct CPUs from recent
+  listings, polite 1/s) so /gems is rated minutes after a deploy instead of empty.

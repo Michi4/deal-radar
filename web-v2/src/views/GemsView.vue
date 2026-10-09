@@ -60,13 +60,13 @@ const sections = computed(() => board.value ? [
 
 async function load() {
   try {
-    board.value = await api<Board>(`/gems?limit=25&favs=${favOnly.value ? 1 : 0}`);
+    board.value = await api<Board>(`/gems/board?limit=25&favs=${favOnly.value ? 1 : 0}`);
   } catch (e) { ui.toast('gems failed'); }
 }
 async function summarize() {
   busy.value = true;
   try {
-    board.value = await api<Board>(`/gems?limit=30&favs=${favOnly.value ? 1 : 0}&advise=1`);
+    board.value = await api<Board>(`/gems/board?limit=30&favs=${favOnly.value ? 1 : 0}&advise=1`);
   } catch (e) { ui.toast('summary failed'); }
   busy.value = false;
 }

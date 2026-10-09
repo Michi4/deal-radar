@@ -10,15 +10,19 @@ const OUT = process.argv[3] || '/tmp/opencode/journeys';
 fs.mkdirSync(OUT, { recursive: true });
 
 const VIEWPORTS = [390, 768, 1280, 1920];
-// Tabs reachable without a search: search, saved(favs), watches, compare, store, history, lab
+// Tabs reachable without a search (Vue routes). Gems included: the value board
+// must render cleanly on every viewport too.
+const PW = process.env.DR_PASSWORD || '';
 const PAGES = [
   { name: 'search', go: async (p) => { await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' }); } },
-  { name: 'saved', go: async (p) => { await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' }); await p.evaluate(() => tab('favs')); await p.waitForTimeout(2500); } },
-  { name: 'watches', go: async (p) => { await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' }); await p.evaluate(() => tab('watches')); await p.waitForTimeout(2500); } },
-  { name: 'store', go: async (p) => { await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' }); await p.evaluate(() => tab('store')); await p.waitForTimeout(2500); } },
-  { name: 'history', go: async (p) => { await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' }); await p.evaluate(() => tab('history')); await p.waitForTimeout(2500); } },
-  { name: 'lab', go: async (p) => { await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' }); await p.evaluate(() => tab('lab')); await p.waitForTimeout(2500); } },
-  { name: 'admin', go: async (p) => { await p.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2500); } },
+  { name: 'saved', go: async (p) => { await p.goto(BASE + '/saved', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
+  { name: 'watches', go: async (p) => { await p.goto(BASE + '/watches', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
+  { name: 'compare', go: async (p) => { await p.goto(BASE + '/compare', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
+  { name: 'gems', go: async (p) => { await p.goto(BASE + '/gems', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2500); } },
+  { name: 'store', go: async (p) => { await p.goto(BASE + '/store', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
+  { name: 'history', go: async (p) => { await p.goto(BASE + '/history', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
+  { name: 'lab', go: async (p) => { await p.goto(BASE + '/lab', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
+  { name: 'admin', go: async (p) => { await p.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(2000); } },
 ];
 
 let fails = [];
@@ -31,6 +35,13 @@ for (const width of VIEWPORTS) {
     const ctx = await browser.newContext({ viewport: { width, height: 900 } });
     const page = await ctx.newPage();
     const cerr = [];
+    // login once per context (prod gate; dev passes with empty password)
+    await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(async (pw) => {
+      if (!document.querySelector('.loginwrap')) return;
+      await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    }, PW);
+    page.on('console', (m) => { if (m.type() === 'error') cerr.push(m.text().slice(0, 140)); });
     page.on('console', (m) => { if (m.type() === 'error') cerr.push(m.text().slice(0, 140)); });
     page.on('pageerror', (e) => cerr.push('pageerror: ' + String(e).slice(0, 140)));
     page.on('response', (r) => { if (r.status() >= 400) cerr.push(`${r.status()} ${r.url().slice(-80)}`); });
@@ -51,7 +62,7 @@ for (const width of VIEWPORTS) {
       const evalOnce = async () => {
         await goWithRetry(() => pg.go(page));
         await page.waitForFunction(
-          () => typeof setMode !== 'undefined' || !!document.querySelector('#stats'),
+          () => !!document.querySelector('.topnav') || !!document.querySelector('#app'),
           null, { timeout: 30000 });
         // theme: app defaults dark unless localStorage says light; force via class
         await page.evaluate((t) => {

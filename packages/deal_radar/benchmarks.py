@@ -42,6 +42,20 @@ def _load() -> dict:
     return {}
 
 
+def cached_cpu(cpu: str) -> dict | None:
+    """PassMark entry from memory/disk cache only (None when never fetched)."""
+    key = "v2:" + cpu.strip().lower()
+    if key in _mem:
+        return _mem[key]
+    try:
+        disk = _load()
+        if key in disk:
+            return disk[key]
+    except Exception:
+        pass
+    return None
+
+
 def parse_passmark_detail(html: str) -> tuple[int | None, int | None]:
     mt = re.search(r"Multithread Rating</div>\s*<div[^>]*>(\d+)</div>", html)
     st = re.search(r"Single Thread Rating</div>\s*<div[^>]*>(\d+)</div>", html)

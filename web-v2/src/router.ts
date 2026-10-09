@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 export default createRouter({
   // dev serves at /, prod preview mounts at /v2 (cutover to / later)
-  history: createWebHistory(import.meta.env.DEV ? '/' : '/v2/'),
+  history: createWebHistory('/'),
   routes: [
     { path: '/', name: 'search', component: () => import('@/views/SearchView.vue') },
     { path: '/saved', name: 'saved', component: () => import('@/views/SavedView.vue') },

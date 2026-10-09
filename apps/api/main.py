@@ -108,13 +108,12 @@ async def _gate(request: Request, call_next):
     if API_KEY and not public_hook and path not in ("/health",) and not _hmac.compare_digest(
             request.headers.get("x-api-key", ""), API_KEY):
         return JSONResponse({"detail": "unauthorized"}, status_code=401)
-    if LOGIN_PASSWORD and not public_hook and path not in ("/health", "/login", "/auth/status", "/static/favicon.svg"):
-        if request.method == "GET" and path in ("/", "/admin"):
+    if LOGIN_PASSWORD and not public_hook and path not in ("/health", "/login", "/auth/status", "/favicon.ico"):
+        if request.method == "GET" and path in ("/", "/admin", "/saved", "/watches",
+                                                "/compare", "/gems", "/store", "/history",
+                                                "/lab", "/login"):
             if not _logged_in(request):
                 return _login_page()
-        elif path.startswith("/static/"):
-            if not _logged_in(request):
-                return JSONResponse({"detail": "login required"}, status_code=401)
         elif not _logged_in(request):
             return JSONResponse({"detail": "login required"}, status_code=401)
     if request.url.path.startswith(_RL_PATHS) or request.method in ("POST", "PUT", "PATCH", "DELETE"):
@@ -480,6 +479,11 @@ async def _model_bootstrap() -> None:
             print(f"[startup] model check: {ok}/{len(results)} free models answering")
         except Exception as e:
             print(f"[startup] model check failed: {e}")
+        try:
+            n = await _mc.warmup_benchmarks(store)
+            print(f"[startup] benchmark cache warmed: {n} new CPUs")
+        except Exception as e:
+            print(f"[startup] benchmark warmup failed: {e}")
     except Exception:
         pass
 
@@ -543,22 +547,28 @@ for _sid, _intent in store.load_searches().items():
             SEEN_IDS[_sid] = {r["listing"]["id"] for r in _snap.get("results", [])}
         except Exception:
             pass
-static_dir = Path(__file__).resolve().parents[2] / "web"
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 v2_dir = Path(__file__).resolve().parents[2] / "web-v2" / "dist"
 if (v2_dir / "assets").exists():
     app.mount("/v2assets", StaticFiles(directory=str(v2_dir)), name="v2assets")
 
 
-@app.get("/v2", response_class=HTMLResponse)
-@app.get("/v2/{path:path}", response_class=HTMLResponse)
-def v2_spa(path: str = ""):
-    """Vue rebuild preview (same backend, same auth). Cutover to / when journeys pass."""
+def _spa() -> HTMLResponse:
+    """Vue app (only frontend). Cut over from v1 2026-10-09."""
     idx = Path(__file__).resolve().parents[2] / "web-v2" / "dist" / "index.html"
     if not idx.exists():
-        return HTMLResponse("<h1>v2 not built yet (npm run build in web-v2)</h1>", status_code=503)
+        return HTMLResponse("<h1>frontend not built yet (npm run build in web-v2)</h1>", status_code=503)
     return HTMLResponse(idx.read_text(), headers={"Cache-Control": "no-store"})
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    return Response(status_code=204)
+
+
+@app.get("/v2", response_class=HTMLResponse)
+@app.get("/v2/{path:path}", response_class=HTMLResponse)
+async def v2_gone(path: str = ""):
+    return RedirectResponse("/" + path if path else "/", status_code=301)
 
 
 class SearchIntent(BaseModel):
@@ -587,31 +597,9 @@ class SearchIntent(BaseModel):
     require_shipping: bool = False
 
 
-_ASSET_VER: dict[str, str] = {}
-
-
-def _asset(name: str) -> str:
-    """Cache-busted static URL: /static/app.js?v=<sha8>."""
-    if name not in _ASSET_VER:
-        import hashlib as _h
-        p = Path(__file__).resolve().parents[2] / "web" / name
-        _ASSET_VER[name] = _h.sha256(p.read_bytes()).hexdigest()[:8] if p.exists() else "0"
-    return f"/static/{name}?v={_ASSET_VER[name]}"
-
-
-def _page(name: str, fallback: str) -> HTMLResponse:
-    p = Path(__file__).resolve().parents[2] / "web" / name
-    if not p.exists():
-        return HTMLResponse(fallback)
-    html = p.read_text()
-    for js in ("app.js", "admin.js"):
-        html = html.replace(f"/static/{js}", _asset(js))
-    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
-
-
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return _page("index.html", "<h1>deal-radar up. See /docs</h1>")
+    return _spa()
 
 
 @app.get("/health")
@@ -737,7 +725,14 @@ def metrics_json():
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin():
-    return _page("admin.html", "<h1>admin missing</h1>")
+    return _spa()
+
+
+for _spa_path in ("saved", "watches", "compare", "gems", "store", "history", "lab", "login"):
+    def _spa_route(_p: str = _spa_path) -> HTMLResponse:
+        return _spa()
+    _spa_route.__name__ = f"spa_{_spa_path}"
+    app.get("/" + _spa_path, response_class=HTMLResponse)(_spa_route)
 
 
 @app.get("/auth/status")
@@ -1380,7 +1375,7 @@ async def start_hunt_pack(pack: str = "value"):
             "note": "three searches running; POST /advise {search_ids: [...]} when done"}
 
 
-@app.get("/gems")
+@app.get("/gems/board")
 async def gems(min_bench: int = 8000, days: float = 14.0, limit: int = 30,
                systems_only: bool = True, favs: bool = False, advise: bool = False,
                note: str = ""):

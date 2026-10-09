@@ -75,3 +75,46 @@ async def probe_all(timeout_each: float = 45.0) -> list[dict]:
     for r in out:
         r["ts"] = _t.time()
     return out
+
+
+async def warmup_benchmarks(store, cap: int = 120) -> int:
+    """Rebuild the PassMark disk cache after deploys: distinct CPUs from recent
+    listings, cached hits free, uncached fetched politely. Returns warmed count."""
+    import asyncio as _aio
+    import time as _t
+
+    from . import benchmarks as _b
+    from .scoring import extract_cpu
+    try:
+        rows = store.db.execute(
+            "SELECT DISTINCT title FROM listings WHERE last_seen >= ? LIMIT 5000",
+            (_t.time() - 14 * 86400,)).fetchall()
+    except Exception:
+        return 0
+    cpus: list[str] = []
+    seen: set[str] = set()
+    for (title,) in rows:
+        try:
+            cpu, _, _ = extract_cpu(f"{title or ''}")
+        except Exception:
+            continue
+        if cpu and cpu not in seen:
+            seen.add(cpu)
+            cpus.append(cpu)
+        if len(cpus) >= cap:
+            break
+    warmed = 0
+    for cpu in cpus:
+        try:
+            from .benchmarks import cached_cpu as _cc
+            if _cc(cpu):
+                continue
+            await _aio.to_thread(_b.fetch_passmark_cpu, cpu)
+            warmed += 1
+        except Exception:
+            pass
+        try:
+            await _aio.sleep(1.0)  # polite: ~1 req/s max on cold misses
+        except Exception:
+            pass
+    return warmed
