@@ -1359,6 +1359,17 @@ HUNT_PACKS = {
          "sources": None, "limit": None, "max_pages": None,
          "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
     ],
+    "ai-rig": [
+        {"keywords": "mac studio ultra OR dgx spark",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+        {"keywords": "rtx 3090 OR rtx 4090 OR rtx 5090",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+        {"keywords": "strix halo OR evo-x2 OR 128gb",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+    ],
 }
 
 
@@ -1367,7 +1378,7 @@ async def start_hunt_pack(pack: str = "value"):
     """One click, three broad unlimited searches (mini PCs, laptops/desktops, high-end).
     Then POST /advise with the returned ids for the full AI summary."""
     if pack not in HUNT_PACKS:
-        return JSONResponse({"error": "unknown pack (try 'value')"}, status_code=404)
+        return JSONResponse({"error": "unknown pack (try 'value' or 'ai-rig')"}, status_code=404)
     ids = []
     for q in HUNT_PACKS[pack]:
         intent = SearchIntent(keywords=q["keywords"], sources=q["sources"],

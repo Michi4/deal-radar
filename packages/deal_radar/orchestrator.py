@@ -433,7 +433,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
         if bench is None:
             bench = next((e.value for e in enrich if e.field == "gpu_benchmark"), None)
-        val, val_why = value_score(l.price, bench, median)
+        val, val_why = value_score(l.price, bench, median, l.currency)
         if h.get("kind", "offer") != "offer":
             # boxes/coolers/cables/parts can never top a value ranking, however cheap
             val = round(val * 0.2, 3)
@@ -737,7 +737,7 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                                                         sources=[Evidence(type="external", detail="transferred with CPU")]))
                 s.why.append(f"CPU {dcpu} transferred from same-model listing")
                 metrics.inc("cpu_transferred")
-                s.value_score, _vw = value_score(s.listing.price, dbench, median)
+                s.value_score, _vw = value_score(s.listing.price, dbench, median, s.listing.currency)
                 s.final_score = rank(s.match_score, s.value_score, s.risk.score,
                                      s.deal_dna.get("completeness", 0.5), intent.get("ranking", None))
         scored.sort(key=lambda s: s.final_score, reverse=True)

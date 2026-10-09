@@ -1693,3 +1693,33 @@ def test_ram_and_brand_guard():
     assert h("ThinkPad T14 16GB Arbeitsspeicher 512GB") == "offer"
     assert h("Thinkpad X1 Carbon Gen 8 i7") == "offer"
     assert h("Beelink EQR5 Windows 11 Plus Tastatur Maus") == "offer"
+
+
+def test_gpu_specs_vram_bw_multigpu_unified_fx():
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.scoring import (
+        enrich_gpu,
+        extract_unified_mem,
+        lookup_gpu_spec,
+        to_eur,
+        value_score,
+    )
+    assert lookup_gpu_spec("RTX 3090") == {"vram": 24, "bw": 936}
+    assert lookup_gpu_spec("Mac Studio M1 Ultra 128GB") == {"vram": 128, "bw": 800}
+    assert lookup_gpu_spec("ryzen ai max+ 395") == {"vram": 128, "bw": 256}
+    assert lookup_gpu_spec("toaster") is None
+    mk = lambda t, d="": CanonicalListing(id="t", source="t", native_id="t", url="u",
+                                          title=t, description=d, price=1000.0,
+                                          seller=Seller(name="s"))
+    es = {e.field: e.value for e in enrich_gpu(mk("2x RTX 3090 24GB mining rig"))}
+    assert es.get("gpu_count") == 2 and es.get("gpu_vram") == 48
+    assert es.get("gpu_bw") == 936 and es.get("gpu_est_tps") == round(936 / 7)
+    assert extract_unified_mem("Mac Studio M1 Ultra 128GB unified memory") == 128
+    assert extract_unified_mem("plain laptop 16gb") is None
+    es2 = {e.field: e.value for e in enrich_gpu(mk("Mac Studio M2 Ultra 192GB"))}
+    assert es2.get("gpu_mem_total") == 192
+    assert to_eur(100, "EUR") == 100 and to_eur(108, "USD") == 100.0
+    assert to_eur(None, "USD") is None
+    v_eur, _ = value_score(500, 15000, 600)
+    v_usd, _ = value_score(540, 15000, 600, "USD")  # 540 USD ~= 500 EUR
+    assert abs(v_eur - v_usd) < 0.05, (v_eur, v_usd)

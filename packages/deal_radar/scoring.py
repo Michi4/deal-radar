@@ -500,6 +500,38 @@ _IGPU_FULL = re.compile(r"arc\s*1[34]0[vt]|radeon\s*[678]8\d\s*m|\b[678]80m\b|rx
                         r"\bvega\s*(?:graphics\s*)?\d+", re.IGNORECASE)
 
 
+# vendor-published specs (stable): VRAM GB + memory bandwidth GB/s.
+# est_tps_13b = bw / 7 ≈ tokens/s ceiling for a 13B-active Q4 MoE (DeepSeek-class);
+# real-world lands at 40-70% of ceiling (framework overhead, batch=1).
+GPU_SPECS = {
+    "5090": {"vram": 32, "bw": 1792}, "5080": {"vram": 16, "bw": 960},
+    "4090": {"vram": 24, "bw": 1008}, "4080": {"vram": 16, "bw": 717},
+    "3090": {"vram": 24, "bw": 936}, "3080": {"vram": 12, "bw": 912},
+    "4070": {"vram": 12, "bw": 504}, "7900xtx": {"vram": 24, "bw": 960},
+    "9070xt": {"vram": 16, "bw": 640}, "7900xt": {"vram": 20, "bw": 800},
+    "p40": {"vram": 24, "bw": 346}, "p100": {"vram": 16, "bw": 732},
+    "v100": {"vram": 16, "bw": 900}, "a100": {"vram": 80, "bw": 2039},
+    "h100": {"vram": 80, "bw": 3350}, "a6000": {"vram": 48, "bw": 768},
+    "6000ada": {"vram": 48, "bw": 960}, "titanrtx": {"vram": 24, "bw": 672},
+    "2080ti": {"vram": 11, "bw": 616}, "1080ti": {"vram": 11, "bw": 484},
+    "m1max": {"vram": 64, "bw": 400}, "m1ultra": {"vram": 128, "bw": 800},
+    "m2max": {"vram": 96, "bw": 400}, "m2ultra": {"vram": 192, "bw": 800},
+    "m3max": {"vram": 128, "bw": 400}, "m3ultra": {"vram": 512, "bw": 800},
+    "m4max": {"vram": 128, "bw": 546}, "gb10": {"vram": 128, "bw": 273},
+    "dgxspark": {"vram": 128, "bw": 273}, "aimax": {"vram": 128, "bw": 256},
+    "strixhalo": {"vram": 128, "bw": 256},
+}
+
+
+def lookup_gpu_spec(name: str) -> dict | None:
+    """Static VRAM/bandwidth by normalized GPU name (no network)."""
+    n = re.sub(r"[^a-z0-9]+", "", (name or "").lower())
+    for key in sorted(GPU_SPECS, key=len, reverse=True):
+        if key and key in n:
+            return dict(GPU_SPECS[key])
+    return None
+
+
 def extract_gpu(text: str) -> tuple[str | None, float, str]:
     t = text.lower()
     for pat in GPU_PATS:
@@ -515,10 +547,65 @@ def enrich_gpu(listing: CanonicalListing) -> list[EnrichmentFact]:
     blob = f"{listing.title}\n{listing.description}\n{' '.join(listing.ocr_texts)}"
     gpu, conf, ev = extract_gpu(blob)
     if not gpu or conf < 0.7:
+        uni = extract_unified_mem(blob)
+        if uni:
+            return [EnrichmentFact(field="gpu_mem_total", value=uni, confidence=0.7,
+                                   status=FactStatus.AI_INFERRED,
+                                   sources=[Evidence(type="description",
+                                                     detail=f"unified memory {uni}GB (no discrete GPU)",
+                                                     confidence=0.7)])]
         return []
-    return [EnrichmentFact(field="gpu", value=gpu, confidence=conf,
-                           status=FactStatus.AI_INFERRED if conf < 0.85 else FactStatus.SUPPORTED,
-                           sources=[Evidence(type="description", detail=ev, confidence=conf)])]
+    facts = [EnrichmentFact(field="gpu", value=gpu, confidence=conf,
+                            status=FactStatus.AI_INFERRED if conf < 0.85 else FactStatus.SUPPORTED,
+                            sources=[Evidence(type="description", detail=ev, confidence=conf)])]
+    mcount = re.search(r"(\d+)\s*[x×]\s*(?:rtx|gtx|rx|arc|tesla|quadro|radeon|titan|geforce)", blob.lower())
+    count = max(1, min(8, int(mcount.group(1)))) if mcount else 1
+    if count > 1:
+        facts.append(EnrichmentFact(field="gpu_count", value=count, confidence=0.8,
+                                    status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail=f"{count}x multi-GPU", confidence=0.8)]))
+    spec = lookup_gpu_spec(gpu)
+    if spec:
+        facts.append(EnrichmentFact(field="gpu_vram", value=spec["vram"] * count, confidence=0.9,
+                                    status=FactStatus.EXTERNAL,
+                                    sources=[Evidence(type="external", detail="vendor spec", confidence=0.9)]))
+        facts.append(EnrichmentFact(field="gpu_bw", value=spec["bw"], confidence=0.9,
+                                    status=FactStatus.EXTERNAL,
+                                    sources=[Evidence(type="external",
+                                                      detail="vendor GB/s (single-GPU rate; multi-GPU without NVLink stays ~single)",
+                                                      confidence=0.9)]))
+        facts.append(EnrichmentFact(field="gpu_est_tps", value=round(spec["bw"] / 7),
+                                    confidence=0.5, status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail="rough tok/s ceiling for 13B-active Q4 MoE (real: 40-70%)",
+                                                      confidence=0.5)]))
+    return facts
+
+
+def extract_unified_mem(text: str) -> int | None:
+    """Unified-memory total GB for Apple Silicon / Strix Halo / DGX Spark (no dGPU)."""
+    t = text.lower()
+    m = re.search(r"(m[1-4]\s*(?:ultra|max|pro)|ryzen ai max|strix halo|gb10|dgx spark|apple\s*m\d)[^.:\n]{0,50}?(\d{2,3})\s*gb", t)
+    if m:
+        return int(m.group(2))
+    m = re.search(r"(\d{2,3})\s*gb\s*(unified|gemeinsamer|shared)\s*(memory|speicher|ram)?", t)
+    if m and int(m.group(1)) >= 32:
+        return int(m.group(1))
+    return None
+
+
+# units-per-EUR deck rates (estimate, check ECB for exact). Only used when a
+# listing prices in non-EUR (eBay/ricardo paths); EUR listings are untouched.
+FX_PER_EUR = {"EUR": 1.0, "€": 1.0, "USD": 1.08, "$": 1.08, "CHF": 0.94,
+              "GBP": 0.85, "CZK": 25.1, "PLN": 4.32, "HUF": 390.0, "RON": 4.97}
+
+
+def to_eur(price: float | None, currency: str | None) -> float | None:
+    if price is None:
+        return None
+    rate = FX_PER_EUR.get((currency or "EUR").upper(), 1.0)
+    return round(price / rate, 2) if rate else price
 
 
 def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
@@ -565,8 +652,9 @@ def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
 
 
 def value_score(price: float | None, benchmark: float | None,
-                market_median: float | None) -> tuple[float, list[str]]:
+                market_median: float | None, currency: str | None = "EUR") -> tuple[float, list[str]]:
     why: list[str] = []
+    price = to_eur(price, currency)
     if price is None or price <= 0:
         return 0.5, ["no price -> neutral"]
     parts: list[float] = []
