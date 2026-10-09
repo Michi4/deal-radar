@@ -5,6 +5,7 @@ Gentle: 1 req/s max, 30-day disk cache, static DB fallback. Never raises.
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import time
@@ -19,7 +20,13 @@ STATIC_DB = {
     "m1": 17500, "m2": 19500, "m3": 23000, "i5-1135g7": 13500,
 }
 
-_cache_path = Path("data/benchmarks.json")
+def _cache_path() -> Path:
+    """Benchmark cache lives next to the database (persistent volume), never in
+    the ephemeral app dir (rebuilds used to wipe it)."""
+    try:
+        return Path(os.getenv("DB_PATH", "data/dealradar.db")).parent / "benchmarks.json"
+    except Exception:
+        return Path("data/benchmarks.json")
 _mem: dict[str, dict] = {}
 _lock = threading.Lock()
 _last_req = 0.0
@@ -27,8 +34,9 @@ _last_req = 0.0
 
 def _load() -> dict:
     try:
-        if _cache_path.exists():
-            return json.loads(_cache_path.read_text())
+        cp = _cache_path()
+        if cp.exists():
+            return json.loads(cp.read_text())
     except Exception:
         pass
     return {}
@@ -223,8 +231,9 @@ def fetch_passmark_cpu(cpu: str, cache_days: int = 30) -> dict | None:
             disk = _load()
             disk[key] = out
             try:
-                _cache_path.parent.mkdir(parents=True, exist_ok=True)
-                _cache_path.write_text(json.dumps(disk))
+                cp = _cache_path()
+                cp.parent.mkdir(parents=True, exist_ok=True)
+                cp.write_text(json.dumps(disk))
             except Exception:
                 pass
         return out
