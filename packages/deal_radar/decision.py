@@ -655,7 +655,8 @@ def heuristic_decide(title: str, description: str, price: float | None,
     _title = (title or "").lower()
     _has_compute = bool(_re.search(r"mini\s*pc|\bpc\b|laptop|notebook|cpu|prozessor|computer|rechner|"
                                    r"nuc|thinkcentre|optiplex|elitedesk|prodesk|imac|mac\s*mini|server|workstation|"
-                                   r"ryzen|intel|\bcore\b|ultra|athlon|"
+                                   r"thinkpad|latitude|elitebook|ideapad|yoga|legion|probook|zbook|"
+                                   r"ryzen|intel(?!\s*xmp)|\bcore\b|ultra|athlon|"
                                    r"beelink|minisforum|geekom|gmktec|aoostar|nipogi|acemagic|acemagician|"
                                    r"firebat|chuwi|bosgame|mllse|topc|zotac|asus|lenovo|hp|dell|fujitsu|terra|thomson|soyo",
                                    _title))
@@ -664,7 +665,7 @@ def heuristic_decide(title: str, description: str, price: float | None,
     # or "ryzen 5 2600 + wraith kühler" stay offers, just value-capped by kind)
     _periph_stems = ("tastatur", "keyboard", "touchpad", "maus", "mouse", "ddr2", "ddr3",
                      "sodimm", "dimm", "speicherriegel", "kühler", "kuehler", "cooler",
-                     "lüfter", "luefter")
+                     "lüfter", "luefter", "arbeitsspeicher", "valu ram", "valueram")
     accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff)\b", hay)) \
         or any(s in _title for s in _acc_stems) \
         or (not _has_compute and any(s in _title for s in _periph_stems))

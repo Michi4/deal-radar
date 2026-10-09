@@ -1675,3 +1675,21 @@ def test_ram_speed_not_cpu():
     from deal_radar.scoring import extract_cpu
     assert extract_cpu("verkaufe 2x 512 mb ddr2 ram pc2-5300u")[0] is None
     assert extract_cpu("ryzen 5 5600u 16gb ddr4")[0] == "Ryzen 5 5600U"
+
+
+def test_xmp_ram_is_accessory():
+    from deal_radar.decision import heuristic_decide
+    assert heuristic_decide("Crucial Ballistix Sport Gaming 16GB DDR3 (2x8GB KIT) INTEL XMP",
+                            "", 70, "ram")["kind"] == "accessory"
+    assert heuristic_decide("Intel Core i5-12450H Mini PC", "", 300, "mini pc")["kind"] == "offer"
+    assert heuristic_decide("Kingston ValueRAM DDR4-2400 4GB", "", 14, "ram")["kind"] == "accessory"
+
+
+def test_ram_and_brand_guard():
+    from deal_radar.decision import heuristic_decide
+    h = lambda t: heuristic_decide(t, "", 100, "x")["kind"]
+    assert h("Kingston ValueRAM DDR4-2400 4GB") == "accessory"
+    assert h("Crucial Ballistix Sport Gaming 16GB DDR3 (2x8GB KIT) INTEL XMP") == "accessory"
+    assert h("ThinkPad T14 16GB Arbeitsspeicher 512GB") == "offer"
+    assert h("Thinkpad X1 Carbon Gen 8 i7") == "offer"
+    assert h("Beelink EQR5 Windows 11 Plus Tastatur Maus") == "offer"
