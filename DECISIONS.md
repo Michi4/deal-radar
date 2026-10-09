@@ -218,3 +218,18 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   (snapshots silently never saved — reopen-instant + advise-on-old now work).
 - Known remaining noise: cooler-subject bundles with CPU names stay offers (visible,
   capped); vinted 403s come and go (honest errors, retry/proxy).
+
+## 2026-10-09 — alert quality + junk war + persistent caches
+- Spec lines now recover the CPU from text when no fact exists (marked "?"), never
+  print storage as CPU, and include GPU + G3D. MT/ST marks + RAM/storage + description
+  snippet in every price/new-match/tracked alert.
+- Spam autopsy: watches sent "Search done" on EVERY poll (now one-shots only) and
+  hidden-lane junk price-drops pinged (now logged-only). Rate-limit lockout surfaces
+  its message in LoginView instead of "wrong password".
+- Junk demotion: box-only/cooler/keyboard/RAM-stick title cues (multilingual) with a
+  bundle guard (real PCs with "+Tastatur+Maus" stay offers); non-offer kinds get 5x
+  value caps so boxes/coolers/cables can never top perf/€; RAM-speed guard
+  ("PC2-5300U", "MHz", "DIMM") in both CPU branches; iGPU patterns (Arc 130V/140V/140T,
+  780M/880M/890M, Vega) with full confidence.
+- Benchmark cache moved next to the DB (persistent volume) — rebuilds used to wipe it.
+- Snapshot datetime fix shipped: old searches reopen instantly, advise works on them.
