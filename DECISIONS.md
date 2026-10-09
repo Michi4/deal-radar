@@ -201,3 +201,20 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   other source's sighting attaches as `also_on` (+ why-line, metric). Shown as
   "also on: X €Y" chips in v1 cards + v2 ResultCard (types + refilter mapping updated).
   Lesson: attach MUST be a post-pass (scoring is inline, dupes arrive later).
+
+## 2026-10-09 — mini-PC value hunt: 35k listings, gems found, app hardened
+- Hunted 13,933 unique listings (8 mini/brand/office/high-end + 3 laptop/desktop/server
+  queries, unlimited, all 6 drivers) with live PassMark on everything. Best measured:
+  Ultra 9 285H ES barebone 375€ (150.5 pts/€, mobile page verified: FCBGA2114/55W),
+  UN1290 i9-12900 32GB 409€ (106/€), 7900 gaming PC 450€ (113.8/€), X1-255 barebone
+  310€ (92.7/€), AOOSTAR 8845HS barebone 299€ (94.5/€, ~71 true after RAM/SSD).
+- AI advise proven live (not fallback): ranked 60, caught the 13900H/HX score
+  inflation + the fake-'m3' listing + barebone hidden costs on its own.
+- Fixed from user feedback: watch polls no longer send "Search done" (spam source);
+  hidden-lane price drops logged-not-pinged; spec lines recover CPU from text +
+  never print storage as CPU; iGPU patterns (Arc 130V/140V/140T, 780M/880M/890M,
+  Vega); box/cooler/keyboard/RAM-stick kind demotion with bundle guard; kind-capped
+  value (non-systems can't top perf/€); seller tracking; snapshot datetime fix
+  (snapshots silently never saved — reopen-instant + advise-on-old now work).
+- Known remaining noise: cooler-subject bundles with CPU names stay offers (visible,
+  capped); vinted 403s come and go (honest errors, retry/proxy).
