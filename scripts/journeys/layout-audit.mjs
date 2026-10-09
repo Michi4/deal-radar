@@ -35,11 +35,10 @@ for (const width of VIEWPORTS) {
     const ctx = await browser.newContext({ viewport: { width, height: 900 } });
     const page = await ctx.newPage();
     const cerr = [];
-    // login once per context (prod gate; dev passes with empty password)
+    // login once per context (dev passes with empty password, prod needs DR_PASSWORD)
     await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(async (pw) => {
-      if (!document.querySelector('.loginwrap')) return;
-      await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+      try { await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) }); } catch (e) {}
     }, PW);
     page.on('console', (m) => { if (m.type() === 'error') cerr.push(m.text().slice(0, 140)); });
     page.on('console', (m) => { if (m.type() === 'error') cerr.push(m.text().slice(0, 140)); });

@@ -19,8 +19,7 @@ const perr = [];
 page.on('pageerror', (e) => perr.push(String(e).slice(0, 160)));
 await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.evaluate(async (pw) => {
-  if (!document.querySelector('.loginwrap')) return;
-  await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+  try { await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) }); } catch (e) {}
 }, PW);
 await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction(() => !!document.querySelector('.modeseg'), null, { timeout: 30000 });

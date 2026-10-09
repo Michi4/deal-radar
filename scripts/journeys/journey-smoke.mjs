@@ -23,9 +23,8 @@ const created = [];
 
 try {
   await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-  // login if the app gate shows the login view (prod); dev (no password) passes through
+  // always login (dev passes with empty password, prod needs DR_PASSWORD)
   const loggedIn = await page.evaluate(async (pw) => {
-    if (!document.querySelector('.loginwrap')) return true;
     const r = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
     return r.ok;
   }, PW);
