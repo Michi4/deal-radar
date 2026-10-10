@@ -316,3 +316,14 @@ guessing, no session/CSRF, no webapi — one plain search GET, same as the drive
   defensive parsing of promoted/regular shapes, PLN via FX table, pagination to
   exhaustion). Same honest pattern as eBay: real code, mocked contract tests, clean
   error until the owner pastes 2 self-serve values. Live proof pending creds.
+
+## 2026-10-10 — 512GB verdict: single-Rome + 512GB DDR4 + dual-3090 (~4k EUR)
+- Framework correction: 128GB board is $3,149 (not ~$2k) -> 2x = ~5.8k EUR for 256GB.
+  Dead for 512GB, dead-ish under 6k. Owner caught it, estimate withdrawn.
+- DDR5 RDIMM prices kill Genoa-DDR5-512 (32GB DDR5 ECC 449-899 EUR/stick; 64GB 1550).
+  DDR4 RDIMM stays 3-4x cheaper per GB (bulk 32s ~50 EUR/stick).
+- Live winner: single EPYC 7302 95 EUR + used SP3 board + 16x32GB DDR4 ~800 EUR +
+  chassis ~300 EUR + 2x used 3090 ~2400 EUR + NVLink 160 EUR = ~3700-4000 EUR for
+  TRUE 512GB + 48GB VRAM, single-stream MoE-friendly (no network penalty ever).
+- Unified-512 under 6k does not exist (M3U-512 8k+, 4xHalo 9k+, DGX-2 17k+ for old V100).
+- V100 route stays dead (pipeline math + 5kW + IQ2-max + chassis costs).
