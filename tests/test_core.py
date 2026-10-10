@@ -473,7 +473,7 @@ def test_gpu_table_and_extract():
     html = _P(__file__).parent.joinpath("fixtures/gpu-list.html").read_text(encoding="utf-8", errors="ignore")
     table = parse_gpu_list(html)
     assert len(table) > 1000
-    assert table["geforcertx3060"]["g3d"] == 16882
+    assert table["geforce rtx 3060"]["g3d"] == 16882
     g, conf, _ = extract_gpu("Legion 5 RTX 3060 16GB")
     assert g == "rtx 3060" and conf >= 0.7
     assert extract_gpu("nice laptop")[0] is None
@@ -1087,9 +1087,9 @@ def test_gems_board_and_hunt_pack():
                           price=5.0, seller=Seller(name="s"))
     st.upsert(l1)
     st.upsert(l2)
-    fake_bench = {"v2:ryzen 7 8845hs": {"multi": 28261, "single": 3718, "tdp": "45 W",
+    fake_bench = {"v3:ryzen 7 8845hs": {"multi": 28261, "single": 3718, "tdp": "45 W",
                                         "source": "t", "ts": 9999999999.0},
-                  "v2:ryzen 9 5900x": {"multi": 43826, "single": 3493, "tdp": "105 W",
+                  "v3:ryzen 9 5900x": {"multi": 43826, "single": 3493, "tdp": "105 W",
                                         "source": "t", "ts": 9999999999.0}}
     with patch.dict("deal_radar.benchmarks._mem", {}, clear=True), \
          patch("deal_radar.benchmarks._load", return_value=dict(fake_bench)):

@@ -1825,3 +1825,16 @@ def test_allegro_driver_contract():
         _os2.environ.pop("ALLEGRO_CLIENT_ID", None)
         _os2.environ.pop("ALLEGRO_CLIENT_SECRET", None)
     assert AllegroDriver.configured() is False
+
+
+def test_title_match_rejects_hx_sibling():
+    """Regression: the 285HX page (56k) passed substring verification for a 285H
+    query (real: 34k). Whole-token matching only."""
+    from deal_radar.benchmarks import _title_matches
+    assert _title_matches("Core Ultra 9 285H", "Intel Core Ultra 9 285H Benchmark") is True
+    assert _title_matches("Core Ultra 9 285H", "Intel Core Ultra 9 285HX Benchmark") is False
+    assert _title_matches("i7-12700", "Intel Core i7-12700K Benchmark") is False
+    assert _title_matches("i7-12700", "Intel Core i7-12700 Benchmark") is True
+    assert _title_matches("Ryzen 9 5900X", "AMD Ryzen 9 5900X Benchmark") is True
+    assert _title_matches("Ryzen 9 5900X", "AMD Ryzen 9 5900XT Benchmark") is False
+    assert _title_matches("M1", "Apple M1 Benchmark") is True

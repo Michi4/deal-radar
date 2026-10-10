@@ -42,9 +42,24 @@ def _load() -> dict:
     return {}
 
 
+def _title_matches(cpu: str, title: str) -> bool:
+    """Strict title verification: the CPU's trailing model token must appear as a
+    WHOLE token in the page title. Substring matching once accepted the 285HX page
+    (56k) for a 285H query (real: 34k) — a 65% inflation. Never again."""
+    cnorm = _norm(cpu)
+    tnorm = _norm(title)
+    if not cnorm:
+        return False
+    compact = tnorm.replace(" ", "")
+    if cnorm not in tnorm and cnorm.replace(" ", "") not in compact:
+        return False
+    token = cnorm.split()[-1]
+    return token in tnorm.split()
+
+
 def cached_cpu(cpu: str) -> dict | None:
     """PassMark entry from memory/disk cache only (None when never fetched)."""
-    key = "v2:" + cpu.strip().lower()
+    key = "v3:" + cpu.strip().lower()
     if key in _mem:
         return _mem[key]
     try:
@@ -204,13 +219,13 @@ def parse_passmark_full(html: str) -> dict:
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", s.lower())
+    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
 def fetch_passmark_cpu(cpu: str, cache_days: int = 30) -> dict | None:
     """Returns {multi, single, ...} or None. Cached; static fallback handled by caller.
     VERIFIES the result page is actually about the requested CPU (fuzzy endpoint lies)."""
-    key = "v2:" + cpu.strip().lower()  # v2: title-verified entries only
+    key = "v3:" + cpu.strip().lower()  # v3: strict-token title-verified entries only
     with _lock:
         if key in _mem:
             return _mem[key]
@@ -231,9 +246,10 @@ def fetch_passmark_cpu(cpu: str, cache_days: int = 30) -> dict | None:
             _last_req = time.time()
         if r.status_code != 200:
             return None
-        # title check: "AMD Ryzen 5 PRO 5650U Benchmark" must contain the requested CPU
+        # strict token check: the page must be about THIS exact CPU, not a
+        # same-prefix sibling (285HX page once passed for a 285H query)
         title = re.search(r"<title>([^<]{3,120})", r.text)
-        if not title or _norm(cpu) not in _norm(title.group(1)):
+        if not title or not _title_matches(cpu, title.group(1)):
             return None  # fuzzy endpoint returned a different CPU — refuse wrong scores
         multi, single = parse_passmark_detail(r.text)
         if multi is None:
