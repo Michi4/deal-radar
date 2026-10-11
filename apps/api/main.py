@@ -1267,6 +1267,10 @@ def _adv_item(r: dict) -> dict:
         bench = float(es.get("cpu_benchmark") or 0) or None
     except (TypeError, ValueError):
         bench = None
+    targets = {}
+    if bench:
+        targets = {"pay_for_90": round(bench / 90, 0), "pay_for_100": round(bench / 100, 0),
+                   "pay_for_120": round(bench / 120, 0)}
     try:
         tdp = float(str(es.get("cpu_tdp") or "").split()[0]) if es.get("cpu_tdp") else None
     except (TypeError, ValueError, IndexError):
@@ -1280,6 +1284,7 @@ def _adv_item(r: dict) -> dict:
             "single": es.get("cpu_single"), "tdp_w": tdp,
             "perf_euro": round(bench / price, 1) if bench and price else None,
             "perf_watt": round(bench / tdp, 1) if bench and tdp else None,
+            "offer_targets": targets,
             "risk": rk.get("score") if isinstance(rk, dict) else rk}
 
 
@@ -1288,7 +1293,9 @@ ADVISE_SYSTEM = ("You are a brutally honest used-hardware buying advisor. Rank t
                  "(benchmark marks, price, TDP) over marketing. Flag scams, ES/QS samples, "
                  "missing RAM/storage (barebone), and prices far from plausible. "
                  "Return ONLY JSON: {summary (3-5 sentences), best_buy_url, "
-                 "picks: [{url, rank, verdict (1 line), pros [max 3], cons [max 3]}] (best first, max 10), "
+                 "picks: [{url, rank, verdict (1 line), offer (exact max price to offer for "
+                 "100 pts/EUR value, or 'take it' if already there), pros [max 3], cons [max 3]}] "
+                 "(best first, max 10), "
                  "honest_flags [strings for shady items]}.")
 
 
@@ -1340,6 +1347,8 @@ async def advise(req: AdviseReq):
                   "verdict": (f"{it['cpu'] or 'unknown CPU'} at {it['price']}€ = "
                               f"{it['perf_euro']} pts/€" if it.get("perf_euro")
                               else f"{it['cpu'] or 'unknown CPU'} at {it['price']}€ (no benchmark — verify CPU)"),
+                  "offer": (f"offer {it['offer_targets']['pay_for_100']}€ for 100 pts/€"
+                            if it.get("offer_targets") else "no data"),
                   "pros": [f"{it['multi']} multithread marks"] if it.get("multi") else [],
                   "cons": ["no benchmark data — CPU unverified"] if not it.get("multi") else []}
                  for i, it in enumerate(cand[:10]) if it["url"]]

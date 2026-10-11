@@ -15,6 +15,7 @@
         <ol>
           <li v-for="p in advice.picks || []" :key="p.url">
             <b>#{{ p.rank }}</b> {{ p.verdict }}
+            <div v-if="p.offer"><small><b>offer: {{ p.offer }}</b></small></div>
             <div><small>plus: {{ (p.pros || []).join(' · ') }}</small></div>
             <div><small>minus: {{ (p.cons || []).join(' · ') }}</small></div>
             <div><a :href="p.url" target="_blank" rel="noopener">open listing</a></div>
@@ -64,7 +65,7 @@ import { useUi } from '@/stores/ui';
 
 const ui = useUi();
 interface Row { cpu?: string; price?: number; currency?: string; title?: string; source?: string; url?: string; image?: string; multi?: number; single?: number; ppe?: number; ppw?: number; kind?: string; fav?: boolean }
-interface Board { ppe: Row[]; efficient: Row[]; ppw: Row[]; raw: Row[]; items?: number; unrated?: number; advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } }
+interface Board { ppe: Row[]; efficient: Row[]; ppw: Row[]; raw: Row[]; items?: number; unrated?: number; advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; offer?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } }
 const board = ref<Board | null>(null);
 const favOnly = ref(false);
 const busy = ref(false);

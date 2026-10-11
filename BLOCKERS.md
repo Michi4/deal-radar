@@ -105,3 +105,13 @@
   exemption clicks (developer.ebay.com -> Keys -> Alerts & Notifications -> flip
   "Not persisting eBay data" ON -> Confirm -> reason "public catalog search only" ->
   Submit) — biggest remaining unlock (global new+used incl. US PCIe-A100/3090 supply).
+
+- [ ] New-product markets (owner: cover non-used too, evaluated 2026-10-11):
+  AliExpress: product data only via Affiliate API (Portals approval: account +
+  traffic-source review, commission-based) — no anonymous search API, pages are
+  Akamai-walled. Amazon: PA-API needs approved associate account + 3 qualifying
+  sales/180d. Alternate/notebooksbilliger/cyberport/Mindfactory/idealo: no open
+  product APIs at all. Geizhals: partner-only feed. NONE implementable without
+  approvals — if you want any of them, tell me which account to wire and I build
+  the driver the same day (same honest pattern as Allegro/eBay: real API code,
+  mocked tests, clean-errors until keys land).

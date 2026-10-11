@@ -123,6 +123,7 @@
       <ol>
         <li v-for="p in adv.advice?.picks || []" :key="p.url">
           <b>#{{ p.rank }}</b> {{ p.verdict }}
+          <div v-if="p.offer"><small><b>offer: {{ p.offer }}</b></small></div>
           <div><small>plus: {{ (p.pros || []).join(' · ') }}</small></div>
           <div><small>minus: {{ (p.cons || []).join(' · ') }}</small></div>
         </li>
@@ -202,7 +203,7 @@ const nlApplied = ref<{ keywords: string; models?: string[]; blacklist?: string[
 const statusLine = ref('');
 const driverNotes = ref('');
 const unknownNote = ref('');
-const adv = ref<{ advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } } | null>(null);
+const adv = ref<{ advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; offer?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } } | null>(null);
 const advBusy = ref(false);
 const advFavs = ref(false);
 async function askAdvise() {

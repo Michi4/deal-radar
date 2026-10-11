@@ -1188,3 +1188,27 @@ def test_job_ids_unique_under_burst():
         assert len(ids) == 10, ids
         for sid in ids:
             m.JOBS.pop(sid, None)
+
+
+def test_advise_offer_targets():
+    import sys
+    from unittest.mock import AsyncMock, patch
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps"))
+    import api.main as m
+    from fastapi.testclient import TestClient
+
+    c = TestClient(m.app)
+    res = [{"listing": {"id": "t:1", "title": "Box 8845HS", "price": 300.0,
+                        "currency": "EUR", "source": "ka", "url": "https://x/1"},
+            "enrichments": [{"field": "cpu", "value": "Ryzen 7 8845HS"},
+                            {"field": "cpu_benchmark", "value": 28261}],
+            "risk": {"score": 0.1}}]
+    m.JOBS["adv2"] = {"status": "done", "result": {"results": res, "filtered": []}}
+    try:
+        with patch("deal_radar.decision.cloud_json", new=AsyncMock(return_value=None)):
+            r = c.post("/advise", json={"search_ids": ["adv2"]}).json()
+            pick = r["advice"]["picks"][0]
+            assert pick["offer"] == "offer 283.0€ for 100 pts/€", pick
+    finally:
+        m.JOBS.pop("adv2", None)
