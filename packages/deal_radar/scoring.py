@@ -115,6 +115,47 @@ MODEL_CPU_SEED.update({
     "thinkpad t470s": ["i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
     "thinkpad t460p": ["i5-6300HQ", "i5-6440HQ", "i7-6820HQ"],
     "thinkpad t470p": ["i5-7300HQ", "i7-7820HQ"],
+    # bare T-series classics (vinted titles often drop the "ThinkPad" prefix:
+    # "Lenovo T460 ..."). Same candidates as the prefixed keys above.
+    "t460": ["i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U"],
+    "t470": ["i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
+    "t480": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    "t490": ["i5-8265U", "i5-8365U", "i7-8565U", "i7-8665U"],
+    "t580": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    "t590": ["i5-8265U", "i7-8565U", "i7-8665U", "i7-9750H", "i7-9850H"],
+    "t560": ["i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U"],
+    "t570": ["i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
+    "t550": ["i5-5200U", "i5-5300U", "i7-5500U", "i7-5600U"],
+    # ThinkPad X-series classics (X250: Broadwell; X260/X270: Skylake/Kaby Lake;
+    # X280: Kaby Lake-R)
+    "thinkpad x250": ["i5-5200U", "i5-5300U", "i7-5600U"],
+    "x250": ["i5-5200U", "i5-5300U", "i7-5600U"],
+    "thinkpad x260": ["i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U"],
+    "x260": ["i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U"],
+    "thinkpad x270": ["i5-6200U", "i5-6300U", "i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
+    "x270": ["i5-6200U", "i5-6300U", "i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
+    "thinkpad x280": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    "x280": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    # ThinkPad X1 Extreme (Gen 1: 8750H/8850H; Gen 2: 9750H/9850H; Gen 3: 10750H/10850H;
+    # Gen 4: 11800H/11950H; Gen 5: 12700H/12800H/12900H)
+    "x1 extreme gen 1": ["i5-8400H", "i7-8750H", "i7-8850H", "Xeon E-2176M"],
+    "thinkpad x1 extreme gen 1": ["i5-8400H", "i7-8750H", "i7-8850H", "Xeon E-2176M"],
+    "x1 extreme gen 2": ["i5-9400H", "i7-9750H", "i7-9850H", "i9-9880H", "Xeon E-2276M"],
+    "thinkpad x1 extreme gen 2": ["i5-9400H", "i7-9750H", "i7-9850H", "i9-9880H"],
+    "x1 extreme gen 3": ["i5-10400H", "i7-10750H", "i7-10850H", "i9-10885H", "Xeon W-10855M"],
+    "thinkpad x1 extreme gen 3": ["i5-10400H", "i7-10750H", "i7-10850H", "i9-10885H"],
+    "x1 extreme gen 4": ["i7-11800H", "i9-11950H", "i9-11980HK"],
+    "thinkpad x1 extreme gen 4": ["i7-11800H", "i9-11950H", "i9-11980HK"],
+    "x1 extreme gen 5": ["i7-12700H", "i7-12800H", "i9-12900H"],
+    "thinkpad x1 extreme gen 5": ["i7-12700H", "i7-12800H", "i9-12900H"],
+    # Legion Y-gaming (Y520: Kaby Lake-H; Y540-15/17IRH: Coffee Lake-H Refresh)
+    "legion y520": ["i5-7300HQ", "i7-7700HQ"],
+    "legion y540": ["i5-9300H", "i7-9750H", "i7-9750HF"],
+    "legion y540-15irh": ["i5-9300H", "i7-9750H"],
+    "legion y540-17irh": ["i5-9300H", "i7-9750H"],
+    "legion y545": ["i5-9300H", "i7-9750H"],
+    "legion y7000": ["i5-8300H", "i7-8750H"],
+    "legion y730": ["i5-8300H", "i7-8750H"],
     "t15 gen 1": ["i5-10210U", "i5-10310U", "i7-10510U", "i7-10610U", "i7-10710U"],
     "thinkpad t15 gen 1": ["i5-10210U", "i7-10510U", "i7-10710U"],
     "t15 gen 2": ["i5-1135G7", "i7-1165G7", "i7-1185G7"],
@@ -343,8 +384,24 @@ async def resolve_cpu_candidates(model_name: str) -> list[str]:
     return cpus
 
 
+def strip_marketplace_suffix(text: str) -> str:
+    """Cut marketplace-appended metadata tails (vinted: ", Marke: X, Modell: Y,
+    Zustand: Z, ...") that dilute spec extraction. The Modell: value is kept
+    (it often names the exact machine, e.g. "ThinkPad X250") and appended to
+    the head; the rest of the metadata is dropped."""
+    import re as _re0
+    src = text or ""
+    keep = ""
+    m_mod = _re0.search(r"modell\s*:\s*([^,]{2,80})", src, _re0.IGNORECASE)
+    if m_mod:
+        keep = " " + m_mod.group(1).strip()
+    m = _re0.search(r",\s*marke\s*:", src, _re0.IGNORECASE)
+    head = src[:m.start()] if m else src
+    return (head.strip() + keep).strip()
+
+
 def extract_cpu(text: str) -> tuple[str | None, float, str]:
-    t = text.lower()
+    t = strip_marketplace_suffix(text).lower()
 
     def _apple_chip_ok(pos: int, length: int) -> bool:
         """Apple Silicon needs word boundaries AND context: AM18/M100/M330C/BMW M1
@@ -375,6 +432,27 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
         num = re.sub(r"\s+", "", m.group(2)).upper()
         g = f"Core Ultra {m.group(1)} {num}"
         return g, 0.8, f"mentioned '{g}'"
+    # Intel Core Ultra X (Panther Lake+): "Ultra X7 358H", "Core Ultra X9".
+    # Bare series ("Ultra X7", no number) stays an honest low-confidence label;
+    # benchmark lookup skips it (no digits) until the drawer sets the exact SKU.
+    m = re.search(r"(?:core\s+)?ultra\s*x\s*([579])(?:\s*(\d{3,4}\s*[a-z]*))?\b", t)
+    if m:
+        if m.group(2):
+            num = re.sub(r"\s+", "", m.group(2)).upper()
+            g = f"Core Ultra X{m.group(1)} {num}"
+            return g, 0.8, f"mentioned '{g}'"
+        g = f"Core Ultra X{m.group(1)}"
+        return g, 0.55, f"mentioned '{g}' (series only, exact SKU unknown)"
+    # Nth-gen shorthand: "i3 10th", "i5 11th" -> most common U SKU of that gen.
+    m = re.search(r"\bi([357])\s*(\d{1,2})(?:st|nd|rd|th)\b", t)
+    if m:
+        _nth = {"8": {"3": "i3-8130U", "5": "i5-8250U", "7": "i7-8550U"},
+                "10": {"3": "i3-10110U", "5": "i5-10210U", "7": "i7-10510U"},
+                "11": {"3": "i3-1115G4", "5": "i5-1135G7", "7": "i7-1165G7"},
+                "12": {"3": "i3-1215U", "5": "i5-1235U", "7": "i7-1255U"},
+                "13": {"3": "i3-1315U", "5": "i5-1335U", "7": "i7-1355U"}}.get(m.group(2), {}).get(m.group(1))
+        if _nth:
+            return _nth, 0.5, f"shorthand 'i{m.group(1)} {m.group(2)}th' -> {_nth}"
     # Ryzen AI: "Ryzen AI 9 HX 370", "Ryzen AI 7 PRO 350", "Ryzen AI 5 340"
     m = re.search(r"ryzen\s+ai\s+(\d+)\s*(pro\s+)?(hx\s+)?(\d{3})\b", t)
     if m:
@@ -479,6 +557,47 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
             continue
         return g, 0.45, f"pattern '{g}' (unverified)"
     return None, 0.0, ""
+
+
+def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, list[str]]:
+    """Exact mention first, else model-family seed estimate (sync, no AI).
+
+    Returns (cpu, conf, why, estimated, candidates). Bare tier hints narrow the
+    seed ("X1 Carbon Gen 6" + "i5" -> i5-8350U first, not the i7 base).
+    """
+    clean = strip_marketplace_suffix(text)
+    cpu, conf, why = extract_cpu(clean)
+    if cpu:
+        return cpu, conf, why, False, []
+    bl = clean.lower()
+    # normalize generation spellings so seeds match: "5th Gen" -> "gen 5",
+    # "X1 Carbon G11" -> "x1 carbon gen 11", "X1 Yoga G8" likewise.
+    bl = re.sub(r"(\d+)(?:st|nd|rd|th)\s*gen\b", r"gen \1", bl)
+    bl = re.sub(r"\bx1\s+(carbon|yoga|extreme)\s+g(\d+)\b", r"x1 \1 gen \2", bl)
+    bl_nospace = re.sub(r"[^a-z0-9]", "", bl)
+    # bare tier hint: "i5", "i7", "ryzen 5/7", "ultra 5/7"
+    tier_m = re.search(r"\bryzen\s*([3579])\b|\bultra\s*([579])\b|\bi([3579])\b", bl)
+    tier = tier_m.group(1) or tier_m.group(2) or tier_m.group(3) if tier_m else None
+    # longest seed key first so "thinkpad x1 carbon gen 6" beats "x1 carbon"
+    for seed_key in sorted(MODEL_CPU_SEED, key=len, reverse=True):
+        if seed_key in bl or re.sub(r"[^a-z0-9]", "", seed_key) in bl_nospace:
+            cands = MODEL_CPU_SEED[seed_key]
+            if any(c.lower() in bl for c in cands):
+                continue  # exact candidate present; extract should have caught it
+            narrowed = cands
+            if tier:
+                hit = [c for c in cands
+                       if re.search(rf"(?:^|[\s-])i{tier}-", c.lower())
+                       or re.search(rf"ryzen\s*{tier}\b", c.lower())
+                       or re.search(rf"ultra\s*{tier}\b", c.lower())]
+                if hit:
+                    narrowed = hit
+            base = narrowed[0]
+            others = ", ".join(narrowed[1:4])
+            detail = (f"family estimate for '{seed_key}' (could be {base}"
+                      f"{', ' + others if others else ''} — set exact CPU in drawer)")
+            return base, 0.45, detail, True, cands[:6]
+    return None, 0.0, "", False, []
 
 
 GPU_PATS = [
@@ -610,36 +729,20 @@ def to_eur(price: float | None, currency: str | None) -> float | None:
 
 def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
     blob = f"{listing.title}\n{listing.description}\n{' '.join(listing.ocr_texts)}"
-    cpu, conf, ev = extract_cpu(blob)
+    cpu, conf, ev, estimated, cands = resolve_cpu_with_seeds(blob)
     if not cpu:
-        # family estimate: known model line but no exact CPU in text (e.g. "X1 Carbon Gen 6, i5").
-        # Attach the base candidate as a labeled estimate so benchmark sorting works
-        # approximately; the drawer offers the exact alternatives to set.
-        bl = blob.lower()
-        import re as _re9
-        bl_nospace = _re9.sub(r"[^a-z0-9]", "", bl)
-        for seed_key, cands in MODEL_CPU_SEED.items():
-            hit = seed_key in bl or _re9.sub(r"[^a-z0-9]", "", seed_key) in bl_nospace
-            if hit and cands:
-                if any(c.lower() in bl for c in cands):
-                    continue  # exact mention handled above (extract would have caught most)
-                base = cands[0]
-                others = ", ".join(cands[1:4])
-                return [EnrichmentFact(
-                    field="cpu", value=base, confidence=0.45,
-                    status=FactStatus.AI_INFERRED,
-                    sources=[Evidence(
-                        type="description",
-                        detail=f"family estimate for '{seed_key}' (could be {base}"
-                               f"{', ' + others if others else ''} — set exact CPU in drawer)",
-                        confidence=0.45)]),
-                    EnrichmentFact(
-                    field="cpu_candidates", value="; ".join(cands[:6]), confidence=0.5,
-                    status=FactStatus.AI_INFERRED,
-                    sources=[Evidence(type="description",
-                                      detail="tap a candidate in the drawer to set it",
-                                      confidence=0.5)])]
         return []
+    if estimated:
+        return [EnrichmentFact(
+            field="cpu", value=cpu, confidence=conf,
+            status=FactStatus.AI_INFERRED,
+            sources=[Evidence(type="description", detail=ev, confidence=conf)]),
+            EnrichmentFact(
+            field="cpu_candidates", value="; ".join(cands), confidence=0.5,
+            status=FactStatus.AI_INFERRED,
+            sources=[Evidence(type="description",
+                              detail="tap a candidate in the drawer to set it",
+                              confidence=0.5)])]
     bench = CPU_DB.get(cpu.lower())
     facts = [EnrichmentFact(field="cpu", value=cpu, confidence=conf,
                             status=FactStatus.AI_INFERRED if conf < 0.8 else FactStatus.SUPPORTED,

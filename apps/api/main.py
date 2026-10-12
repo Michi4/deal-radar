@@ -1431,13 +1431,17 @@ async def gems(min_bench: int = 8000, days: float = 14.0, limit: int = 30,
                        store.db.execute("SELECT listing_id FROM favorites").fetchall()}
         except Exception:
             pass
-    items, unrated = _g.collect(store, days=days,
+    items, counts = _g.collect_full(store, days=days,
                                 fav_ids=fav_ids if favs else None)
     if favs:
         items = [x for x in items if x.get("fav")]
     out = _g.board(items, min_bench=min_bench, limit=max(1, min(100, limit)),
                    systems_only=systems_only)
-    out["unrated"] = unrated
+    out["unrated"] = counts["unrated_systems"]
+    out["unrated_systems"] = counts["unrated_systems"]
+    out["unrated_nonsystem"] = counts["unrated_nonsystem"]
+    out["estimated"] = counts["estimated"]
+    out["rated"] = counts["rated"]
     out["items"] = len(items)
     if advise:
         cand = sorted(items, key=lambda z: -z["ppe"])[:30]

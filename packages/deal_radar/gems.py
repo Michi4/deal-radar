@@ -1,7 +1,8 @@
 """Value board: rank everything seen recently by measured perf/€, perf/W, raw marks.
 
-No network: CPU extraction + cached benchmarks + kind classification only.
-Unrated items are counted, not guessed.
+No network: CPU extraction (exact + family-seed estimates) + cached benchmarks
++ kind classification only. Unrated items are counted split by kind so
+non-systems (clothes, bags, accessories) never inflate the "missing gems" number.
 """
 from __future__ import annotations
 
@@ -14,20 +15,28 @@ def cached_cpu(cpu: str) -> dict | None:
     return _cc(cpu)
 
 
-def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple[list[dict], int]:
-    """All recently-seen listings + favorites, enriched from cache. Returns (items, unrated)."""
+def collect_full(store, days: float = 14.0,
+                 fav_ids: set[str] | None = None) -> tuple[list[dict], dict]:
+    """All recently-seen listings + favorites, enriched from cache.
+
+    Returns (items, counts) with counts = {rated, estimated, unrated_systems,
+    unrated_nonsystem}. Estimated items carry the seed base CPU (labeled) so
+    they rank approximately instead of vanishing into "unrated".
+    """
     from .decision import heuristic_decide
-    from .scoring import extract_cpu
+    from .scoring import resolve_cpu_with_seeds
     cutoff = time.time() - days * 86400
     try:
         rows = store.db.execute(
             "SELECT id, title, price, currency, url, source, data FROM listings "
             "WHERE last_seen >= ? ORDER BY last_seen DESC LIMIT 20000", (cutoff,)).fetchall()
     except Exception:
-        return [], 0
+        return [], {"rated": 0, "estimated": 0,
+                    "unrated_systems": 0, "unrated_nonsystem": 0}
     favs = fav_ids if fav_ids is not None else set()
     items: list[dict] = []
-    unrated = 0
+    counts = {"rated": 0, "estimated": 0,
+              "unrated_systems": 0, "unrated_nonsystem": 0}
     for lid, title, price, cur, url, src, data in rows:
         title = title or ""
         try:
@@ -37,30 +46,44 @@ def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple
             imgs = blob.get("images", []) or []
         except Exception:
             desc, imgs = "", []
-        cpu, _, _ = extract_cpu(f"{title}\n{desc}")
+        try:
+            kind = heuristic_decide(title, desc, price, "").get("kind", "offer")
+        except Exception:
+            kind = "offer"
+        cpu, _, _, estimated, _ = resolve_cpu_with_seeds(f"{title}\n{desc}")
         bench = cached_cpu(cpu) if cpu else None
         multi = (bench or {}).get("multi")
         if not multi:
-            unrated += 1
+            if kind == "offer":
+                counts["unrated_systems"] += 1
+            else:
+                counts["unrated_nonsystem"] += 1
             continue
+        if estimated:
+            counts["estimated"] += 1
+        else:
+            counts["rated"] += 1
         single = (bench or {}).get("single")
         tdp = None
         try:
             tdp = float(str((bench or {}).get("tdp") or "").split()[0])
         except (TypeError, ValueError, IndexError):
             tdp = None
-        try:
-            kind = heuristic_decide(title, desc, price, "").get("kind", "offer")
-        except Exception:
-            kind = "offer"
         items.append({"id": lid, "title": title[:100], "price": price,
                       "currency": cur or "EUR", "url": url, "source": src,
                       "image": imgs[0] if imgs else "",
                       "cpu": cpu, "multi": multi, "single": single, "tdp_w": tdp,
                       "kind": kind, "fav": lid in favs,
+                      "estimated": estimated,
                       "ppe": round(multi / price, 1) if price else 0,
                       "ppw": round(multi / tdp, 1) if tdp else 0})
-    return items, unrated
+    return items, counts
+
+
+def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple[list[dict], int]:
+    """Backward-compatible wrapper: unrated = systems-only unrated (offers)."""
+    items, counts = collect_full(store, days=days, fav_ids=fav_ids)
+    return items, counts["unrated_systems"]
 
 
 def board(items: list[dict], min_bench: int = 8000, max_risk: float | None = None,

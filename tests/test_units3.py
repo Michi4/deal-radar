@@ -1838,3 +1838,262 @@ def test_title_match_rejects_hx_sibling():
     assert _title_matches("Ryzen 9 5900X", "AMD Ryzen 9 5900X Benchmark") is True
     assert _title_matches("Ryzen 9 5900X", "AMD Ryzen 9 5900XT Benchmark") is False
     assert _title_matches("M1", "Apple M1 Benchmark") is True
+
+
+def test_shopify_driver_minisforum_um690():
+    """Shopify brand store: UM690 Pro matches, min-variant price wins, catalog cached."""
+    import asyncio
+    from pathlib import Path as _P
+
+    from shopify.driver import SHOPS, make_shopify_driver
+
+    from deal_radar.driver_sdk import SearchQuery
+
+    assert {s[0] for s in SHOPS} >= {"minisforum", "gmktec", "aoostar", "acemagic"}
+
+    class FeedT:
+        def __init__(self, payload):
+            self.payload = payload
+            self.calls = []
+
+        async def get(self, url, headers=None):
+            self.calls.append(url)
+
+            class R:
+                status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+                def json(self_inner):
+                    import json as _jj
+                    if "page=1" in url or "page=" not in url:
+                        return _jj.loads(_P("tests/fixtures/shopify-minisforum.json").read_text())
+                    return {"products": []}
+            return R()
+
+    d = make_shopify_driver("minisforum", "Minisforum EU", "https://minisforumpc.eu", "EUR")
+    assert d.manifest.id == "minisforum" and d.configured() is True
+    d.transport = FeedT(None)
+    out = asyncio.run(d.search(SearchQuery(keywords="ryzen 9 6900hx", limit=10)))
+    assert out, "UM690 Pro must match"
+    um690 = [x for x in out if "6900" in (x.title or "")]
+    assert um690 and um690[0].price == 359.0 and um690[0].currency == "EUR"
+    assert um690[0].condition == "new" and um690[0].url.startswith("https://minisforumpc.eu/products/")
+    # min variant price wins; catalog cached (one fetch for two searches)
+    out2 = asyncio.run(d.search(SearchQuery(keywords="um690", limit=10)))
+    assert out2 and len(d.transport.calls) == 1
+    # no match -> empty, never raises
+    assert asyncio.run(d.search(SearchQuery(keywords="zzqqxx-nonexistent", limit=10))) == []
+
+
+def test_shopify_driver_multi_shop_cached():
+    """Shopify brand stores: real captured catalogs (fixtures), min-price variants,
+    keyword filter, pagination stop, catalog caching."""
+    import asyncio
+    import json as _j
+    from pathlib import Path as _P
+
+    from shopify import driver as S
+
+    from deal_radar.driver_sdk import SearchQuery
+
+    feeds = {}
+    for shop in ("minisforum", "gmktec", "aoostar", "acemagic"):
+        feeds[shop] = _j.loads((_P(__file__).parent / "fixtures" / f"shopify-{shop}.json").read_text())
+
+    class FakeT:
+        def __init__(self):
+            self.calls = 0
+
+        async def get(self, url, headers=None):
+            self.calls += 1
+            shop = next(s for s in feeds if s in url)
+            class R:
+                status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+                def json(self):
+                    return feeds[shop] if "page=1" in url or "page=" not in url else {"products": []}
+            return R()
+
+    S._CATALOG.clear()
+    try:
+        t = FakeT()
+        d = S.make_shopify_driver("minisforum", "Minisforum EU", "https://minisforumpc.eu", "EUR")
+        d.transport = t
+        out = asyncio.run(d.search(SearchQuery(keywords="ryzen 9 6900HX", limit=10, max_pages=3)))
+        assert len(out) == 1 and out[0].price == 359.0 and out[0].currency == "EUR"
+        assert out[0].condition == "new" and out[0].url.startswith("https://minisforumpc.eu/products/")
+        assert out[0].source == "minisforum"
+        # second search reuses the cached catalog (no new fetch)
+        asyncio.run(d.search(SearchQuery(keywords="ryzen 9", limit=10, max_pages=3)))
+        assert t.calls == 1
+        # no match -> empty, never errors
+        assert asyncio.run(d.search(SearchQuery(keywords="xqzv teflon", limit=10))) == []
+        # max price filter applies
+        assert asyncio.run(d.search(SearchQuery(keywords="ryzen 9 6900HX", limit=10, max_price=100))) == []
+        assert S.make_shopify_driver("x", "y", "https://z").manifest.id == "x"
+    finally:
+        S._CATALOG.clear()
+
+
+def test_shopify_driver_match_and_bounds():
+    """Brand-store driver against real captured products.json feeds (no network)."""
+    import asyncio
+    import json as _j
+    from pathlib import Path as _P
+
+    from shopify.driver import SHOPS, ShopifyDriver, _match
+
+    from deal_radar.driver_sdk import SearchQuery
+
+    assert len(SHOPS) == 4
+    assert _match("minisforum um870 slim ryzen 7 barebone", "um870 ryzen")
+    assert not _match("nucbox m10 windows", "um870 ryzen")
+
+    class FakeT:
+        def __init__(self, payload):
+            self.payload = payload
+            self.calls = []
+
+        async def get(self, url, headers=None):
+            self.calls.append(url)
+            class R:
+                status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+                def json(self_inner):
+                    return self.payload
+            return R()
+
+    feed = _j.loads(_P("tests/fixtures/shopify-minisforum.json").read_text())
+    d = ShopifyDriver(transport=FakeT(feed), shop_id="minisforum",
+                      shop_name="Minisforum EU", base_url="https://minisforumpc.eu")
+    out = asyncio.run(d.search(SearchQuery(keywords="ryzen 9", limit=10, max_pages=3)))
+    assert out, "seeded feed must match ryzen 9"
+    r = out[0]
+    assert r.source == "minisforum" and r.condition == "new" and r.currency == "EUR"
+    assert r.url.startswith("https://minisforumpc.eu/products/")
+    assert r.price and r.price > 0
+    # catalog cached: second search costs zero requests
+    asyncio.run(d.search(SearchQuery(keywords="ryzen 9", limit=10, max_pages=3)))
+    assert len(d.transport.calls) == 1
+    # no match -> empty, price bounds respected
+    assert asyncio.run(d.search(SearchQuery(keywords="zzzzqqqq", limit=10))) == []
+    out2 = asyncio.run(d.search(SearchQuery(keywords="ryzen", limit=10, max_price=1.0)))
+    assert out2 == []
+
+
+def test_strip_marketplace_suffix():
+    from deal_radar.scoring import strip_marketplace_suffix
+    t = "Lenovo Thinkpad X1 Carbon, Marke: Lenovo, Modell: ThinkPad X1 Carbon, Zustand: Sehr gut, 200.0"
+    assert strip_marketplace_suffix(t) == "Lenovo Thinkpad X1 Carbon ThinkPad X1 Carbon"
+    assert strip_marketplace_suffix("ThinkPad T480 i5-8350U") == "ThinkPad T480 i5-8350U"
+    assert strip_marketplace_suffix("") == ""
+
+
+def test_extract_cpu_ultra_x_and_nth():
+    from deal_radar.scoring import extract_cpu
+    cpu, conf, _ = extract_cpu("ThinkPad X1 Carbon Gen 14 - Ultra X7 / 64 GB / 1 TB")
+    assert cpu == "Core Ultra X7" and conf < 0.7
+    cpu, conf, _ = extract_cpu("ACEMAGIC RX16 Intel Core Ultra X7 358H Flagship AI laptop")
+    assert cpu == "Core Ultra X7 358H" and conf >= 0.8
+    cpu, conf, _ = extract_cpu("Lenovo E14 i3 10th - Bios bloque")
+    assert cpu == "i3-10110U" and conf <= 0.6
+    cpu, conf, _ = extract_cpu("HP EliteBook i5 11th Gen")
+    assert cpu == "i5-1135G7"
+
+
+def test_resolve_cpu_with_seeds_vinted_titles():
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    # vinted metadata tail must not block the seed estimate
+    cpu, conf, _, est, cands = resolve_cpu_with_seeds(
+        "Lenovo Thinkpad X1 Carbon Gen 6, Marke: Lenovo, Modell: ThinkPad X1 Carbon, Zustand: Sehr gut")
+    assert est is True and cpu in ("i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U") and cands
+    # bare tier hint narrows to i5
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("ThinkPad X1 Yoga Gen 6 | i5 | 16GB RAM | 256GB SSD")
+    assert est is True and cpu.startswith("i5-")
+    # exact mention still wins, not estimated
+    cpu, conf, _, est, _ = resolve_cpu_with_seeds("ThinkPad T480 i7-8650U 16GB")
+    assert cpu == "i7-8650U" and est is False and conf >= 0.6
+    # non-system title stays unknown
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Nike Training Shorts Blue Mens XL")
+    assert cpu is None and est is False
+    # T460 classic resolves via seed
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo T460 guter Zustand, 12GB RAM, 240GB SSD")
+    assert est is True and cpu in ("i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U")
+    # ordinal + G-shorthand generations normalize to seeds
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo ThinkPad X1 Carbon 5th Gen | Windows 11")
+    assert est is True and cpu in ("i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo Thinkpad X1 Carbon G11 Campus")
+    assert est is True and cpu in ("i5-1335U", "i5-1345U", "i7-1355U", "i7-1365U", "i7-1370P")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo Thinkpad X1 Extreme G4 mit 1TB RAM und RTX 3080")
+    assert est is True and cpu in ("i7-11800H", "i9-11950H", "i9-11980HK")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo Legion Y540-17IRH Gaming-Laptop")
+    assert est is True and cpu in ("i5-9300H", "i7-9750H", "i7-9750HF")
+    # Modell: tail is retained through the vinted suffix strip
+    cpu, _, _, est, _ = resolve_cpu_with_seeds(
+        "Porsche Piwis 3 Diagnosegerät, Marke: Lenovo, Modell: ThinkPad X250, Zustand: Gut")
+    assert est is True and cpu in ("i5-5200U", "i5-5300U", "i7-5600U")
+
+
+def test_enrich_cpu_estimate_parity():
+    """enrich_cpu fallback uses the same seed helper (single source of truth)."""
+    from deal_radar.contracts import CanonicalListing
+    from deal_radar.scoring import enrich_cpu
+    l = CanonicalListing(id="t:1", source="t", native_id="1", url="https://x.example/1",
+                         title="ThinkPad X1 Carbon Gen 6", description="i5 16GB")
+    facts = enrich_cpu(l)
+    cpu = next((f for f in facts if f.field == "cpu"), None)
+    assert cpu is not None and cpu.value.startswith("i5-")
+    assert any(f.field == "cpu_candidates" for f in facts)
+
+
+def test_gems_collect_full_counts_split():
+    """collect_full: rated/estimated/unrated_systems/unrated_nonsystem split;
+    collect() stays backward-compatible (systems-only int)."""
+    import json as _j
+
+    from deal_radar import gems as G
+
+    class FakeDB:
+        def execute(self, *a, **k):
+            class C:
+                def fetchall(self_inner):
+                    return [
+                        # exact CPU, cached bench below -> rated
+                        ("a:1", "ThinkPad T480 i5-8350U", 200.0, "EUR", "https://x.example/1", "t",
+                         _j.dumps({"description": "", "images": []})),
+                        # seed-estimable, same base CPU cached -> estimated
+                        ("a:2", "ThinkPad X1 Carbon Gen 6", 250.0, "EUR", "https://x.example/2", "t",
+                         _j.dumps({"description": "i5 16GB", "images": []})),
+                        # system offer, no CPU anywhere -> unrated_systems
+                        ("a:3", "ThinkPad T14s - Windows 11", 180.0, "EUR", "https://x.example/3", "t",
+                         _j.dumps({"description": "", "images": []})),
+                        # clothes -> unrated_nonsystem
+                        ("a:4", "Nike Training Shorts Blue Mens XL", 30.0, "EUR", "https://x.example/4", "t",
+                         _j.dumps({"description": "", "images": []})),
+                    ]
+            return C()
+
+    class FakeStore:
+        db = FakeDB()
+
+    real_cached = G.cached_cpu
+    G.cached_cpu = lambda cpu: {"multi": 8000, "single": 2000} if cpu == "i5-8350U" else None
+    try:
+        items, counts = G.collect_full(FakeStore())
+        assert counts == {"rated": 1, "estimated": 1,
+                          "unrated_systems": 1, "unrated_nonsystem": 1}, counts
+        assert {x["id"] for x in items} == {"a:1", "a:2"}
+        assert next(x for x in items if x["id"] == "a:2")["estimated"] is True
+        assert next(x for x in items if x["id"] == "a:1")["estimated"] is False
+        items2, unrated = G.collect(FakeStore())
+        assert unrated == 1 and len(items2) == 2
+    finally:
+        G.cached_cpu = real_cached

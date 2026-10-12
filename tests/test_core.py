@@ -1104,9 +1104,13 @@ def test_gems_board_and_hunt_pack():
         assert any(x["id"] == "t:2" for x in b2["ppe"])
     # /gems/board endpoint serves the board shape
     c = TestClient(m.app)
-    with patch("deal_radar.gems.collect", return_value=([], 3)):
+    with patch("deal_radar.gems.collect_full",
+               return_value=([], {"rated": 0, "estimated": 0,
+                                  "unrated_systems": 3, "unrated_nonsystem": 1})):
         r = c.get("/gems/board").json()
         assert r["ok"] and r["unrated"] == 3 and r["ppe"] == []
+        assert r["unrated_systems"] == 3 and r["unrated_nonsystem"] == 1
+        assert r["estimated"] == 0 and r["rated"] == 0
     # /hunt pack starts three searches
     with patch.object(m, "create_search", new=AsyncMock(side_effect=[{"id": "a"}, {"id": "b"}, {"id": "c"}])):
         r = c.post("/hunt", params={"pack": "value"}).json()
