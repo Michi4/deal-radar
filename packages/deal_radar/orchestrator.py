@@ -430,6 +430,13 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                         metrics.inc("benchmark_gpu_miss")
             except Exception:
                 pass
+        # Specs path: RAM/storage/ports/barebone, pure regex, every listing.
+        if intent.get("enrich", True):
+            try:
+                from .scoring import enrich_specs
+                enrich.extend(enrich_specs(l))
+            except Exception:
+                pass
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
         if bench is None:
             bench = next((e.value for e in enrich if e.field == "gpu_benchmark"), None)

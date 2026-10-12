@@ -2097,3 +2097,45 @@ def test_gems_collect_full_counts_split():
         assert unrated == 1 and len(items2) == 2
     finally:
         G.cached_cpu = real_cached
+
+
+def test_extract_ram_storage_ports_barebone():
+    from deal_radar.scoring import (
+        extract_ports,
+        extract_ram,
+        extract_storage,
+        is_barebone,
+    )
+    assert extract_ram("Minisforum UM870 Slim Ryzen 7 8745H 16GB DDR5 Barebone") == 16
+    assert extract_ram("ThinkPad X1 Yoga Gen 6 | i5 | 16GB RAM | 256GB SSD") == 16
+    assert extract_ram("512GB SSD NVMe") is None  # storage must not leak into RAM
+    assert extract_ram("BMW M1 car") is None
+    assert extract_storage("Acemagic Retro X3 Ryzen 7, 16GB, 1TB, Radeon 780M") == (1024, "")
+    assert extract_storage("1TB NVMe SSD") == (1024, "NVME")
+    assert extract_storage("240GB SSD") == (240, "SSD")
+    assert extract_storage("2TB Festplatte") == (2048, "HDD")
+    assert extract_storage("no storage here") == (None, "")
+    ports = extract_ports("MINISFORUM X1 AI Mini PC USB4 OCuLink WiFi 7 HDMI 2.5G LAN")
+    assert ports == ["USB4", "OCuLink", "HDMI", "2.5G LAN", "WiFi 7"], ports
+    assert extract_ports("ThinkPad T480 i5-8350U") == []
+    assert is_barebone("Mini Pc Intel Core Ultra 9 285H ES 0GB/32GB 0TB/1TB Barebone") is True
+    assert is_barebone("AOOSTAR MACO Barebone Mini-PC AMD Ryzen 7 8845HS") is True
+    assert is_barebone("ohne RAM und SSD, Gehäuse") is True
+    assert is_barebone("ThinkPad T480 i5-8350U 16GB RAM 512GB SSD") is False
+
+
+def test_enrich_specs_fact_fields():
+    from deal_radar.contracts import CanonicalListing
+    from deal_radar.scoring import enrich_specs
+    l = CanonicalListing(id="t:1", source="t", native_id="1", url="https://x.example/1",
+                         title="MINISFORUM X1 AI Mini PC Ryzen 7 255 Radeon 780M WiFi 7 USB4 OCuLink Barebone",
+                         description="16GB DDR5, 1TB NVMe")
+    by_field = {f.field: f for f in enrich_specs(l)}
+    assert by_field["ram_gb"].value == 16
+    assert by_field["storage_gb"].value == 1024
+    assert by_field["storage_kind"].value == "NVME"
+    assert "USB4" in by_field["ports"].value and "OCuLink" in by_field["ports"].value
+    assert by_field["barebone"].value is True
+    l2 = CanonicalListing(id="t:2", source="t", native_id="2", url="https://x.example/2",
+                          title="Nike Training Shorts", description="")
+    assert enrich_specs(l2) == []

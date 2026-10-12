@@ -714,6 +714,127 @@ def extract_unified_mem(text: str) -> int | None:
     return None
 
 
+def extract_ram(text: str) -> int | None:
+    """Installed RAM in GB, or None. Requires a memory keyword nearby so SSD
+    sizes and model numbers never leak in ("512GB SSD", "M2", "2280")."""
+    t = (text or "").lower()
+    m = re.search(r"(\d{2,3})\s*gb\s*(?:ddr\d?|lpddr\d?|sodimm|dimm|ram|arbeitsspeicher|memory|speicher)", t)
+    if m:
+        return int(m.group(1))
+    m = re.search(r"(?:ram|memory|arbeitsspeicher)[^.:\n]{0,20}?(\d{2,3})\s*gb", t)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def extract_storage(text: str) -> tuple[int | None, str]:
+    """(capacity GB, kind SSD|NVMe|HDD|''). TB converts x1024. A match naming a
+    drive kind (SSD/NVMe/HDD/...) always wins; bare sizes fall back with a RAM
+    guard (bare GB under 256 is usually memory, e.g. "16GB, 1TB")."""
+    t = (text or "").lower()
+    pats = list(re.finditer(
+        r"(\d+(?:[.,]\d+)?)\s*(tb|gb)\s*(nvme|ssd|hdd|festplatte|emmc|ufs|speichermedien)?", t))
+    if not pats:
+        return None, ""
+    kinded = [m for m in pats if m.group(3)]
+    bare = [m for m in pats if not m.group(3)]
+
+    def _gb(m) -> int | None:
+        try:
+            size = float(m.group(1).replace(",", "."))
+        except ValueError:
+            return None
+        gb = int(size * 1024) if m.group(2) == "tb" else int(size)
+        return gb if 0 < gb <= 65536 else None
+
+    def _kind(m) -> str:
+        kind = (m.group(3) or "").upper()
+        if kind == "FESTPLATTE":
+            return "HDD"
+        return "" if kind == "SPEICHERMEDIEN" else kind
+
+    for m in kinded:
+        gb = _gb(m)
+        if gb:
+            return gb, _kind(m)
+    for m in bare:
+        gb = _gb(m)
+        if gb and (m.group(2) == "tb" or gb >= 256):
+            return gb, ""
+    return None, ""
+
+
+_PORT_PATS = (
+    ("USB4", r"usb\s*4(\.0)?\b"),
+    ("Thunderbolt 5", r"thunderbolt\s*5\b"),
+    ("Thunderbolt 4", r"thunderbolt\s*4\b"),
+    ("Thunderbolt 3", r"thunderbolt\s*3\b"),
+    ("USB-C", r"usb[-\s]?c\b|type[-\s]?c\b"),
+    ("OCuLink", r"oculink\b"),
+    ("HDMI", r"\bhdmi\b"),
+    ("DisplayPort", r"displayport\b|\bdp\s*\d"),
+    ("2.5G LAN", r"2\.5g(\s*(lan|ethernet))?\b"),
+    ("WiFi 7", r"wi-?fi\s*7\b"),
+    ("WiFi 6E", r"wi-?fi\s*6e\b"),
+    ("SD reader", r"\bsd(\s*(card|reader|slot))?\b"),
+)
+
+
+def extract_ports(text: str) -> list[str]:
+    """Notable connectivity worth comparing (mini-PC buying criteria)."""
+    t = (text or "").lower()
+    return [label for label, pat in _PORT_PATS if re.search(pat, t)]
+
+
+def is_barebone(text: str) -> bool:
+    """No RAM/SSD included (barebone configurables like "0GB/32GB 0TB/1TB")."""
+    t = (text or "").lower()
+    return bool(re.search(
+        r"barebone|\b0\s*gb\b|\b0\s*tb\b|ohne\s*(ram|ssd|speicher|festplatte)"
+        r"|without\s*(ram|ssd|storage)|w/o\s*(ram|ssd)|no\s*(ram|ssd)\b"
+        r"|ram\s*/\s*ssd\s*(nicht|exkl)|exkl\.\s*(ram|ssd)", t))
+
+
+def enrich_specs(listing: CanonicalListing) -> list[EnrichmentFact]:
+    """Cheap regex-tier specs for every listing: RAM, storage, ports, barebone."""
+    blob = f"{listing.title}\n{listing.description}\n{' '.join(listing.ocr_texts)}"
+    facts: list[EnrichmentFact] = []
+    ram = extract_ram(blob)
+    if ram:
+        facts.append(EnrichmentFact(field="ram_gb", value=ram, confidence=0.7,
+                                    status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail=f"{ram}GB RAM mentioned",
+                                                      confidence=0.7)]))
+    gb, kind = extract_storage(blob)
+    if gb:
+        facts.append(EnrichmentFact(field="storage_gb", value=gb, confidence=0.7,
+                                    status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail=f"{gb}GB {kind or 'storage'} mentioned",
+                                                      confidence=0.7)]))
+        if kind:
+            facts.append(EnrichmentFact(field="storage_kind", value=kind, confidence=0.8,
+                                        status=FactStatus.AI_INFERRED,
+                                        sources=[Evidence(type="description",
+                                                          detail=f"drive kind {kind}",
+                                                          confidence=0.8)]))
+    ports = extract_ports(blob)
+    if ports:
+        facts.append(EnrichmentFact(field="ports", value="; ".join(ports), confidence=0.75,
+                                    status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail=f"ports: {', '.join(ports)}",
+                                                      confidence=0.75)]))
+    if is_barebone(blob):
+        facts.append(EnrichmentFact(field="barebone", value=True, confidence=0.8,
+                                    status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail="barebone: no RAM/SSD included (add ~cost)",
+                                                      confidence=0.8)]))
+    return facts
+
+
 # units-per-EUR deck rates (estimate, check ECB for exact). Only used when a
 # listing prices in non-EUR (eBay/ricardo paths); EUR listings are untouched.
 FX_PER_EUR = {"EUR": 1.0, "€": 1.0, "USD": 1.08, "$": 1.08, "CHF": 0.94,
