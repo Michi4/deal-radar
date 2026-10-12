@@ -115,3 +115,30 @@
   approvals — if you want any of them, tell me which account to wire and I build
   the driver the same day (same honest pattern as Allegro/eBay: real API code,
   mocked tests, clean-errors until keys land).
+
+## New-product markets probe 2026-10-12
+
+Method: exactly ONE polite GET per site (curl, timeout 15s, UA `hobbyist-research-probe/1.0`,
+no auth, no redirect-follow, ~2s gap between hosts, total ~28s). Raw heads (headers + first
+5KB body) saved under `/tmp/opencode/newmarket-probes/<site>.txt` — NOT in git, bodies never
+committed. Static-data = title+price+product-URL present in the single response HTML.
+
+| site | status | static-data? | what's needed (exact approval/account clicks) |
+|---|---|---|---|
+| aliexpress.com (`/wholesale?SearchText=thinkpad`) | 301 → `de.aliexpress.com/w/wholesale-thinkpad.html` (Tengine, `x-rule-name: AE_GLOBAL_UNLOGIN`) | NO — 63B redirect stub only | AliExpress Affiliate/Portals approval (account + traffic-source review) or user-supplied session cookies via future CDP transport; anonymous fetch is geo-redirect + Akamai-walled |
+| 1688.com (`/`, homepage) | 200, 124KB Chinese homepage shell (`阿里1688首页`), zero `thinkpad` hits | NO (for queries) — homepage only, search is JS/app-shell (`window.__` x7), no `offer_search` SSR | 1688 seller/login session or approved 1688/Open-API app key; anonymous search URL not probed further (1-GET limit) |
+| amazon.de (`/s?k=thinkpad`) | 200, ~1MB SSR | YES — 28x `data-asin="B0…"`, 88x `/dp/…` links, `€806.62`-style prices, 138x ThinkPad titles in static HTML | PA-API still needs approved associate account + 3 qualifying sales/180d for a compliant API driver; HTML scraping is ToS-gray (decoy/captcha risk) so no scraper driver without owner call |
+| alternate.de (`/listing.xhtml?q=thinkpad`) | 200, 175KB SSR (Cloudflare `cf-cache-status: DYNAMIC`, no challenge) | YES — 24x `/product/<id>` links, 92x ThinkPad titles, `€ 799,00`-style `<span class="price">` in static HTML | No open product API exists; needs merchant feed agreement (Alternate partner contact) or explicit owner approval for polite HTML polling |
+| notebooksbilliger.de (`/search?q=thinkpad`) | 403, 871B `bot detected` page (echoes client IP + UA, mailto `feedback.nbb.com` contact link) | NO — bot-walled | Delisting from their bot-protection (email the shown contact link from a real browser session) or official partner feed; no self-serve API |
+| cyberport.de (`/tools/search-results.html?q=thinkpad`) | 403 Cloudflare challenge (`cf-mitigated: challenge`, `Just a moment…`) | NO — JS challenge shell | Clean-browser session with cleared challenge (manual) or Cloudflare-friendly partner feed; no self-serve API, no challenge-solving |
+| mindfactory.de (`/search.php?search_query=thinkpad`) | 404 `File not found.` (Apache/Ubuntu, 16B) — this URL shape is dead | NO — wrong path, nothing to parse | Correct current search-URL shape (needs one careful browser check by Michi) + merchant terms; no open API |
+| idealo.de (`/preisvergleich/MainSearchProductCategory.html?q=thinkpad`) | 403 Akamai block page (`server: AkamaiGHost`, `request_id`, `reference ID 0.d611702…`, "Something has gone wrong") | NO — bot-walled | Idealo partner/product-feed contract (idealo business onboarding); anonymous fetch is Akamai-walled |
+| geizhals.at (`/?fs=thinkpad`) | 200, 288KB SSR despite `x-ua-device: bot` request label (Cloudflare DYNAMIC) | YES (unexpected) — 129x ThinkPad titles with specs, `€ 989`-style prices, SERP result markup in static HTML | Geizhals partner-only price feed for a compliant driver (https://geizhals.at/partner or Preisvergleich-partner onboarding); HTML is fetchable today but ToS/robots-gated, needs owner call before any polling driver |
+| bazos.sk (`/search.php?hledat=thinkpad`) | 200, 50KB SSR (`Thinkpad bazár`) | YES (unexpected) — 40x `inzerat/…` links, ThinkPad titles, `350 €`-style prices in static HTML | robots.txt disallows `/search.php` + query params, so polite scraping stays OFF the table despite the 200; needs explicit owner exemption decision or official cooperation |
+| backmarket.de (`/de-de/search?q=thinkpad`) | 301 → `/testchallengepage?next=…` (Cloudflare `__cf_bm`, 0B body) — bot challenge | NO — challenge-walled | Back Market partner product API (partner-only onboarding); no self-serve access |
+
+Public `products.json`/feed endpoints discovered: NONE. No Shopify markers in any response
+headers or bodies (all custom stacks: Tengine/Alibaba, CloudFront/Amazon, Cloudflare+custom
+for Alternate/Cyberport/Geizhals/BackMarket, Akamai fronting idealo, nginx for bazos.sk).
+Only incidental `/feed` substrings inside JS bundles (amazon, nbb) — not product endpoints.
+Geizhals/idealo feeds are partner-only; no `products.json` anywhere.
