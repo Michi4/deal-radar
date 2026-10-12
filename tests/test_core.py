@@ -1175,6 +1175,50 @@ def test_benchmark_warmup_only_misses():
     assert n == 1 and calls == ["Ryzen 7 8845HS"]
 
 
+def test_benchmark_warmup_uses_seeds_and_frequency():
+    """Warmup resolves seed-estimable titles, fetches most-frequent first,
+    skips cached and vague (digit-less) CPUs."""
+    import asyncio
+    import os
+    import tempfile
+    from unittest.mock import AsyncMock, patch
+
+    from deal_radar import modelcheck as MC
+    from deal_radar.contracts import CanonicalListing, Seller
+    from deal_radar.store import Store
+    st = Store(os.path.join(tempfile.mkdtemp(), "w2.db"))
+    for i in range(3):
+        st.upsert(CanonicalListing(id=f"s:{i}", source="t", native_id=str(i), url=f"u{i}",
+                                   title="ThinkPad X1 Carbon Gen 6", description="i5 16GB",
+                                   price=200.0, seller=Seller(name="s")))
+    st.upsert(CanonicalListing(id="s:9", source="t", native_id="9", url="u9",
+                               title="ThinkPad T480 i5-8350U", description="",
+                               price=200.0, seller=Seller(name="s")))
+    st.upsert(CanonicalListing(id="s:8", source="t", native_id="8", url="u8",
+                               title="ThinkPad X1 Carbon Gen 14 - Ultra X7", description="",
+                               price=900.0, seller=Seller(name="s")))
+    st.upsert(CanonicalListing(id="s:7", source="t", native_id="7", url="u7",
+                               title="ThinkPad T480 i7-8650U", description="",
+                               price=250.0, seller=Seller(name="s")))
+    calls = []
+
+    def fake_fetch(cpu):
+        calls.append(cpu)
+        return {"multi": 1, "source": "t", "ts": 0.0}
+
+    def fake_cached(cpu):
+        return {"multi": 1} if cpu == "i7-8650U" else None
+
+    with patch("deal_radar.benchmarks.cached_cpu", side_effect=fake_cached), \
+         patch("deal_radar.benchmarks.fetch_passmark_cpu", side_effect=fake_fetch), \
+         patch("asyncio.sleep", new=AsyncMock()):
+        n = asyncio.run(MC.warmup_benchmarks(st, cap=10))
+    # seed estimate (3x) + exact mention share i5-8350U -> one frequent fetch;
+    # cached i7-8650U skipped; vague Ultra X7 (no digits) skipped.
+    assert calls == ["i5-8350U"], calls
+    assert n == 1
+
+
 def test_job_ids_unique_under_burst():
     """Regression (journey caught live): three hunt-pack jobs created in the same
     millisecond shared one sid and overwrote each other in JOBS."""

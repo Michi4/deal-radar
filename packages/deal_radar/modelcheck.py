@@ -79,32 +79,40 @@ async def probe_all(timeout_each: float = 45.0) -> list[dict]:
 
 async def warmup_benchmarks(store, cap: int = 120) -> int:
     """Rebuild the PassMark disk cache after deploys: distinct CPUs from recent
-    listings, cached hits free, uncached fetched politely. Returns warmed count."""
+    listings (title+description, exact mentions AND family-seed estimates),
+    most-frequent uncached first. Cached hits free, uncached fetched politely.
+    Vague labels (no model number) are skipped — PassMark can't score them.
+    Returns warmed count."""
     import asyncio as _aio
+    import re as _re
     import time as _t
+    from collections import Counter
 
     from . import benchmarks as _b
-    from .scoring import extract_cpu
+    from .scoring import resolve_cpu_with_seeds
     try:
         rows = store.db.execute(
-            "SELECT DISTINCT title FROM listings WHERE last_seen >= ? LIMIT 5000",
+            "SELECT title, data FROM listings WHERE last_seen >= ? LIMIT 20000",
             (_t.time() - 14 * 86400,)).fetchall()
     except Exception:
         return 0
-    cpus: list[str] = []
-    seen: set[str] = set()
-    for (title,) in rows:
+    freq: Counter = Counter()
+    for title, data in rows:
         try:
-            cpu, _, _ = extract_cpu(f"{title or ''}")
+            import json as _j
+            desc = (_j.loads(data or "{}") or {}).get("description", "") or ""
+        except Exception:
+            desc = ""
+        try:
+            cpu, _, _, _, _ = resolve_cpu_with_seeds(f"{title or ''}\n{desc}")
         except Exception:
             continue
-        if cpu and cpu not in seen:
-            seen.add(cpu)
-            cpus.append(cpu)
-        if len(cpus) >= cap:
-            break
+        if cpu and _re.search(r"\d{3,}", cpu):
+            freq[cpu] += 1
     warmed = 0
-    for cpu in cpus:
+    for cpu, _ in freq.most_common():
+        if warmed >= cap:
+            break
         try:
             from .benchmarks import cached_cpu as _cc
             if _cc(cpu):
