@@ -18,6 +18,15 @@ STATUS 2026-10-12 (commits a885d53/1afd709, verify GREEN 221 passed): 6/8 fixed,
 - [x] New Intel naming missed: `X1 Carbon Gen 14 - Ultra X7` — no pattern for `Ultra X7/X9` (`scoring.py:372-377` needs `X[579]` bare form — FIXED incl. `X7 358H` full form; X1-Extreme/Legion seeds added) (see §2).
 - [x] Bare `i5`/`i7` with Gen hint (`Gen 6 ... i5`) never resolved — FIXED via tier-narrowed seeds.
 
+## STATUS 2026-10-12 II (verify GREEN, 86%, CI-tracked)
+DONE: GemsView split counts + est. badges; frequency warmup (live: 25 fetches -> 831 rankable from 0);
+full-spec extraction (ram_gb/storage/ports/barebone) on every enriched listing + Compare rows;
+deterministic offer_targets enrichment + Drawer line (advise reuses formula).
+OPEN: static-DB expansion; refused-title fallback; CDP/session transport for walled markets;
+conversational advise chat; alternate.de driver (needs owner OK); prod journeys re-run;
+NL 10/10 off-peak rerun; watch natural-change proof; Signal re-register + SMTP creds;
+Lab auto-PR (GH_TOKEN); eBay exemption + Allegro creds (human clicks).
+
 ## 1. Benchmark / recognition — "recognize EVERY item, miss no gems"
 
 - [ ] OCR from images is tesseract-only, never runs in Gems path; serials/chassis stickers/model plates in photos unused. Wire: detail images → OCR → `extract_cpu/gpu` re-run; store `ocr_texts` for vinted/willhaben (currently empty for vinted).
