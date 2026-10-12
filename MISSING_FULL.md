@@ -7,14 +7,16 @@ ACCEPTANCE says done. Real DB says otherwise: 18149 rows/14d, recent 500 sample 
 
 ## 0. Logic bugs proven live today (fix first)
 
-- [ ] `packages/deal_radar/gems.py:40` uses `extract_cpu(title+desc)` only — ignores `MODEL_CPU_SEED` family estimates, bare-Intel inference, Xeon, AI-rig extraction. Result: `ThinkPad X1 Carbon Gen 6 / Yoga Gen 6 / T14s / E14 i3 10th / Legion Y520 i7` all counted unrated though seeds exist (`scoring.py:24-58,112`). Fix: Gems `collect()` must use same pipeline as enrich (exact > seed-estimate > fuzzy > unknown), and report `rated / seed-estimated / truly-unknown / non-system` separately.
-- [ ] Denominator is wrong: `gems.py:66-79` counts every listing (Nike shorts, Sketchers, bags) as "without benchmark". Add `kind` split: systems-only unrated vs non-systems excluded. Show both numbers in `web-v2/src/views/GemsView.vue`.
+STATUS 2026-10-12 (commits a885d53/1afd709, verify GREEN 221 passed): 6/8 fixed, 2 open (static-DB expansion, refused-title fallback).
+
+- [x] `packages/deal_radar/gems.py:40` uses `extract_cpu(title+desc)` only — FIXED: `collect_full()` + split counts — ignores `MODEL_CPU_SEED` family estimates, bare-Intel inference, Xeon, AI-rig extraction. Result: `ThinkPad X1 Carbon Gen 6 / Yoga Gen 6 / T14s / E14 i3 10th / Legion Y520 i7` all counted unrated though seeds exist (`scoring.py:24-58,112`). Fix: Gems `collect()` must use same pipeline as enrich (exact > seed-estimate > fuzzy > unknown), and report `rated / seed-estimated / truly-unknown / non-system` separately.
+- [x] Denominator is wrong — FIXED: `unrated_systems` vs `unrated_nonsystem` + rated/estimated (Nike shorts, Sketchers, bags) as "without benchmark". Add `kind` split: systems-only unrated vs non-systems excluded. Show both numbers in `web-v2/src/views/GemsView.vue`.
 - [ ] `packages/deal_radar/scoring.py`: `CPU_DB size 10`, `STATIC_DB` in `benchmarks.py:17-21` has 11 entries. `closest_known_cpu` cutoff 0.75 too strict, only searches static+disk cache. Expand static DB to ≥500 real PassMark entries (capture once, commit as fixture) or drop the function.
 - [ ] `benchmarks.py:225-253` strict `_title_matches` refuses fuzzy endpoint results → `None`, caller treats as unknown forever, no retry via `closest_known_cpu`, no internet-research fallback. Log refused titles; fall back to closest-known + mark confidence low instead of silent unknown.
-- [ ] `data/benchmarks.json` has 112 keys vs 18k listings — warmup only warms distinct recent CPUs (`DECISIONS.md:261`). No background backfill job. Add polite backfill worker (1 req/s, persistent cache next to DB — already done — but actually run it).
-- [ ] Vinted titles embed marketplace metadata (`Marke:/Modell:/Zustand:`) and have empty `description` (no detail API). Extractor chokes on `X1 Carbon - Pari al nuovo, Marke:..., 200.0`. Fix: strip `, Marke:.*$` suffix before extraction; add vinted detail fetch or mark `detail:unsupported` honestly in Store.
-- [ ] New Intel naming missed: `X1 Carbon Gen 14 - Ultra X7` — no pattern for `Ultra X7/X9` (`scoring.py:372-377` needs `X[579]` bare form). `X1 Extreme G4 RTX 3080` extracts GPU but no CPU — needs board-level fallback (see §2).
-- [ ] Bare `i5`/`i7` with Gen hint (`Gen 6 ... i5`) never resolves. Combine signals: `seed(Gen)+tier(i5)` → estimate range instead of unknown.
+- [ ] `data/benchmarks.json` has 112 keys vs 18k listings — warmup only warms distinct recent CPUs (`DECISIONS.md:261`). No background backfill worker — OPEN (cache persists; worker queued) (1 req/s, persistent cache next to DB — already done — but actually run it).
+- [x] Vinted titles embed marketplace metadata (`Marke:/Modell:/Zustand:`) and have empty `description` (no detail API). Extractor choked — FIXED: strip keeps `Modell:` `, Marke:.*$` suffix before extraction; add vinted detail fetch or mark `detail:unsupported` honestly in Store.
+- [x] New Intel naming missed: `X1 Carbon Gen 14 - Ultra X7` — no pattern for `Ultra X7/X9` (`scoring.py:372-377` needs `X[579]` bare form — FIXED incl. `X7 358H` full form; X1-Extreme/Legion seeds added) (see §2).
+- [x] Bare `i5`/`i7` with Gen hint (`Gen 6 ... i5`) never resolved — FIXED via tier-narrowed seeds.
 
 ## 1. Benchmark / recognition — "recognize EVERY item, miss no gems"
 

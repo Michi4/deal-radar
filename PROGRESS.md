@@ -1,5 +1,25 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
+## What changed since last report (2026-10-12: recognition fix + brand stores)
+- RECOGNITION FIX (MISSING_FULL §0, commits a885d53/1afd709/3ce17fb, pushed, CI green-tracked):
+  `resolve_cpu_with_seeds()` (exact > tier-narrowed family estimate), vinted suffix
+  strip keeping `Modell:`, Ultra-X (+number) + Nth-gen + ordinal/G-shorthand normalization,
+  X-series/X1-Extreme/Legion-Y seeds, garments/bags/watches → accessory. Gems counts split
+  (rated/estimated/unrated_systems/unrated_nonsystem); `/gems/board` serves all four.
+  Live DB (2000 rows): exact 2.7% + estimated 1.4%, unrated_systems 55% (was: everything
+  non-exact lumped as "18592 without benchmark" incl. 38% clothes/bags). verify.sh GREEN
+  (221 passed, 85.56%, v2 build, 11 drivers incl. 4 new brand stores).
+- BRAND STORES (feat): Shopify products.json drivers — minisforum/gmktec/aoostar/acemagic
+  (EU new-price anchors for used-vs-new compare). Live-verified 2026-10-12, 4 polite GETs:
+  137/51/25/50 products, counts match fixtures; trimmed fixtures committed (7-20KB).
+- NEW-MARKET PROBE (11 sites, 1 GET each, raw heads in /tmp only): amazon.de / alternate.de /
+  geizhals.at serve full SSR (ToS-gated, logged); nbb/cyberport/idealo/backmarket walled;
+  bazos robots-blocked; aliexpress/1688 need session/API. Table in BLOCKERS.md.
+- NEXT (5): (1) GemsView split counts + estimated badge; (2) benchmark backfill worker for
+  top estimated CPUs; (3) RAM/SSD/ports extraction + Compare columns; (4) advise chat UI
+  (negotiation + total-cost incl. shipping/travel); (5) alternate.de owner-OK → polite
+  HTML driver behind needs-flag (same honest pattern as Allegro).
+
 ## What changed since last report
 - PROD MOVED OFF HOMESERVER (2026-10-08, owner order): app + signal-api now run on the
   cloud host behind its Traefik (existing wildcard cert, DNS-01, zero cert friction).
