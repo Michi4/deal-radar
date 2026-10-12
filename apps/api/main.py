@@ -495,7 +495,8 @@ async def _model_bootstrap() -> None:
         pass
 
 
-BUILTIN_IDS = ("ebay", "allegro", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo")
+BUILTIN_IDS = ("ebay", "allegro", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo",
+               "minisforum", "gmktec", "aoostar", "acemagic")
 
 
 def disabled_drivers() -> set[str]:
@@ -513,6 +514,7 @@ def load_drivers() -> None:
     from ebay.driver import EbayDriver
     from kleinanzeigen.driver import KleinanzeigenDriver
     from ricardo.driver import RicardoDriver
+    from shopify.driver import SHOPS, make_shopify_driver
     from shpock.driver import ShpockDriver
     from vinted.driver import VintedDriver
     from willhaben.driver import WillhabenDriver
@@ -528,6 +530,13 @@ def load_drivers() -> None:
         registry.register(EbayDriver(transport_from_config(cfg.get("ebay"))))
     if "allegro" not in off:
         registry.register(AllegroDriver(transport_from_config(cfg.get("allegro"))))
+    for shop_id, shop_name, base_url, currency in SHOPS:
+        if shop_id not in off:
+            drv = make_shopify_driver(shop_id, shop_name, base_url, currency)
+            alt = transport_from_config(cfg.get(shop_id))
+            if alt is not None:
+                drv.transport = alt
+            registry.register(drv)
     if "willhaben" not in off:
         registry.register(WillhabenDriver(transport_from_config(cfg.get("willhaben"))))
     if "kleinanzeigen" not in off:
