@@ -29,6 +29,8 @@
         </div>
         <div class="panel"><div class="eyebrow">correct the spec (AI re-checks)</div>
           <div v-if="cpuLine" class="lane" style="margin-bottom:0.375rem">{{ cpuLine }}</div>
+          <div v-if="offerTargets" class="lane" style="margin-bottom:0.375rem" title="Max offer in EUR for 120 pts per EUR (aggressive) / 100 pts per EUR (fair) / 90 pts per EUR (stretch)">offer up to {{ offerTargets }} EUR (120 aggressive / 100 fair / 90 stretch pts per EUR)</div>
+          <div v-if="isBarebone" class="lane" style="margin-bottom:0.375rem" title="No RAM/SSD included in this listing">barebone — add ~85 EUR per 16GB RAM</div>
           <div v-if="cpuCands.length" class="chips" style="margin-bottom:0.375rem">
             <button v-for="c in cpuCands" :key="c" class="chip" @click="cpuFix = c" :title="'Use ' + c">{{ c }}</button>
           </div>
@@ -72,6 +74,24 @@ const cpuCands = computed(() => {
   const f = d.value?.enrichments?.find((e) => e.field === 'cpu_candidates');
   const v = typeof f?.value === 'string' ? f.value : '';
   return v.split(';').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+});
+const offerTargets = computed(() => {
+  const f = d.value?.enrichments?.find((e) => e.field === 'offer_targets');
+  if (!f) return '';
+  const v = typeof f.value === 'string' ? f.value.trim() : String(f.value ?? '').trim();
+  return v;
+});
+const isBarebone = computed(() => {
+  const f = d.value?.enrichments?.find((e) => e.field === 'barebone');
+  if (!f) return false;
+  const v = f.value as unknown;
+  if (v === true) return true;
+  if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    return s !== '' && s !== 'false' && s !== '0' && s !== 'no';
+  }
+  return Boolean(v);
 });
 
 function imgGone(e: Event) { (e.target as HTMLElement).remove(); }

@@ -1276,10 +1276,12 @@ def _adv_item(r: dict) -> dict:
         bench = float(es.get("cpu_benchmark") or 0) or None
     except (TypeError, ValueError):
         bench = None
-    targets = {}
-    if bench:
-        targets = {"pay_for_90": round(bench / 90, 0), "pay_for_100": round(bench / 100, 0),
-                   "pay_for_120": round(bench / 120, 0)}
+    from deal_radar.scoring import offer_targets as _offer_targets
+    try:
+        _ram = int(es.get("ram_gb")) if es.get("ram_gb") else None
+    except (TypeError, ValueError):
+        _ram = None
+    targets = _offer_targets(bench, barebone=bool(es.get("barebone")), ram_gb=_ram) if bench else {}
     try:
         tdp = float(str(es.get("cpu_tdp") or "").split()[0]) if es.get("cpu_tdp") else None
     except (TypeError, ValueError, IndexError):

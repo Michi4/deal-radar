@@ -2139,3 +2139,14 @@ def test_enrich_specs_fact_fields():
     l2 = CanonicalListing(id="t:2", source="t", native_id="2", url="https://x.example/2",
                           title="Nike Training Shorts", description="")
     assert enrich_specs(l2) == []
+
+
+def test_offer_targets_plain_and_barebone():
+    from deal_radar.scoring import offer_targets
+    assert offer_targets(None) == {} and offer_targets(0) == {}
+    t = offer_targets(28261)
+    assert t["pay_for_100"] == round(28261 / 100) and t["barebone_uplift"] == 0
+    b = offer_targets(28261, barebone=True)
+    assert b["pay_for_100"] == round(28261 / 100 + 85) and b["barebone_uplift"] == 85
+    # RAM included -> no uplift even when flagged
+    assert offer_targets(28261, barebone=True, ram_gb=16)["barebone_uplift"] == 0

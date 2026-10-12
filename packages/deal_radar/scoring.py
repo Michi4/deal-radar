@@ -875,6 +875,24 @@ def enrich_cpu(listing: CanonicalListing) -> list[EnrichmentFact]:
     return facts
 
 
+def offer_targets(benchmark: float | None, barebone: bool = False,
+                  ram_gb: int | None = None) -> dict:
+    """Max offer prices for perf-per-euro tiers (deterministic haggle guide).
+
+    Barebone units need ~85 EUR per 16GB RAM added (user-measured street cost);
+    targets shift up so the COMPLETE system still hits the tier.
+    """
+    if not benchmark or benchmark <= 0:
+        return {}
+    uplift = 0
+    if barebone and not ram_gb:
+        uplift = 85
+    return {"pay_for_90": round(benchmark / 90 + uplift, 0),
+            "pay_for_100": round(benchmark / 100 + uplift, 0),
+            "pay_for_120": round(benchmark / 120 + uplift, 0),
+            "barebone_uplift": uplift}
+
+
 def value_score(price: float | None, benchmark: float | None,
                 market_median: float | None, currency: str | None = "EUR") -> tuple[float, list[str]]:
     why: list[str] = []

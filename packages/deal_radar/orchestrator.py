@@ -27,7 +27,14 @@ from .decision import (
 from .driver_sdk import DriverRegistry, SearchQuery
 from .filter_engine import apply_filters
 from .risk_engine import apply_risk_policy, assess_risk
-from .scoring import enrich_cpu, rank, total_cost, value_score
+from .scoring import (
+    enrich_cpu,
+    enrich_specs,
+    offer_targets,
+    rank,
+    total_cost,
+    value_score,
+)
 
 
 def dedupe_key(title: str, images: list[str]) -> str:
@@ -431,15 +438,37 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
             except Exception:
                 pass
         # Specs path: RAM/storage/ports/barebone, pure regex, every listing.
+        _fields: dict = {}
         if intent.get("enrich", True):
             try:
-                from .scoring import enrich_specs
-                enrich.extend(enrich_specs(l))
+                _specs = enrich_specs(l)
+                enrich.extend(_specs)
+                _fields = {e.field: e.value for e in _specs}
             except Exception:
-                pass
+                _fields = {}
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
         if bench is None:
             bench = next((e.value for e in enrich if e.field == "gpu_benchmark"), None)
+        # Deterministic haggle guide: max offers per perf/€ tier, barebone-aware.
+        if bench:
+            try:
+                _ot = offer_targets(float(bench),
+                                    barebone=bool(_fields.get("barebone")),
+                                    ram_gb=_fields.get("ram_gb"))
+                if _ot:
+                    enrich.append(EnrichmentFact(field="offer_targets",
+                                                value=(f"{_ot['pay_for_120']:.0f}/"
+                                                       f"{_ot['pay_for_100']:.0f}/"
+                                                       f"{_ot['pay_for_90']:.0f}"),
+                                                confidence=0.6,
+                                                status=FactStatus.AI_INFERRED,
+                                                sources=[Evidence(
+                                                    type="description",
+                                                    detail=("max offer for 120/100/90 pts/€"
+                                                            + (" (+85 barebone RAM)" if _ot.get("barebone_uplift") else "")),
+                                                    confidence=0.6)]))
+            except (TypeError, ValueError):
+                pass
         val, val_why = value_score(l.price, bench, median, l.currency)
         if h.get("kind", "offer") != "offer":
             # boxes/coolers/cables/parts can never top a value ranking, however cheap
