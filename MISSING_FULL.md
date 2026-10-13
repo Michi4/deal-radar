@@ -43,7 +43,11 @@ ROUND 4 (high-end boards): NO Halo/7945HX/Ultra/M4/Genoa boards on used market
 Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
-canonical hunt server 8090 runs all current code. Budget king: AMR5
+canonical hunt server 8090 runs all current code.
+ROUND 5 (apple/defect): M1 Air donors E180-320, M2 16/512 donor E490, Mini M1 E250,
+M3 Air 16/256 E650 floor. Fixed live: resolution-as-CPU (2560X monitor), part
+nouns carry no bench, closest-match same-generation gate (1600/2600/5500 honest
+miss now), >500 bench-per-euro review flag (cooler trap). 165 tests green. Budget king: AMR5
 offer E140 (128). Board kings: P1G4 11800H+T1200 E79 (98 eff), X13 board E75 (63.6),
 5700U board E32 (~101 eff). UM560 refurb 16/512 E199 complete (71.8) IF restocked.
 
