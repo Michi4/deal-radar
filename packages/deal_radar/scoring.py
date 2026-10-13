@@ -585,11 +585,12 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
                 if re.search(r"m\s*\.\s*[1-4]|ssd|nvme|\bslot\b|2280|2230|2242", ctx):
                     continue  # M.2 SSD storage next to the match, not Apple Silicon
             return cpu, 0.9, f"mentioned '{cpu}'"
-    # Intel Core Ultra: "Ultra 5 235H", "Core Ultra 7 155H", "Ultra 9 285HX"
-    m = re.search(r"(?:core\s+)?ultra\s*([579])\s*(\d{3,4}\s*[a-z]*)", t)
+    # Intel Core Ultra: "Ultra 5 235HX", "Core Ultra 7 155H", "Ultra 9 285K".
+    # Suffix is a tight set (H/HX/U/V/T/K/P/F) — free words never attach
+    # ("Ultra 5 225 seria 2" is a 225, not a "225SERIA").
+    m = re.search(r"(?:core\s+)?ultra\s*([579])\s*(\d{3})\s*(hx|hk|[huvtkpf])?\b", t)
     if m:
-        num = re.sub(r"\s+", "", m.group(2)).upper()
-        g = f"Core Ultra {m.group(1)} {num}"
+        g = f"Core Ultra {m.group(1)} {m.group(2)}{(m.group(3) or '').upper()}"
         return g, 0.8, f"mentioned '{g}'"
     # Intel Core Ultra X (Panther Lake+): "Ultra X7 358H", "Core Ultra X9".
     # Bare series ("Ultra X7", no number) stays an honest low-confidence label;

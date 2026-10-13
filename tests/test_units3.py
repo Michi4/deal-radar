@@ -2439,3 +2439,12 @@ def test_io_blende_excluded_and_platform_sort():
     ]
     b = G.board(items)
     assert [x["id"] for x in b["platforms"]] == ["p2", "p1"]
+
+
+def test_ultra_suffix_tight():
+    from deal_radar.scoring import extract_cpu
+    assert extract_cpu("Intel core ultra 5 225 seria 2")[0] == "Core Ultra 5 225"
+    assert extract_cpu("Core Ultra 7 155H laptop")[0] == "Core Ultra 7 155H"
+    assert extract_cpu("Ultra 9 285HX workstation")[0] == "Core Ultra 9 285HX"
+    assert extract_cpu("Core Ultra 7 258V convertible")[0] == "Core Ultra 7 258V"
+    assert extract_cpu("Gaming PC Core Ultra 7 265K RTX 5060")[0] == "Core Ultra 7 265K"
