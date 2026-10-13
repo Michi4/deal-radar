@@ -459,6 +459,17 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
         bench = next((e.value for e in enrich if e.field == "cpu_benchmark"), None)
         if bench is None:
             bench = next((e.value for e in enrich if e.field == "gpu_benchmark"), None)
+        # Too-good check: benchmark-per-euro above 500 with a tiny price means
+        # the listing is almost never the chip/system itself (cooler, empty box,
+        # wrong item, or scam). Flag into review — never hide.
+        try:
+            if bench and l.price and l.price > 0 and float(bench) / float(l.price) > 500:
+                r.score = min(1.0, (r.score or 0) + 0.35)
+                r.reasons.append(f"price implausible ({float(bench):.0f} marks for {l.price} — "
+                                 "likely cooler/accessory/wrong item, verify before paying)")
+                metrics.inc("risk_implausible_price")
+        except (TypeError, ValueError):
+            pass
         # Deterministic haggle guide: max offers per perf/€ tier, barebone-aware.
         if bench:
             try:

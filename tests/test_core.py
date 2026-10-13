@@ -1299,3 +1299,35 @@ def test_advise_offer_targets():
             assert pick["offer"] == "offer 283.0€ for 100 pts/€", pick
     finally:
         m.JOBS.pop("adv2", None)
+
+
+def test_implausible_price_flagged_not_hidden():
+    """E20 'i5-14400F cooler' (25k marks) lands in review with a reason."""
+    import asyncio
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    from deal_radar.store import Store
+
+    async def go():
+        reg = DriverRegistry()
+        reg.register(_fake_driver(
+            [L(title="Intel Core i5-14400F ventilateur", description="cooler only",
+               price=20.0, images=[])], driver_id="g"))
+        st = Store(os.path.join(tempfile.mkdtemp(), "c2.db"))
+        try:
+            with patch("deal_radar.benchmarks.fetch_passmark_cpu",
+                       return_value={"multi": 25406, "single": 3000,
+                                     "source": "t", "ts": 9999999999.0}):
+                out = await run_search({"keywords": "14400f", "sources": ["g"], "limit": 5,
+                                        "enrich": True, "benchmarks": True}, reg, st)
+        finally:
+            st.close()
+        return out
+
+    out = asyncio.run(go())
+    r = out["results"][0]
+    assert r["risk"]["score"] >= 0.35
+    assert any("implausible" in w for w in r["why"])
+    assert r["lane"] in ("review", "hidden", "top")
