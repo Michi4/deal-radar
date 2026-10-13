@@ -44,6 +44,11 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 11 (AI-rig 40 tok/s): floor is M1 Ultra 128GB — eBay E5295+20 ship (Bonn, DE,
+item 940005703473) beats local E6500 OVP. M2U-128/4TB E6599 stretch, M2U-192 E8490
+dream. 64GB boxes (E2680-4899) are TRAPS (weights don't fit V4.1-Flash). DGX/Halo
+miss 40 (bandwidth). A100 PCIe absent (SXM4 only). RAM-heavy: 64GB SODIMM kits
+E539-600, UM790-32 E550, MLLSE-24 E350.
 ROUND 10 (mog-or-die): bulk lots (9x Optiplex E140, PC-Konvolut E100 — contents
 unknown), capped-200 completes, US eBay spot-check (M75q auctions die on $93
 ship; K12 H255 bare E250+125=75.6 loses to coupon). willhaben/KA flared bot-walls
