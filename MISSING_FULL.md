@@ -44,6 +44,12 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 10 (mog-or-die): bulk lots (9x Optiplex E140, PC-Konvolut E100 — contents
+unknown), capped-200 completes, US eBay spot-check (M75q auctions die on $93
+ship; K12 H255 bare E250+125=75.6 loses to coupon). willhaben/KA flared bot-walls
+under burst load — cooldown, no hammering. VERDICT: no living mogger; edges are
+restock watches, ending auctions (AS5 Sat), negotiation (UM790-32 E500, AMR5 E140,
+Legion-3070Ti diagnosis). ~50 hunts banked.
 ROUND 9 (mog hunt): 40+ hunts total, zero crown-takers. Closest: P1/11800H+T1200
 board E79, UM690 refurb E289 (SOLD OUT — watch recipe below), 9600X chip E140,
 M1-Pro-14 defekt E549 (31.9, repair gamble only). New chip learned: 8940HX (~49k).
