@@ -353,6 +353,147 @@ MODEL_CPU_SEED.update({
 })
 
 
+# board model -> soldered CPU options. Consulted ONLY when the text names a
+# board (board/mainboard/logicboard/motherboard/platine/...), so whole-laptop
+# listings keep their (usually identical) MODEL_CPU_SEED path. Common factory
+# configs first; drawer offers the rest. No bench source for ARM SBC chips
+# (BCM/RKxxxx) — those stay honestly unrated, flagged as platforms.
+BOARD_CPU_SEED = {
+    # ThinkPad AMD boards (beyond MODEL_CPU_SEED's Intel-leaning classics)
+    "thinkpad e14 gen 2": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "e14 gen 2": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "thinkpad e15 gen 2": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "e15 gen 2": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "thinkpad e15 gen 3": ["Ryzen 5 5500U", "Ryzen 7 5700U", "Ryzen 5 7530U"],
+    "thinkpad l14 gen 1": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    "l14 gen 1": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    "thinkpad p14s gen 1": ["Ryzen 7 PRO 4750U"],
+    "p14s gen 1": ["Ryzen 7 PRO 4750U"],
+    "thinkpad x13 gen 1": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    "x13 gen 1": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    "thinkpad t14 gen 1": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    "t14 gen 1": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    # IdeaPad / Yoga Slim boards
+    "ideapad 3": ["Ryzen 5 5500U", "Ryzen 7 5700U", "Ryzen 7 5825U"],
+    "ideapad 5": ["Ryzen 7 5700U", "Ryzen 7 5825U", "Ryzen 5 7530U"],
+    "ideapad slim 5": ["Ryzen 5 5500U", "Ryzen 7 5700U", "Ryzen 5 7530U"],
+    "ideapad slim 7": ["Ryzen 7 5800U", "Ryzen 7 5800HS", "Ryzen 7 7735HS"],
+    "yoga slim 7": ["Ryzen 7 5800U", "Ryzen 7 5800HS", "Ryzen 7 6800HS", "Ryzen 7 7735HS"],
+    "ideapad gaming 3": ["Ryzen 5 5600H", "Ryzen 7 5800H"],
+    # HP boards
+    "elitebook 845 g7": ["Ryzen 7 PRO 4750U"],
+    "elitebook 845 g8": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U"],
+    "elitebook 835 g7": ["Ryzen 5 PRO 4650U", "Ryzen 7 PRO 4750U"],
+    "elitebook 835 g8": ["Ryzen 5 PRO 5650U", "Ryzen 7 PRO 5850U"],
+    "probook 445 g7": ["Ryzen 5 4500U", "Ryzen 7 4700U"],
+    "probook 445 g8": ["Ryzen 5 5650U", "Ryzen 7 5850U", "Ryzen 5 PRO 5650U"],
+    "probook 455 g8": ["Ryzen 5 5650U", "Ryzen 7 5850U"],
+    "probook 455 g9": ["Ryzen 5 7530U", "Ryzen 7 7735U"],
+    "pavilion 15": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "omen 15": ["Ryzen 5 5600H", "Ryzen 7 5800H"],
+    "omen 16": ["Ryzen 7 6800H", "i7-12700H"],
+    "hp 14": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "hp 15": ["Ryzen 5 5500U", "Ryzen 7 5700U", "Ryzen 5 7530U"],
+    "elitedesk 805 g6": ["Ryzen 5 PRO 4650GE", "Ryzen 7 PRO 4750G"],
+    "prodesk 405 g6": ["Ryzen 5 PRO 4650GE"],
+    # Dell boards
+    "latitude 5420": ["i5-1145G7", "i7-1165G7"],
+    "latitude 5430": ["i5-1235U", "i5-1245U", "i7-1255U"],
+    "latitude 5400": ["i5-8265U", "i7-8665U"],
+    "latitude 5410": ["i5-10210U", "i5-10310U", "i7-10510U"],
+    "inspiron 5505": ["Ryzen 5 4500U", "Ryzen 7 4700U"],
+    "inspiron 5515": ["Ryzen 5 5500U", "Ryzen 7 5700U"],
+    "g5 5500": ["i5-10300H", "i7-10750H"],
+    "g15 5511": ["i5-11400H", "i7-11800H"],
+    "optiplex 3090": ["i3-10105T", "i5-10500T"],
+    "optiplex 5090": ["i5-10500T", "i7-10700T"],
+    "optiplex 7090": ["i5-10500", "i7-10700"],
+    # Apple logic boards
+    "macbook air m1": ["M1"],
+    "macbook air m2": ["M2"],
+    "macbook pro 13 m1": ["M1"],
+    "macbook pro 13 m2": ["M2"],
+    "macbook pro 14": ["M1 Pro", "M1 Max"],
+    "macbook pro 16": ["M1 Pro", "M1 Max", "M2 Pro", "M2 Max"],
+    "mac mini m1": ["M1"],
+    "mac mini m2": ["M2"],
+    "imac 24": ["M1"],
+    # Framework mainboards (premium, swappable)
+    "framework 13": ["i5-1240P", "i7-1360P", "Ryzen 5 7640U", "Ryzen 7 7840U"],
+    "framework laptop 13": ["i5-1240P", "i7-1360P", "Ryzen 5 7640U", "Ryzen 7 7840U"],
+    "framework 16": ["Ryzen 7 7840HS", "Ryzen 9 7940HS"],
+    "framework laptop 16": ["Ryzen 7 7840HS", "Ryzen 9 7940HS"],
+    # Mini-PC boards
+    "morefine m600": ["Ryzen 5 6600H", "Ryzen 7 6800H"],
+    "minisforum um690": ["Ryzen 9 6900HX"],
+    "beelink ser5": ["Ryzen 5 5600H", "Ryzen 7 5800H"],
+    # Server boards shipped with CPU (AI-rig relevant)
+    "h11dsi": ["EPYC 7302", "EPYC 7402", "EPYC 7502"],
+    "h12dsi": ["EPYC 7532", "EPYC 7542"],
+    "x11dpi": ["Xeon Gold 6130", "Xeon Gold 6148"],
+    "x10drl": ["Xeon E5-2620V4", "Xeon E5-2667V4"],
+    # ARM SBCs (no PassMark source — recognized as platforms, honestly unrated)
+    "raspberry pi 5": ["BCM2712"],
+    "raspberry pi 4": ["BCM2711"],
+    "orange pi 5": ["RK3588S"],
+    "rock 5": ["RK3588"],
+    # ThinkPad S-slims + X380 (frequent board listings)
+    "t460s": ["i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U"],
+    "thinkpad t460s": ["i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U"],
+    "t470s": ["i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
+    "thinkpad t470s": ["i5-7200U", "i5-7300U", "i7-7500U", "i7-7600U"],
+    "t480s": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    "thinkpad t480s": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    "t490s": ["i5-8265U", "i5-8365U", "i7-8565U", "i7-8665U"],
+    "x380 yoga": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    "thinkpad x380 yoga": ["i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U"],
+    # Apple A-model boards (Axxxx = exact machine, disambiguates Intel-vs-Apple Silicon years)
+    "a1181": ["T7500"],
+    "a1278": ["i5-2415M", "i5-3210M"],
+    "a1342": ["P8600"],
+    "a1369": ["i5-2537M"],
+    "a1370": ["i5-2467M"],
+    "a1398": ["i7-4770HQ", "i7-4980HQ"],
+    "a1425": ["i5-5257U", "i7-5557U"],
+    "a1466": ["i5-5250U", "i7-5650U"],
+    "a1502": ["i5-4278U", "i7-5557U"],
+    "a1534": ["M-5Y51", "M-5Y71"],
+    "a1706": ["i5-6267U", "i7-6667U"],
+    "a1707": ["i7-6700HQ", "i7-6820HQ", "i7-6920HQ"],
+    "a1708": ["i5-6360U"],
+    "a1932": ["i5-8210Y"],
+    "a1989": ["i5-8259U", "i7-8559U"],
+    "a1990": ["i7-8750H", "i7-8850H", "i9-8950HK"],
+    "a2141": ["i7-9750H", "i9-9880H", "i9-9980HK"],
+    "a2159": ["i5-8257U"],
+    "a2179": ["i5-1038NG7"],
+    "a2251": ["i5-1038NG7", "i7-1068NG7"],
+    "a2289": ["i5-1038NG7"],
+    "a2338": ["M1"],
+    "a2442": ["M1"],
+    "a2485": ["M1 Pro"],
+    "a2681": ["M2"],
+    "a2779": ["M2"],
+}
+
+BOARD_WORDS = re.compile(
+    r"mainboard|motherboard|logic\s*board|logicboard|baseboard|systemboard|"
+    r"hauptplatine|systemplatine|\bplatine\b", re.IGNORECASE)
+
+#: Daughter/sub boards carry no CPU (USB/LAN/audio/power/LED IO boards) —
+#: excluded from board-CPU estimates even though they say "platine".
+#: Compounds only: a bare "usb" (USB-C port mention) must never nuke a real board.
+IO_BOARD_WORDS = re.compile(
+    r"i/o\b|io[-\s]?(board|platine|karte)|usb[-\s]?(board|platine)|"
+    r"lan[-\s]?(board|platine)|audio[-\s]?(board|platine)|hdmi[-\s]?(board|platine)|"
+    r"power[-\s]?(board|button)|led[-\s]?board|sub[-\s]?board|daughter\s?board|"
+    r"tastatur[-\s]?platine|keyboard[-\s]?board|lese[-\s]?platine", re.IGNORECASE)
+
+SOCKET_WORDS = re.compile(
+    r"\bam4\b|\bam5\b|lga\s*1700|lga\s*1200|lga\s*1151|\btr4\b|\bsp3\b|"
+    r"x670e?|b650e?|x570|b550|a520|z790|b760|z690|b660|x399|wrX80|wrx90", re.IGNORECASE)
+
+
 async def resolve_cpu_candidates(model_name: str) -> list[str]:
     """Which CPUs ship in this laptop model? Seed table + AI, disk-cached."""
     import json as _json
@@ -464,17 +605,23 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
         parts.append(m.group(4))
         g = " ".join(parts)
         return g, 0.8, f"mentioned '{g}'"
-    # space-form Intel: "i7 12700H", "i5 12450H", "i7 8650-U", "i5 1145G7"
-    # (dash-form handled below)
-    m = re.search(r"\bi\s*([3579])\s+(\d{4,5})\s*-?\s*([a-z]{0,3}\d?)", t)
+    # space-form Intel: "i7 12700H", "i5 12450H", "i7 8650-U", "i5 1145G7".
+    # Suffix needs a non-letter after it ("i5 2500 Prozessor" is NOT i5-2500PRO).
+    m = re.search(r"\bi\s*([3579])\s+(\d{4,5})\s*-?\s*([a-z]{1,2}\d?)?(?![a-z])", t)
     if m:
-        g = f"i{m.group(1)}-{m.group(2)}{m.group(3).upper()}"
+        suf = (m.group(3) or "").upper()
+        g = f"i{m.group(1)}-{m.group(2)}{suf}"
         return g, 0.7, f"mentioned '{g}'"
     # Xeon: "Xeon E-2276M", "Xeon W-10855M", "Xeon E3-1505M"
     m = re.search(r"\bxeon\s*(e[35]?-|w-)?\s*(\d{4,5}[a-z]*)\b", t)
     if m:
         g = f"Xeon {(m.group(1) or '').upper()}{m.group(2).upper()}"
         return g.strip(), 0.8, f"mentioned '{g.strip()}'"
+    # EPYC: "EPYC 7351P", "EPYC 7302", "EPYC 7542" (server/AI-rig relevant)
+    m = re.search(r"\bepyc\s*(\d{3,4}[a-z]*)\b", t)
+    if m:
+        g = f"EPYC {m.group(1).upper()}"
+        return g, 0.8, f"mentioned '{g}'"
     # bare Intel mobile/desktop: "8650U", "1145G7", "12450H", "12700".
     # 6/7/8xxx+U/H collides with AMD numbering -> decide by nearby brand context,
     # else skip (model-seed family estimate covers business lines honestly).
@@ -482,6 +629,11 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
     if m:
         if m.group(1):
             num, suf = m.group(1), m.group(2)
+            # explicit tier glued on ("i7-1255U"): trust it, never re-derive
+            pre = re.search(r"i([3579])\s*-$", t[max(0, m.start() - 4):m.start()])
+            if pre:
+                return f"i{pre.group(1)}-{num}{suf.upper()}", 0.75, \
+                    f"explicit 'i{pre.group(1)}-{num}{suf.upper()}'"
             ctx = t[max(0, m.start() - 24):m.end() + 8]
             intel_ctx = bool(re.search(r"intel|\bi[3579]\b|nuc|optiplex|elitedesk|prodesk|vostro|surface|celeron|pentium", ctx))
             mixed_ctx = bool(re.search(r"thinkpad|latitude|elitebook|probook|zbook|thinkcentre", ctx))
@@ -526,11 +678,13 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
         m = re.search(r"\br\s*([3579])\s*(\d{4})\s*([a-z]{1,2})\b"
                       r"|\b(\d{4})\s*(hs|hx|h|u|g|ge|x3d|x|f)\b", t)
         if m:
-            # RAM-speed markings are not CPUs ("PC2-5300U", "667 MHz DIMM")
+            # RAM-speed markings are not CPUs ("PC2-5300U", "667 MHz DIMM").
+            # Intel context is not an AMD CPU ("INTEL i7-8750H" is not Ryzen 7).
             _ctx = t[max(0, m.start() - 10):m.end() + 10]
             _is_ram = bool(re.search(r"pc\d*-\d+|\d+\s*mhz|\bdimm\b|\bsodimm\b", _ctx, re.IGNORECASE))
+            _is_intel = bool(re.search(r"\bintel\b|\bi[3579]\b", _ctx))
             tier, num, suf = "", "", ""
-            if not _is_ram:
+            if not _is_ram and not _is_intel:
                 if m.group(1):
                     tier, num, suf = m.group(1), m.group(2), m.group(3)
                 else:
@@ -578,8 +732,13 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
     """
     clean = strip_marketplace_suffix(text)
     cpu, conf, why = extract_cpu(clean)
-    if cpu:
+    # Solid mentions win immediately; vague unverified fragments ("ryzen 5",
+    # "ryzen 7") defer to the seed tables below, which attach candidates.
+    if cpu and (conf >= 0.6 or "unverified" not in why):
         return cpu, conf, why, False, []
+    # IO daughterboards (USB/LAN/power) carry no CPU — never estimate one.
+    if IO_BOARD_WORDS.search(clean):
+        return None, 0.0, "", False, []
     bl = clean.lower()
     # normalize generation spellings so seeds match: "5th Gen" -> "gen 5",
     # "X1 Carbon G11" -> "x1 carbon gen 11", "X1 Yoga G8" likewise.
@@ -608,6 +767,33 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
             detail = (f"family estimate for '{seed_key}' (could be {base}"
                       f"{', ' + others if others else ''} — set exact CPU in drawer)")
             return base, 0.45, detail, True, cands[:6]
+    # board fallback: board model named but no CPU in text ("X13 Gen1 board").
+    # Requires a soldered-system board word (IO daughterboards and bare socket
+    # platforms excluded); whole machines never land here. Exact Apple A-model
+    # IDs (A2141 = 2019 Intel) win over generic line names.
+    _is_b, _sock = board_info(clean)
+    if _is_b and not _sock:
+        import re as _reB
+        keys = sorted(BOARD_CPU_SEED, key=len, reverse=True)
+        keys.sort(key=lambda k: 0 if _reB.fullmatch(r"a\d{4}", k) else 1)
+
+        def _board_hit(seed_key: str) -> tuple[str | None, float, str, bool, list[str]] | None:
+            if seed_key in bl or re.sub(r"[^a-z0-9]", "", seed_key) in bl_nospace:
+                cands = BOARD_CPU_SEED[seed_key]
+                if any(c.lower() in bl for c in cands):
+                    return None
+                base = cands[0]
+                others = ", ".join(cands[1:4])
+                return base, 0.4, (f"board estimate for '{seed_key}' (could be {base}"
+                                   f"{', ' + others if others else ''} — set exact CPU in drawer)"), True, cands[:6]
+            return None
+
+        for seed_key in keys:
+            _bhit = _board_hit(seed_key)
+            if _bhit:
+                return _bhit
+    if cpu:
+        return cpu, conf, why, False, []
     return None, 0.0, "", False, []
 
 
@@ -725,16 +911,26 @@ def extract_unified_mem(text: str) -> int | None:
     return None
 
 
+_UPTO = re.compile(r"(up\s*to|bis\s*zu|\bmax\.?|supports?|erweiterbar|aufrüstbar)\s*$", re.IGNORECASE)
+
+
+def _upto_guard(t: str, pos: int) -> bool:
+    """True when the match at pos is an option maximum ("up to 128GB"), not
+    included hardware."""
+    return bool(_UPTO.search(t[max(0, pos - 12):pos]))
+
+
 def extract_ram(text: str) -> int | None:
     """Installed RAM in GB, or None. Requires a memory keyword nearby so SSD
-    sizes and model numbers never leak in ("512GB SSD", "M2", "2280")."""
+    sizes and model numbers never leak in ("512GB SSD", "M2", "2280").
+    Option maximums ("up to 128GB") are not included RAM."""
     t = (text or "").lower()
-    m = re.search(r"(\d{2,3})\s*gb\s*(?:ddr\d?|lpddr\d?|sodimm|dimm|ram|arbeitsspeicher|memory|speicher)", t)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"(?:ram|memory|arbeitsspeicher)[^.:\n]{0,20}?(\d{2,3})\s*gb", t)
-    if m:
-        return int(m.group(1))
+    for m in re.finditer(r"(\d{2,3})\s*gb\s*(?:ddr\d?|lpddr\d?|sodimm|dimm|ram|arbeitsspeicher|memory|speicher)", t):
+        if not _upto_guard(t, m.start()):
+            return int(m.group(1))
+    for m in re.finditer(r"(?:ram|memory|arbeitsspeicher)[^.:\n]{0,20}?(\d{2,3})\s*gb", t):
+        if not _upto_guard(t, m.start(1)):
+            return int(m.group(1))
     return None
 
 
@@ -765,10 +961,14 @@ def extract_storage(text: str) -> tuple[int | None, str]:
         return "" if kind == "SPEICHERMEDIEN" else kind
 
     for m in kinded:
+        if _upto_guard(t, m.start()):
+            continue
         gb = _gb(m)
         if gb:
             return gb, _kind(m)
     for m in bare:
+        if _upto_guard(t, m.start()):
+            continue
         gb = _gb(m)
         if gb and (m.group(2) == "tb" or gb >= 256):
             return gb, ""
@@ -804,6 +1004,23 @@ def is_barebone(text: str) -> bool:
         r"barebone|\b0\s*gb\b|\b0\s*tb\b|ohne\s*(ram|ssd|speicher|festplatte)"
         r"|without\s*(ram|ssd|storage)|w/o\s*(ram|ssd)|no\s*(ram|ssd)\b"
         r"|ram\s*/\s*ssd\s*(nicht|exkl)|exkl\.\s*(ram|ssd)", t))
+
+
+def board_info(text: str) -> tuple[bool, bool]:
+    """(is_board, socketed). Socketed = desktop/server platform board needing
+    its own CPU (no completion math); soldered = usable system core.
+    IO daughterboards (USB/LAN/power) are not system boards."""
+    blob = text or ""
+    if not BOARD_WORDS.search(blob):
+        return False, False
+    if IO_BOARD_WORDS.search(blob):
+        return False, False
+    return True, bool(SOCKET_WORDS.search(blob))
+
+
+#: Typical extra spend to turn a soldered laptop/mini board into a running
+#: system (RAM + SSD + PSU/case/cooling). Labeled estimate, not a quote.
+BOARD_COMPLETION_EUR = 120
 
 
 def enrich_specs(listing: CanonicalListing) -> list[EnrichmentFact]:
@@ -843,6 +1060,22 @@ def enrich_specs(listing: CanonicalListing) -> list[EnrichmentFact]:
                                     sources=[Evidence(type="description",
                                                       detail="barebone: no RAM/SSD included (add ~cost)",
                                                       confidence=0.8)]))
+    is_board, socketed = board_info(blob)
+    if is_board:
+        facts.append(EnrichmentFact(field="board", value=True, confidence=0.9,
+                                    status=FactStatus.AI_INFERRED,
+                                    sources=[Evidence(type="description",
+                                                      detail=("socket platform board (needs CPU+RAM) — no completion math"
+                                                              if socketed else
+                                                              "soldered-CPU board (DiyPerks route: needs RAM+SSD+PSU/case)"),
+                                                      confidence=0.9)]))
+        if not socketed:
+            facts.append(EnrichmentFact(field="board_completion_eur", value=BOARD_COMPLETION_EUR,
+                                        confidence=0.5,
+                                        status=FactStatus.AI_INFERRED,
+                                        sources=[Evidence(type="description",
+                                                          detail=f"~{BOARD_COMPLETION_EUR} EUR typical to complete (RAM+SSD+PSU/case)",
+                                                          confidence=0.5)]))
     return facts
 
 

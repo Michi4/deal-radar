@@ -2012,7 +2012,7 @@ def test_extract_cpu_ultra_x_and_nth():
 def test_resolve_cpu_with_seeds_vinted_titles():
     from deal_radar.scoring import resolve_cpu_with_seeds
     # vinted metadata tail must not block the seed estimate
-    cpu, conf, _, est, cands = resolve_cpu_with_seeds(
+    cpu, _, _, est, cands = resolve_cpu_with_seeds(
         "Lenovo Thinkpad X1 Carbon Gen 6, Marke: Lenovo, Modell: ThinkPad X1 Carbon, Zustand: Sehr gut")
     assert est is True and cpu in ("i5-8250U", "i5-8350U", "i7-8550U", "i7-8650U") and cands
     # bare tier hint narrows to i5
@@ -2174,3 +2174,121 @@ def test_extract_cpu_ryzen_h_split():
     # no regression: normal + PRO forms unchanged
     assert extract_cpu("Ryzen 7 8845HS mini pc")[0] == "Ryzen 7 8845HS"
     assert extract_cpu("Ryzen 5 PRO 5650U laptop")[0] == "Ryzen 5 PRO 5650U"
+
+
+def test_extract_intel_tier_suffix_guards():
+    from deal_radar.scoring import extract_cpu
+    # explicit glued tier trusted, never re-derived
+    assert extract_cpu("Lenovo ThinkPad T14 G3 Mainboard i7-1255U 16 RAM")[0] == "i7-1255U"
+    assert extract_cpu("Board i5-10210U defekt")[0] == "i5-10210U"
+    # suffix must end at word boundary (Prozessor is not PRO)
+    cpu, _, _ = extract_cpu("MS-7728 1155 Sockel + Intel I5 2500 Prozessor")
+    assert cpu == "i5-2500" and "PRO" not in cpu, cpu
+    # Intel context is never a Ryzen
+    cpu, _, _ = extract_cpu("LENOVO ThinkPad P52 Motherboard mit INTEL i7-8750H Quadro P1000")
+    assert cpu == "i7-8750H", cpu
+    # EPYC recognized
+    assert extract_cpu("AMD CPU Epyc 7351P 16C/32T")[0] == "EPYC 7351P"
+    assert extract_cpu("Server EPYC 7302P 128GB DDR4")[0] == "EPYC 7302P"
+
+
+def test_board_seeds_and_info():
+    from deal_radar.scoring import board_info, resolve_cpu_with_seeds
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo thinkpad T460s motherboard")
+    assert est is True and cpu in ("i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("MacBook Pro 16 A2141 Logic Board i7 16GB 512GB")
+    assert est is True and cpu in ("i7-9750H", "i9-9880H", "i9-9980HK")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("MacBook Pro 14 Logic Board 8GB 256GB")
+    assert est is True and cpu in ("M1 Pro", "M1 Max")
+    # whole machines with MODEL seeds resolve via the model path (same CPUs);
+    # machines with neither seed stay unknown
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo ThinkPad T460s Windows 11")
+    assert est is True and cpu in ("i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo ThinkPad T14s Windows 11")
+    assert est is False and cpu is None
+    assert board_info("X670E motherboard AM5") == (True, True)
+    assert board_info("ThinkPad X13 Gen1 AMD Mainboard Ryzen") == (True, False)
+    assert board_info("ThinkPad T480 i5-8350U laptop") == (False, False)
+
+
+def test_gems_boards_fx_io_defekt():
+    """Boards leaderboard: FX-normalized, IO daughterboards excluded, defective
+    boards excluded, completion reduced by included parts."""
+    import json as _j
+
+    from deal_radar import gems as G
+
+    class FakeDB:
+        def execute(self, *a, **k):
+            class C:
+                def fetchall(self_inner):
+                    return [
+                        ("b:1", "ThinkPad X13 Gen1 AMD Mainboard Ryzen 5 PRO 4650U 8GB", 90.0, "EUR",
+                         "https://x.example/1", "t", _j.dumps({"description": "", "images": []})),
+                        ("b:2", "ThinkPad E14/E15 Gen 2 usb LAN I/O-Platine", 3.0, "EUR",
+                         "https://x.example/2", "t", _j.dumps({"description": "", "images": []})),
+                        ("b:3", "X13 Gen 3 Yoga Mainboard Defekt i5-1235U", 20.0, "EUR",
+                         "https://x.example/3", "t", _j.dumps({"description": "", "images": []})),
+                        ("b:4", "AOOSTAR GEM12 Ryzen 7 8845HS Barebone", 299.0, "USD",
+                         "https://x.example/4", "t", _j.dumps({"description": "", "images": []})),
+                    ]
+            return C()
+
+    class FakeStore:
+        db = FakeDB()
+
+    benches = {"Ryzen 5 PRO 4650U": {"multi": 11920, "single": 1500},
+               "i5-1235U": {"multi": 12404, "single": 2500},
+               "Ryzen 7 8845HS": {"multi": 28260, "single": 3700}}
+    real_cached = G.cached_cpu
+    G.cached_cpu = lambda cpu: benches.get(cpu)
+    try:
+        items, _ = G.collect_full(FakeStore())
+        by_id = {x["id"]: x for x in items}
+        # b:2 IO board: no CPU estimate -> unrated (absent)
+        assert "b:2" not in by_id
+        b1 = by_id["b:1"]
+        assert b1["board"] is True and b1["socketed"] is False
+        # 8GB in title is not a RAM size -> full 120 completion
+        assert b1["eff_price"] == 210.0 and b1["eff_ppe"] == round(11920 / 210, 1)
+        b = G.board(items)
+        # defekt board (parts kind) excluded from boards
+        assert all(x["id"] != "b:3" for x in b["boards"])
+        assert next(x["id"] for x in b["boards"]) == "b:1"
+        # USD normalized: 299 USD -> ~276.85 EUR, barebone +125
+        b4 = by_id["b:4"]
+        assert b4["barebone_uplift"] == 125
+        assert b4["ppe_full"] == round(28260 / (round(299 / 1.08, 2) + 125), 1), b4["ppe_full"]
+    finally:
+        G.cached_cpu = real_cached
+
+
+def test_board_io_and_upto_guards():
+    from deal_radar.scoring import (
+        board_info,
+        extract_ram,
+        extract_storage,
+        resolve_cpu_with_seeds,
+    )
+    # IO daughterboard: recognized as non-system-board, no CPU attribution
+    assert board_info("ThinkPad E14 USB & LAN I/O-Platine Ersatzteil") == (False, False)
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("ThinkPad E14 Gen 2 usb LAN I/O-Platine")
+    assert cpu is None and est is False
+    # real board still detected
+    assert board_info("ThinkPad X13 Gen1 AMD Mainboard Ryzen") == (True, False)
+    # option maximums are not included parts
+    assert extract_ram("Barebone, RAM slots up to 128GB DDR5") is None
+    assert extract_storage("2 slots up to 8TB NVMe")[0] is None
+    assert extract_ram("16GB DDR5, 1TB NVMe") == 16
+
+
+def test_unverified_defers_to_seeds():
+    """Bare 'Ryzen 5' yields the seed estimate (with candidates), not the
+    unverified fragment."""
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    cpu, _, _, est, cands = resolve_cpu_with_seeds(
+        "Lenovo ThinkPad X395, 16GB RAM, Ryzen 5, Windows 11 Pro")
+    assert est is True and cpu == "Ryzen 5 PRO 3500U" and cands
+    # no seed anywhere -> old unverified behavior preserved
+    cpu, _, why, est, _ = resolve_cpu_with_seeds("Mini pc AMD Ryzen 3 con 8gb ram")
+    assert est is False and "unverified" in why

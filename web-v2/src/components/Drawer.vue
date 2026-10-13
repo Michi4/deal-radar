@@ -31,6 +31,7 @@
           <div v-if="cpuLine" class="lane" style="margin-bottom:0.375rem">{{ cpuLine }}</div>
           <div v-if="offerTargets" class="lane" style="margin-bottom:0.375rem" title="Max offer in EUR for 120 pts per EUR (aggressive) / 100 pts per EUR (fair) / 90 pts per EUR (stretch)">offer up to {{ offerTargets }} EUR (120 aggressive / 100 fair / 90 stretch pts per EUR)</div>
           <div v-if="isBarebone" class="lane" style="margin-bottom:0.375rem" title="No RAM/SSD included in this listing">barebone — add ~85 EUR per 16GB RAM</div>
+          <div v-if="isBoard" class="lane" style="margin-bottom:0.375rem" title="Soldered-CPU board needs RAM/SSD/PSU/case">soldered-CPU board — needs RAM+SSD+PSU/case (~{{ boardCompletionEur }} EUR)</div>
           <div v-if="cpuCands.length" class="chips" style="margin-bottom:0.375rem">
             <button v-for="c in cpuCands" :key="c" class="chip" @click="cpuFix = c" :title="'Use ' + c">{{ c }}</button>
           </div>
@@ -92,6 +93,29 @@ const isBarebone = computed(() => {
     return s !== '' && s !== 'false' && s !== '0' && s !== 'no';
   }
   return Boolean(v);
+});
+const isBoard = computed(() => {
+  const f = d.value?.enrichments?.find((e) => e.field === 'board');
+  if (!f) return false;
+  const v = f.value as unknown;
+  if (v === true) return true;
+  if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    return s !== '' && s !== 'false' && s !== '0' && s !== 'no';
+  }
+  return Boolean(v);
+});
+const boardCompletionEur = computed(() => {
+  const f = d.value?.enrichments?.find((e) => e.field === 'board_completion_eur');
+  if (!f) return '120';
+  const v = f.value as unknown;
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'string') {
+    const s = v.trim();
+    return s || '120';
+  }
+  return String(v ?? '120');
 });
 
 function imgGone(e: Event) { (e.target as HTMLElement).remove(); }

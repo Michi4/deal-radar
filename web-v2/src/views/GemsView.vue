@@ -29,7 +29,33 @@
         <span><small>sort by:</small></span>
         <button v-for="c in cols" :key="c.key" class="btn btn-sm" :class="sortKey === c.key ? 'btn-primary' : ''" @click="setSort(c.key)" :title="'sort by ' + c.label">{{ c.label }}{{ sortKey === c.key ? (sortDir > 0 ? ' ↓' : ' ↑') : '' }}</button>
       </div>
-      <div class="rgrid">
+      <div v-if="sec === 'boards'" class="rgrid">
+        <div v-for="r in sorted" :key="r.url" class="card res">
+          <div class="body">
+            <h4 :title="r.title"><a :href="r.url" target="_blank" rel="noopener">{{ r.title || '(no title)' }}</a></h4>
+            <div>
+              <span class="price">{{ r.price ?? '?' }} {{ r.currency || '' }}</span><small v-if="r.eff_price != null" title="effective complete cost incl. RAM/SSD/PSU/case"> ≈ {{ r.eff_price }} {{ r.currency || '' }} complete</small>
+              <span class="badge">{{ r.cpu || '?' }}</span><small v-if="r.estimated" title="family estimate — set exact CPU in drawer"> est.</small>
+            </div>
+            <div class="lane">{{ r.cpu || '?' }} · {{ r.multi || '?' }} MT</div>
+            <div class="lane">eff pts/€ <b>{{ r.eff_ppe ?? '—' }}</b></div>
+            <div class="lane">{{ r.source || '' }}</div>
+            <div class="row">
+              <a :href="r.url" target="_blank" rel="noopener"><button class="btn btn-sm btn-primary">open listing</button></a>
+              <button class="btn btn-sm iconbtn" @click="fav(r)" :aria-label="r.fav ? 'saved' : 'save favorite'" :title="r.fav ? 'saved favorite' : 'save favorite'">
+                <Star :size="15" :fill="r.fav ? 'currentColor' : 'none'" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="sec === 'boards' && platforms.length" style="margin-top:0.75rem">
+        <h4>Socket platforms</h4>
+        <ul>
+          <li v-for="p in platforms" :key="p.url"><a :href="p.url" target="_blank" rel="noopener">{{ p.title || '(no title)' }}</a> — {{ p.price ?? '?' }} {{ p.currency || '' }} <small>socket platform — needs CPU+RAM</small></li>
+        </ul>
+      </div>
+      <div v-if="sec !== 'boards'" class="rgrid">
         <div v-for="r in sorted" :key="r.url" class="card res">
           <div class="thumbwrap" v-if="r.image">
             <img class="thumb" loading="lazy" :src="safeUrl(r.image || '')" @error="imgGone" alt="" />
@@ -64,8 +90,8 @@ import { api, safeUrl } from '@/api';
 import { useUi } from '@/stores/ui';
 
 const ui = useUi();
-interface Row { cpu?: string; price?: number; currency?: string; title?: string; source?: string; url?: string; image?: string; multi?: number; single?: number; ppe?: number; ppw?: number; full_price?: number; ppe_full?: number; barebone_uplift?: number; kind?: string; fav?: boolean; estimated?: boolean }
-interface Board { ppe: Row[]; efficient: Row[]; ppw: Row[]; raw: Row[]; items?: number; unrated?: number; rated?: number; estimated?: number; unrated_systems?: number; unrated_nonsystem?: number; advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; offer?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } }
+interface Row { cpu?: string; price?: number; currency?: string; title?: string; source?: string; url?: string; image?: string; multi?: number; single?: number; ppe?: number; ppw?: number; full_price?: number; ppe_full?: number; barebone_uplift?: number; kind?: string; fav?: boolean; estimated?: boolean; eff_price?: number; eff_ppe?: number }
+interface Board { ppe: Row[]; efficient: Row[]; ppw: Row[]; raw: Row[]; boards?: Row[]; platforms?: Row[]; items?: number; unrated?: number; rated?: number; estimated?: number; unrated_systems?: number; unrated_nonsystem?: number; advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; offer?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } }
 const board = ref<Board | null>(null);
 const favOnly = ref(false);
 const busy = ref(false);
@@ -83,9 +109,11 @@ const sections = computed(() => board.value ? [
   { key: 'ppe', title: 'Top perf/€', rows: board.value.ppe || [] },
   { key: 'eff', title: 'Efficient + cheap', rows: board.value.efficient || [] },
   { key: 'ppw', title: 'Top perf/Watt', rows: board.value.ppw || [] },
-  { key: 'raw', title: 'Raw champs', rows: board.value.raw || [] }
+  { key: 'raw', title: 'Raw champs', rows: board.value.raw || [] },
+  { key: 'boards', title: 'Boards', rows: board.value.boards || [] }
 ] : []);
 const active = computed(() => sections.value.find((s) => s.key === sec.value)?.rows || []);
+const platforms = computed(() => board.value?.platforms || []);
 const sorted = computed(() => {
   const arr = [...active.value];
   const k = sortKey.value;
@@ -95,7 +123,7 @@ const sorted = computed(() => {
     if (k === 'price') return r.price ?? Number.MAX_SAFE_INTEGER;
     if (k === 'multi') return r.multi ?? -1;
     if (k === 'ppw') return r.ppw ?? -1;
-    return r.ppe ?? -1;
+    return r.ppe ?? r.eff_ppe ?? -1;
   };
   arr.sort((a, b) => {
     const x = get(a), y = get(b);
