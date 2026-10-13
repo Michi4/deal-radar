@@ -38,7 +38,7 @@
             <span class="best-badge" v-if="r.kind && r.kind !== 'offer'">{{ r.kind }}</span>
             <h4 :title="r.title"><a :href="r.url" target="_blank" rel="noopener">{{ r.title || '(no title)' }}</a></h4>
             <div>
-              <span class="price">{{ r.price ?? '?' }} {{ r.currency || '' }}</span>
+              <span class="price">{{ r.price ?? '?' }} {{ r.currency || '' }}</span><small v-if="r.full_price != null && r.full_price !== r.price" title="complete-system cost incl. RAM/SSD for barebone units">≈ {{ r.full_price }} {{ r.currency || '' }}</small>
               <span class="badge">{{ r.cpu || '?' }}</span><small v-if="r.estimated" title="family estimate — set exact CPU in drawer">est.</small>
             </div>
             <div class="lane">{{ r.source || '' }} · {{ r.multi || '?' }} MT{{ r.single ? ` / ${r.single} ST` : '' }}</div>
@@ -64,7 +64,7 @@ import { api, safeUrl } from '@/api';
 import { useUi } from '@/stores/ui';
 
 const ui = useUi();
-interface Row { cpu?: string; price?: number; currency?: string; title?: string; source?: string; url?: string; image?: string; multi?: number; single?: number; ppe?: number; ppw?: number; kind?: string; fav?: boolean; estimated?: boolean }
+interface Row { cpu?: string; price?: number; currency?: string; title?: string; source?: string; url?: string; image?: string; multi?: number; single?: number; ppe?: number; ppw?: number; full_price?: number; ppe_full?: number; barebone_uplift?: number; kind?: string; fav?: boolean; estimated?: boolean }
 interface Board { ppe: Row[]; efficient: Row[]; ppw: Row[]; raw: Row[]; items?: number; unrated?: number; rated?: number; estimated?: number; unrated_systems?: number; unrated_nonsystem?: number; advice?: { summary?: string; picks?: { url?: string; rank?: number; verdict?: string; offer?: string; pros?: string[]; cons?: string[] }[]; honest_flags?: string[]; fallback?: boolean } }
 const board = ref<Board | null>(null);
 const favOnly = ref(false);
@@ -74,7 +74,7 @@ const sec = ref('ppe');
 const sortKey = ref('ppe');
 const sortDir = ref(-1);
 const advice = computed(() => board.value?.advice || null);
-const meta = computed(() => board.value ? `${board.value.rated ?? board.value.items} rated (${board.value.estimated ?? 0} estimated) · ${board.value.unrated_systems ?? board.value.unrated} systems without data · ${board.value.unrated_nonsystem ?? 0} non-systems excluded` : '');
+const meta = computed(() => board.value ? `${board.value.rated ?? board.value.items} rated (${board.value.estimated ?? 0} estimated) · ${board.value.unrated_systems ?? board.value.unrated} systems without data · ${board.value.unrated_nonsystem ?? 0} non-systems excluded · ranked by complete cost` : '');
 const cols = [
   { key: 'ppe', label: 'perf/€' }, { key: 'ppw', label: 'perf/W' }, { key: 'multi', label: 'MT marks' },
   { key: 'price', label: 'price' }, { key: 'cpu', label: 'CPU' }, { key: 'source', label: 'source' }
