@@ -1047,11 +1047,15 @@ def is_barebone(text: str) -> bool:
 def board_info(text: str) -> tuple[bool, bool]:
     """(is_board, socketed). Socketed = desktop/server platform board needing
     its own CPU (no completion math); soldered = usable system core.
-    IO daughterboards (USB/LAN/power) are not system boards."""
+    IO daughterboards (USB/LAN/power) are not system boards. Neither are
+    board GAMES."""
     blob = text or ""
     if not BOARD_WORDS.search(blob):
         return False, False
     if IO_BOARD_WORDS.search(blob):
+        return False, False
+    if re.search(r"board\s*game|brettspiel|gesellschaftsspiel|card\s*game|"
+                 r"kartenspiel|\bquiz\b", blob, re.IGNORECASE):
         return False, False
     return True, bool(SOCKET_WORDS.search(blob))
 

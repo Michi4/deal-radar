@@ -2455,3 +2455,10 @@ def test_board_i18n_and_chip_only_uplift():
     assert board_info("Carte mère MacBook Air 2019 A1932")[0] is True
     assert board_info("Scheda madre Asus K7M + CPU Athlon")[0] is True
     assert board_info("ThinkPad T480 laptop")[0] is False
+
+
+def test_board_games_excluded():
+    from deal_radar.scoring import board_info
+    assert board_info("Harry Potter Magical Beasts Board game NEU")[0] is False
+    assert board_info("Monopoly board game Brettspiel")[0] is False
+    assert board_info("ThinkPad X270 Mainboard i5")[0] is True
