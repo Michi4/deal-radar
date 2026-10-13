@@ -44,6 +44,11 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 14 (no-mogger + AI reframe): 3090s sit E1399-1500 (solo can't hold Flash
+weights — but a single 3090 does 40+ tok/s on 32B distills; reframe offered).
+M1-Pro-14 defect trio on eBay: no-display E215 (item 117252189906), cracked+locked
+E320 (298732574863), spare Grade-D E335+. T480 parts konvolut E10. No crown-taker;
+asymmetry plays documented.
 ROUND 13 (homeserver bang-buck): M75q-G2 5600GE complete E350 (51.5, 35W) is THE
 repurpose gem; M75q-G1 3400GE E139 (55.8); B100 N100 E120 (idle king ~8W);
 1235U boards E112+ (63 eff, eBay board chest); NUC8 E140 (55.6); MS-01 12950HX/48GB
