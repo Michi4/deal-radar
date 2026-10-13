@@ -18,6 +18,17 @@ STATUS 2026-10-12 (commits a885d53/1afd709, verify GREEN 221 passed): 6/8 fixed,
 - [x] New Intel naming missed: `X1 Carbon Gen 14 - Ultra X7` — no pattern for `Ultra X7/X9` (`scoring.py:372-377` needs `X[579]` bare form — FIXED incl. `X7 358H` full form; X1-Extreme/Legion seeds added) (see §2).
 - [x] Bare `i5`/`i7` with Gen hint (`Gen 6 ... i5`) never resolved — FIXED via tier-narrowed seeds.
 
+## STATUS 2026-10-13 — first real hunt (3 live searches, scratch DB, fixed code)
+Hunt-1 `ryzen mini pc` (50 res) + mainboard hunt (40 res, willhaben worked!) + 8745hs hunt (35 res).
+Bugs found live + fixed: Ryzen tier-adjacent parse (SER5 5800H was "800H"); closest-fallback
+now gated at 85% with labeled confidence (UM870 8745H no longer 5800H@0.97 — no exact page,
+8745HS@0.867 is the correct stand-in); shpock per-item keyword gate (Fahrrad junk out);
+gems ppe_full = complete-system cost (barebone +85 RAM/+40 SSD).
+Cheat-code confirmed: 5700U board €32, 5500U board €24, X13/T14s 4650U board €90.
+eBay verdict (manual — item+search pages 403 from here, 2 approaches tried): the €360 H255
+NEW 16/512 stands as best complete deal (79.8 pts/€); only used-barebone UM870 (€340 all-in,
+83.8) and ES/budget plays beat it on paper. Coupon POWEREBAY10 ends Oct 14.
+
 ## STATUS 2026-10-12 II (verify GREEN, 86%, CI-tracked)
 DONE: GemsView split counts + est. badges; frequency warmup (live: 25 fetches -> 831 rankable from 0);
 full-spec extraction (ram_gb/storage/ports/barebone) on every enriched listing + Compare rows;
