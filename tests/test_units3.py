@@ -2298,6 +2298,7 @@ def test_shopify_skips_unavailable_variants():
     """Ghost deals stay out: sold-out variants never set the price; fully
     sold-out products vanish from results."""
     import asyncio
+
     from shopify.driver import ShopifyDriver
 
     from deal_radar.driver_sdk import SearchQuery
