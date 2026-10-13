@@ -194,7 +194,7 @@ def board(items: list[dict], min_bench: int = 8000, max_risk: float | None = Non
                         and x.get("kind", "offer") == "offer"
                         and (x.get("socketed") or x.get("platform_only"))
                         and not (x.get("multi") and _has_own_cpu(x))),
-                       key=lambda z: (z.get("price") or 0))[:limit]
+                       key=lambda z: (z.get("price") is None, z.get("price") or 0))[:limit]
     return {"ppe": sorted(pool, key=lambda z: -(z.get("ppe_full") or z["ppe"]))[:limit],
             "efficient": sorted(eff, key=lambda z: -z["ppe"])[:limit],
             "ppw": sorted([x for x in pool if x.get("ppw")], key=lambda z: -z["ppw"])[:limit],

@@ -488,7 +488,7 @@ PART_NOUNS = re.compile(
     r"oberschale|topcase|bottomcase|displaydeckel|tastaturabdeckung", re.IGNORECASE)
 #: Compounds only: a bare "usb" (USB-C port mention) must never nuke a real board.
 IO_BOARD_WORDS = re.compile(
-    r"i/o\b|io[-\s]?(board|platine|karte)|usb[-\s]?(board|platine)|"
+    r"i/o\b|io[-\s]?(board|platine|karte|blende|shield)|usb[-\s]?(board|platine)|"
     r"lan[-\s]?(board|platine)|audio[-\s]?(board|platine)|hdmi[-\s]?(board|platine)|"
     r"power[-\s]?(board|button)|led[-\s]?board|sub[-\s]?board|daughter\s?board|"
     r"tastatur[-\s]?platine|keyboard[-\s]?board|lese[-\s]?platine", re.IGNORECASE)
@@ -756,6 +756,18 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
     if PART_NOUNS.search(clean):
         return None, 0.0, "", False, []
     cpu, conf, why = extract_cpu(clean)
+    # Accessories are never systems: a keyboard for a Latitude gets no CPU
+    # estimate, and even a solid bare inference ("i5-14400F" in "...ventilateur")
+    # is vetoed — only naming-grade mentions (>=0.85) survive accessory words.
+    # Exact-CPU bundles without accessory words are untouched.
+    if (cpu is None or conf < 0.85) and re.search(
+            r"tastatur|keyboard|k[üu]hler|cooler|ventilateur|tasche|\bbag\b|"
+            r"h[üu]lle|huelle|\bcase\b|cover|kabel|cable|netzteil|charger|"
+            r"ladeger[äa]t|dock|st[äa]nder|staender|\bmaus\b|mouse|folie|"
+            r"panzerglas|armband|halterung", clean, re.IGNORECASE):
+        return None, 0.0, "", False, []
+    if cpu and (conf >= 0.6 or "unverified" not in why):
+        return cpu, conf, why, False, []
     # Solid mentions win immediately; vague unverified fragments ("ryzen 5",
     # "ryzen 7") defer to the seed tables below, which attach candidates.
     if cpu and (conf >= 0.6 or "unverified" not in why):

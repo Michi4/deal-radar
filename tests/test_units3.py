@@ -2410,3 +2410,32 @@ def test_resolution_part_digit_gates():
         assert closest_known_cpu("Ryzen 5 5500")[0] is None
         name, score = closest_known_cpu("Ryzen 7 580H")
         assert name is not None and score >= 0.9  # typo tolerance kept
+
+
+def test_accessory_titles_get_no_estimate():
+    """Keyboards/fans for a laptop line are parts, never estimate carriers."""
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    assert resolve_cpu_with_seeds(
+        "Russisch Tastatur für Dell Latitude 5420 5430 5421")[0] is None
+    assert resolve_cpu_with_seeds("Intel Core i5-14400F ventilateur")[0] is None
+    # exact-CPU bundles still resolve (solid mention wins)
+    cpu, _, _, est, _ = resolve_cpu_with_seeds(
+        "Mobo Combo-Z170 Pro Gaming Motherboard Intel i7-6700k 16GB RAM")
+    assert cpu == "i7-6700K" and est is False
+
+
+def test_io_blende_excluded_and_platform_sort():
+    from deal_radar import gems as G
+    from deal_radar.scoring import board_info
+    assert board_info("Universal IO-Shield IO-Blende MSI Asus") == (False, False)
+    assert board_info("ThinkPad X270 Mainboard i5") == (True, False)
+    items = [
+        {"id": "p1", "title": "Z170 board", "price": None, "currency": "EUR",
+         "url": "u", "source": "t", "board": True, "socketed": True, "kind": "offer",
+         "multi": None, "ppe": 0, "ppe_full": 0},
+        {"id": "p2", "title": "B550 board", "price": 80.0, "currency": "EUR",
+         "url": "u", "source": "t", "board": True, "socketed": True, "kind": "offer",
+         "multi": None, "ppe": 0, "ppe_full": 0},
+    ]
+    b = G.board(items)
+    assert [x["id"] for x in b["platforms"]] == ["p2", "p1"]

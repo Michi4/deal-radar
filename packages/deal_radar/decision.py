@@ -650,6 +650,7 @@ def heuristic_decide(title: str, description: str, price: float | None,
                   "rucksack", "tasche", "sleeve", "mäppchen", "maeppchen", "etui", "beutel",
                   "umhängetasche", "pouch", "vertrag", "tarif", "allnet",
                   "shorts", "laufshorts", "shirt", "sneaker", "laufschuh",
+                  "ventilateur", "refroidisseur", "ventola",
                   "monatlich", "abo ", " abo", "ratenzahlung", "teilzahlung", "leasing",
                   "gewinnspiel", "verlosung", "reparatur", "werkstatt",
                   "express service", "soforthilfe")
