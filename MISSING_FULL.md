@@ -44,6 +44,12 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 7 (agent CLI + mega board sweep): scripts/hunt.py ships (one-command
+multi-query hunts, markdown/JSON gems). 12-query sweep dogfooded. New gems:
+3700X+board E120 (82.9), 9700K+16GB E160 (70), 9600X chip E140 (103 complete),
+12100F E60 (66), X299+7820X E250. Fixed: accessory veto (keyboards/fans get no
+estimates), resolution-as-CPU, part nouns, same-gen closest gate, 400-threshold
+review flag. verify.sh GREEN (240 passed, 86%).
 ROUND 6 (20k+ shootout): MLLSE 7840HS/24/1TB E350 (80.6, verified 1TB+USB4+box)
 BEATS eBay H255 E360 (79.8) on perf-per-euro; eBay keeps new+warranty crown.
 New: AM18 16/512 E450 (62.7), UM790Pro 32/1TB E550 (54.0, strongest sub-600),
