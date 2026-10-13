@@ -40,6 +40,14 @@
   iPhone 15/16 models, 6/6 real USB-C phones). If OpenCode ever opens server-side free
   use, `_providers()` already supports a second failover provider via CLOUD_API_URL_2 etc.
 
+## eBay HTML verdict 2026-10-13 (3 approaches dead, decoys proven)
+- curl/curl_cffi/headless-shell, laptop AND Frankfurt: 403 Error Page.
+- Headed Chromium 151 + real user login (visible window, Vienna laptop): login OK,
+  search page loads BUT serves DECOY CARDS (hrefs ebay.com/itm/123456, empty titles,
+  $20.00 rows, 594 fake "results"). Scraping it would inject FAKE listings.
+- VERDICT: no HTML driver, ever — worse than no driver. ONLY the official Browse
+  API path (needs YOUR exemption clicks, documented below). Evidence: /tmp/opencode/hunt/ebay-minipc.json.
+
 - [ ] eBay live proof: client-credentials mint implemented + unit-tested (mocked token + search),
   App ID/Cert ID fields in Secrets UI. Owner's keyset is DISABLED with the banner
   "Comply with marketplace deletion/account closure notification process or apply for
