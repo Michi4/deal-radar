@@ -32,7 +32,12 @@ CORRECTION 2026-10-13: minisforum refurbished ghosts — UM560 E139/UM690 E289
 variants are SOLD OUT (avail False); shopify driver now buyable-only (sold-out
 variants never price, dead products vanish). Available refurbished: UM760 Slim
 7640HS barebone E239, UM880 PLUS 8845HS barebone E359, BD775i SE 7745HX board E279.
-Best complete deal stands: eBay H255 NEW 16/512 E360 (79.8). Budget king: AMR5
+Best complete deal stands: eBay H255 NEW 16/512 E360 (79.8).
+ROUND 3 (2026-10-13 eve): 7 more hunts (x270/x280, macbook boards, AM4 combos,
+framework, xeon boards, pi5, defekt donors). Fixed live: seed brand-context
+(carpets got i5-6200U banaus), bare-CPU completion (+150 tray), ghost purge.
+Mini-PC donors: MS-01 13900H homeserver E658, UM880 Plus 8845HS 16/500 E479 (59.7).
+Server boards: ML350 dual 2667V3 E200, E5-1660V3 chip E30, E3-1240V6 chip E15. Budget king: AMR5
 offer E140 (128). Board kings: P1G4 11800H+T1200 E79 (98 eff), X13 board E75 (63.6),
 5700U board E32 (~101 eff). UM560 refurb 16/512 E199 complete (71.8) IF restocked.
 
