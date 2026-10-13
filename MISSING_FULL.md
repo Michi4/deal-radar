@@ -44,6 +44,12 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 9 (mog hunt): 40+ hunts total, zero crown-takers. Closest: P1/11800H+T1200
+board E79, UM690 refurb E289 (SOLD OUT — watch recipe below), 9600X chip E140,
+M1-Pro-14 defekt E549 (31.9, repair gamble only). New chip learned: 8940HX (~49k).
+eBay auctions: nothing ending cheap (Firebat E318 same as vinted).
+WATCH RECIPES (user creates in UI): minisforum source "UM690 refurbished" (restock
+E289), "UM560 refurbished" (restock E199), vinted "AMR5" (price drop <140).
 ROUND 8 (ultra/AI boards): only ONE Ultra laptop board exists used (Shuttle
 DN11H+185H E509, weak value). No Halo/AI300/Ultra-laptop/M4/Genoa boards.
 Real Ultra/AI value = desktop chips: 225 E150, 7900X E199, 7800X3D E270, 9600X
