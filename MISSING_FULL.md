@@ -44,6 +44,10 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 8 (ultra/AI boards): only ONE Ultra laptop board exists used (Shuttle
+DN11H+185H E509, weak value). No Halo/AI300/Ultra-laptop/M4/Genoa boards.
+Real Ultra/AI value = desktop chips: 225 E150, 7900X E199, 7800X3D E270, 9600X
+E140. Fixed: ultra suffix whitelist (225SERIA).
 ROUND 7 (agent CLI + mega board sweep): scripts/hunt.py ships (one-command
 multi-query hunts, markdown/JSON gems). 12-query sweep dogfooded. New gems:
 3700X+board E120 (82.9), 9700K+16GB E160 (70), 9600X chip E140 (103 complete),
