@@ -2341,3 +2341,49 @@ def test_shopify_skips_unavailable_variants():
         assert "Barebone" not in out[0].title
     finally:
         S._CATALOG.clear()
+
+
+def test_seed_short_keys_need_boundaries():
+    """Dimensions must not conjure CPUs: '172 x270 cm' is a carpet, not a ThinkPad."""
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Großer Teppich hellgrau 172 x270 cm")
+    assert cpu is None and est is False
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Linoleum 290 x270 Rollenware")
+    assert cpu is None and est is False
+    # real short-key boards still resolve (token match)
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("Lenovo ThinkPad X270 Mainboard i5-7300U")
+    assert cpu == "i5-7300U" and est is False
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("ThinkPad T460s motherboard")
+    assert est is True and cpu in ("i5-6200U", "i5-6300U", "i7-6500U", "i7-6600U")
+    cpu, _, _, est, _ = resolve_cpu_with_seeds("MacBook Pro 16 A2141 Logic Board")
+    assert est is True and cpu in ("i7-9750H", "i9-9880H", "i9-9980HK")
+
+
+def test_gems_bare_cpu_completion():
+    """Tray CPUs rank with board+RAM completion, not chip-only price."""
+    import json as _j
+
+    from deal_radar import gems as G
+
+    class FakeDB:
+        def execute(self, *a, **k):
+            class C:
+                def fetchall(self_inner):
+                    return [
+                        ("c:1", "Intel Xeon e5-2667 v4 SR2LF 3.6GHz Quad-Core", 35.0, "EUR",
+                         "https://x.example/1", "t", _j.dumps({"description": "", "images": []})),
+                    ]
+            return C()
+
+    class FakeStore:
+        db = FakeDB()
+
+    real_cached = G.cached_cpu
+    G.cached_cpu = lambda cpu: {"multi": 13810, "single": 2000} if cpu == "Xeon E5-2667" else None
+    try:
+        items, _ = G.collect_full(FakeStore())
+        assert len(items) == 1
+        assert items[0]["barebone_uplift"] == 150, items[0]
+        assert items[0]["ppe_full"] == round(13810 / 185, 1)
+    finally:
+        G.cached_cpu = real_cached

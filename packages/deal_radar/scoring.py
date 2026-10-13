@@ -494,6 +494,20 @@ SOCKET_WORDS = re.compile(
     r"x670e?|b650e?|x570|b550|a520|z790|b760|z690|b660|x399|wrX80|wrx90", re.IGNORECASE)
 
 
+def _seed_hit(seed_key: str, bl: str, bl_nospace: str) -> bool:
+    """Short keys (x270, t460, a2141) must match as whole tokens AND with brand
+    context — otherwise dimensions ("172 x270 cm") conjure phantom CPUs."""
+    nospace = re.sub(r"[^a-z0-9]", "", seed_key)
+    if len(nospace) <= 8:
+        if not re.search(r"(?<![a-z0-9])" + re.escape(seed_key) + r"(?![a-z0-9])", bl):
+            return False
+        return bool(re.search(
+            r"thinkpad|lenovo|latitude|elitebook|probook|zbook|ideapad|yoga|legion|"
+            r"\bhp\b|dell|apple|macbook|\bmac\b|framework|pavilion|omen|victus|inspiron|"
+            r"board|mainboard|motherboard|logic|platine", bl))
+    return seed_key in bl or nospace in bl_nospace
+
+
 async def resolve_cpu_candidates(model_name: str) -> list[str]:
     """Which CPUs ship in this laptop model? Seed table + AI, disk-cached."""
     import json as _json
@@ -750,7 +764,7 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
     tier = tier_m.group(1) or tier_m.group(2) or tier_m.group(3) if tier_m else None
     # longest seed key first so "thinkpad x1 carbon gen 6" beats "x1 carbon"
     for seed_key in sorted(MODEL_CPU_SEED, key=len, reverse=True):
-        if seed_key in bl or re.sub(r"[^a-z0-9]", "", seed_key) in bl_nospace:
+        if _seed_hit(seed_key, bl, bl_nospace):
             cands = MODEL_CPU_SEED[seed_key]
             if any(c.lower() in bl for c in cands):
                 continue  # exact candidate present; extract should have caught it
@@ -778,7 +792,7 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
         keys.sort(key=lambda k: 0 if _reB.fullmatch(r"a\d{4}", k) else 1)
 
         def _board_hit(seed_key: str) -> tuple[str | None, float, str, bool, list[str]] | None:
-            if seed_key in bl or re.sub(r"[^a-z0-9]", "", seed_key) in bl_nospace:
+            if _seed_hit(seed_key, bl, bl_nospace):
                 cands = BOARD_CPU_SEED[seed_key]
                 if any(c.lower() in bl for c in cands):
                     return None

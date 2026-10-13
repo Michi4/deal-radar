@@ -113,15 +113,22 @@ def collect_full(store, days: float = 14.0,
         else:
             counts["rated"] += 1
         # complete-system cost: barebone units need RAM (~85/16GB) and a drive
-        # (~40/512GB) added before perf/€ means anything. Raw ppe kept too.
+        # (~40/512GB) added before perf/€ means anything. Bare CPUs (tray chips
+        # like "E5-2667 v4 SR2LF") need board+RAM on top (~150). Raw ppe kept too.
         uplift = 0
         try:
-            if is_barebone(f"{title}\n{desc}"):
-                if _ram(f"{title}\n{desc}") is None:
+            import re as _reU
+            blob = f"{title}\n{desc}"
+            if is_barebone(blob):
+                if _ram(blob) is None:
                     uplift += 85
-                gb, _ = _stor(f"{title}\n{desc}")
+                gb, _ = _stor(blob)
                 if not gb:
                     uplift += 40
+            elif cpu and _ram(blob) is None and _reU.search(
+                    r"\btray\b|\bboxed\b|\bsr[0-9a-z]{3}\b|\bcpu\b|\bprozessor\b|\bprocessor\b",
+                    blob, _reU.IGNORECASE):
+                uplift += 150
         except Exception:
             uplift = 0
         full_price = (price or 0) + uplift if price else 0
