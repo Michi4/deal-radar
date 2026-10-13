@@ -37,7 +37,13 @@ ROUND 3 (2026-10-13 eve): 7 more hunts (x270/x280, macbook boards, AM4 combos,
 framework, xeon boards, pi5, defekt donors). Fixed live: seed brand-context
 (carpets got i5-6200U banaus), bare-CPU completion (+150 tray), ghost purge.
 Mini-PC donors: MS-01 13900H homeserver E658, UM880 Plus 8845HS 16/500 E479 (59.7).
-Server boards: ML350 dual 2667V3 E200, E5-1660V3 chip E30, E3-1240V6 chip E15. Budget king: AMR5
+Server boards: ML350 dual 2667V3 E200, E5-1660V3 chip E30, E3-1240V6 chip E15.
+ROUND 4 (high-end boards): NO Halo/7945HX/Ultra/M4/Genoa boards on used market
+(Framework 16 tax E999 only; Genoa query hits football shirts — query-side).
+Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
+Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
+M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
+canonical hunt server 8090 runs all current code. Budget king: AMR5
 offer E140 (128). Board kings: P1G4 11800H+T1200 E79 (98 eff), X13 board E75 (63.6),
 5700U board E32 (~101 eff). UM560 refurb 16/512 E199 complete (71.8) IF restocked.
 
