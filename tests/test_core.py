@@ -1333,8 +1333,11 @@ def test_implausible_price_flagged_not_hidden():
     assert any("implausible" in w for w in r["why"])
     assert r["lane"] in ("review", "hidden", "top")
 
-    # bare cooler words with only weak CPU hints stay fully unrated
-    out = asyncio.run(go("Intel Core i5-14400F ventilateur", 20.0, "14400f"))
+    # bare cooler words with only WEAK CPU hints (family seed, conf < 0.85)
+    # stay fully unrated — the accessory veto drops them before any bench.
+    # (A NAMING-GRADE exact token here would be benched + implausible-flagged,
+    # as the Noctua 8845HS case above proves.)
+    out = asyncio.run(go("Ventilateur HP EliteBook 840 G6", 20.0, "840 g6"))
     assert out["results"], "cooler listing itself must survive filtering"
     ens = out["results"][0].get("enrichments", [])
     assert not [e for e in ens if e.get("field") == "cpu_benchmark"]

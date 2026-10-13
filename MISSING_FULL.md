@@ -177,3 +177,19 @@ Lab auto-PR (GH_TOKEN); eBay exemption + Allegro creds (human clicks).
 2. Take next unchecked box, write test first, implement, `./scripts/verify.sh` green, live-prove (real HTTP/SSE/browser), commit `feat:/fix:` as Michi4, push, watch CI.
 3. Externally blocked → 3 different approaches tried, logged in BLOCKERS with exact clicks/keys needed, code behind interface with working fallback, move on. Never end turn with text only (AGENTS.md).
 4. Update PROGRESS.md every 5 steps; keep ACCEPTANCE evidence lines with command+observed output in THIS session.
+
+## Round 15 — scoring cleanup: junk-veto + naming-grade unification (2026-10-13)
+Root-caused 4 junk classes that topped the board and killed them:
+- compat clauses ("für/for/pour") now strip MODEL-FAMILY words but PRESERVE exact
+  CPU tokens (cooler "für Ryzen 7 8845HS" is benched then implausible-flagged,
+  never silently dropped). Stop set widened to [.\n] only so long compat lists
+  ("für (WWAN configs): EliteBook 735 G6, 745 G5; ProBook 430 G8 ...") are eaten whole.
+- used-with/narration clauses ("zusammen mit", "kühlte", "war eingebaut in")
+  strip ENTIRELY (exact tokens too) — the CPU is context, not the item.
+- HARD_PART_NOUNS + display/lcd/bildschirm compounds; accessory-head veto now only
+  drops WEAK (<0.85) hints.
+- NEW hyphen-Intel branch: i5-1240P / i7-1165G7 / i9-13900HX were falling to the
+  0.45 generic loop; now 0.85 "mentioned" (G7-style letter+digit suffixes fixed).
+- gems.board demotes implausible (bench/€ > 400) to the tail — flag, never hide.
+Verified: 253 tests green, ruff+mypy clean. Board top is now all real systems
+(LTE modem + AIO cooler + ideapad-3-fr false-positive expelled); rated 1025→1100.

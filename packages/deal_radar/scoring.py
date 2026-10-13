@@ -481,12 +481,47 @@ BOARD_WORDS = re.compile(
     r"hauptplatine|systemplatine|\bplatine\b|carte\s*m[èe]re|scheda\s*madre|"
     r"placa\s*base|moederbord", re.IGNORECASE)
 
-#: Spare-part nouns: the listing SELLS the part, not a system containing it.
-#: "Display Assembly" / palmrest / case shells must never inherit a CPU bench,
-#: while "Display defekt" (broken screen on a whole machine) flows normally.
-PART_NOUNS = re.compile(
-    r"display\s*assembly|ersatzdisplay|displayeinheit|palmrest|unterschale|"
-    r"oberschale|topcase|bottomcase|displaydeckel|tastaturabdeckung", re.IGNORECASE)
+#: Spare-part nouns: HARD ones are never systems (a display assembly carries
+#: no bench); SOFT ones ("display" alone) only veto when the listing head is
+#: the part, so "MacBook Air M1 Display defekt" (whole machine) still resolves.
+HARD_PART_NOUNS = re.compile(
+    r"display\s*assembly|displayeinheit|ersatzdisplay|palmrest|unterschale|"
+    r"oberschale|topcase|bottomcase|displaydeckel|tastaturabdeckung|batterie|"
+    r"\bakku\b|battery|chassis|ch[âa]ssis|chasis|telaio|geh[äa]use|"
+    # "Display LCD Einheit" / "LCD Modul" / "Bildschirm" — up to two words may
+    # sit between the head noun and the part word.
+    r"display(?:\s+\w+){0,2}\s*(?:einheit|unit|panel|modul)|"
+    r"lcd(?:\s+\w+)?\s*(?:einheit|unit|panel|modul)|"
+    r"bildschirm(?:einheit|modul)?", re.IGNORECASE)
+PART_NOUNS = HARD_PART_NOUNS
+
+#: Accessory heads: listings STARTING with these sell the add-on, whatever CPU
+#: they name ("AC/DC Adapter ... für GEEKOM A8 8745HS" is a charger, not a PC).
+ACCESSORY_HEAD = re.compile(
+    r"tastatur|keyboard|k[üu]hler|cooler|ventilateur|tasche|\bbag\b|"
+    r"h[üu]lle|huelle|\bcase\b|cover|kabel|cable|netzteil|adapter|chargeur|"
+    r"chargers?|ladeger[äa]t|dock|st[äa]nder|staender|\bmaus\b|mouse|folie|"
+    r"panzerglas|armband|halterung", re.IGNORECASE)
+
+#: Pour-pattern: accessory FOR a model ("Batterie pour Elitebook") is a part
+#: even when it names no hard noun.
+POUR_MODEL = re.compile(
+    r"\b(for|pour|f[üu]r|per|para)\s+(lenovo|hp|dell|apple|asus|acer|msi|intel|"
+    r"amd|thinkpad|elitebook|macbook|pavilion|ryzen|core\s|xeon|epyc)\b", re.IGNORECASE)
+
+#: Exact CPU tokens preserved inside "für/for" clauses (see strip_compat).
+#: Suffixes carry letter+digit forms: i7-1165G7, Ryzen 7 5800X3D, i9-13900HX.
+_EXACT_CPU_IN_CLAUSE = re.compile(
+    r"(?:ryzen\s*[3579]\s*\d{3,4}[a-z]{0,2}\d?[a-z]{0,2}|"
+    r"i[3579]-\d{4,5}[a-z]{0,2}\d?[a-z]{0,2})"
+    r"(?![a-z0-9])", re.IGNORECASE)
+
+#: Whole-system nouns anywhere: keep "Laptop mit neuem Akku" alive.
+#: Bare "komplett" does NOT count ("komplettes Gehäuse" is a complete CASE).
+SYSTEM_NOUN = re.compile(
+    r"laptop|notebook|mini\s*pc|komplett\s*pc|komplettsystem|komplett\s*notebook|"
+    r"komplett\s*laptop|tablet|desktop|server|workstation|"
+    r"all-in-one|aio|handheld|console", re.IGNORECASE)
 #: Compounds only: a bare "usb" (USB-C port mention) must never nuke a real board.
 IO_BOARD_WORDS = re.compile(
     r"i/o\b|io[-\s]?(board|platine|karte|blende|shield)|usb[-\s]?(board|platine)|"
@@ -542,6 +577,38 @@ async def resolve_cpu_candidates(model_name: str) -> list[str]:
         except Exception:
             pass
     return cpus
+
+
+def strip_compat(text: str) -> str:
+    """Remove compatibility clauses ("für EliteBook 830 / ProBook 430", "fits X").
+
+    Seeds must match the ITEM, not the machines it fits — an LTE modem "for
+    ProBook 430 G8" carries no i5-1135G7, and a bare B450 board "wurde
+    zusammen mit einem Ryzen 5 2400G" was USED WITH that CPU, not sold with
+    it. Inside a "für/for" clause an EXACT CPU token is kept (the cooler
+    "für Ryzen 7 8845HS" gets benched, then implausible-flagged downstream —
+    never silently dropped); model-family words are removed.
+    """
+    def _keep_exact(m: re.Match[str]) -> str:
+        keep = _EXACT_CPU_IN_CLAUSE.findall(m.group(0))
+        return (" " + " ".join(keep) + " ") if keep else " "
+
+    t = text or ""
+    # Stop set is ". \n" only: compatibility lists routinely continue past a
+    # colon/semicolon ("für (for WWAN Ready configs): EliteBook 735 G6, 745 G5;
+    # ProBook 430 G8 ...") and must be eaten whole, not just up to the colon.
+    t = re.sub(r"\b(f[üu]r|fuer|for|pour|per|para|passend\s+f[üu]r|passt\s+f[üu]r|"
+               r"kompatibel\s+mit|compatible\s+with|geeignet\s+f[üu]r|fits?)\b"
+               r"\s*[:\-]?\s*[^.\n]{0,200}", _keep_exact, t, flags=re.IGNORECASE)
+    # Used-with / bundled-with / narration clauses: the CPU is context, not
+    # the item — stripped entirely, exact tokens included ("war eingebaut in
+    # einem Ryzen 7 5800X", "kühlte einen Ryzen 7 5800X3D").
+    t = re.sub(r"\b(zusammen\s+mit|gemeinsam\s+mit|in\s+verbindung\s+mit|"
+               r"used\s+with|in\s+combination\s+with|bundled\s+with|paired\s+with|"
+               r"livr[ée]\s+avec|ensemble\s+avec|utilis[ée]\s+avec|"
+               r"k[üu]hlte|gek[üu]hlt|eingebaut\s+in|verbaut\s+(mit|in)|install[ée])\b"
+               r"\s*[:\-]?\s*[^.\n]{0,120}", " ", t, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", t).strip()
 
 
 def strip_marketplace_suffix(text: str) -> str:
@@ -625,6 +692,12 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
         parts.append(m.group(4))
         g = " ".join(parts)
         return g, 0.8, f"mentioned '{g}'"
+    # hyphen Intel: "i7-1165G7", "i5-1240P", "i9-13900HX", "i7-8750H" — suffix
+    # may be letter+digit (G7/G9). As explicit as a full-form Ryzen.
+    m = re.search(r"\bi([3579])-(\d{4,5})([a-z]{1,2}\d?)?(?![a-z0-9])", t)
+    if m:
+        g = f"i{m.group(1)}-{m.group(2)}{(m.group(3) or '').upper()}"
+        return g, 0.85, f"mentioned '{g}'"
     # space-form Intel: "i7 12700H", "i5 12450H", "i7 8650-U", "i5 1145G7".
     # Suffix needs a non-letter after it ("i5 2500 Prozessor" is NOT i5-2500PRO).
     m = re.search(r"\bi\s*([3579])\s+(\d{4,5})\s*-?\s*([a-z]{1,2}\d?)?(?![a-z])", t)
@@ -752,21 +825,30 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
     Returns (cpu, conf, why, estimated, candidates). Bare tier hints narrow the
     seed ("X1 Carbon Gen 6" + "i5" -> i5-8350U first, not the i7 base).
     """
-    clean = strip_marketplace_suffix(text)
-    # Spare parts are never systems: a display assembly carries no bench even
-    # when it names the machine it fits.
-    if PART_NOUNS.search(clean):
+    clean = strip_compat(strip_marketplace_suffix(text))
+    # Spare parts are never systems. Hard part nouns veto unless the listing
+    # head sells the machine ("Laptop mit neuem Akku" stays alive); accessory
+    # heads ("AC/DC Adapter ... für GEEKOM") veto naming-grade mentions too.
+    # "MacBook Air M1 Display defekt" (whole machine, soft noun) flows normally.
+    if HARD_PART_NOUNS.search(clean) and (
+            POUR_MODEL.search(clean) or not SYSTEM_NOUN.search(clean)):
         return None, 0.0, "", False, []
     cpu, conf, why = extract_cpu(clean)
     # Accessories are never systems: a keyboard for a Latitude gets no CPU
-    # estimate, and even a solid bare inference ("i5-14400F" in "...ventilateur")
-    # is vetoed — only naming-grade mentions (>=0.85) survive accessory words.
+    # estimate, and an accessory HEAD vetoes even naming-grade mentions
+    # ("AC/DC Adapter ... für GEEKOM A8 8745HS" is a charger, not a PC).
     # Exact-CPU bundles without accessory words are untouched.
-    if (cpu is None or conf < 0.85) and re.search(
-            r"tastatur|keyboard|k[üu]hler|cooler|ventilateur|tasche|\bbag\b|"
-            r"h[üu]lle|huelle|\bcase\b|cover|kabel|cable|netzteil|charger|"
-            r"ladeger[äa]t|dock|st[äa]nder|staender|\bmaus\b|mouse|folie|"
-            r"panzerglas|armband|halterung", clean, re.IGNORECASE):
+    # Accessories are never systems on naming-grade alone: a keyboard for a
+    # Latitude gets no CPU estimate. A NAMING-GRADE exact token (conf >= 0.85)
+    # still resolves — it gets benched, then implausible-flagged downstream
+    # (bench/price > 400), which is how "Noctua Kühler für Ryzen 7 8845HS"
+    # reaches review instead of vanishing silently.
+    if (cpu is None or conf < 0.85) and (
+            ACCESSORY_HEAD.search(clean[:32]) or re.search(
+                r"tastatur|keyboard|k[üu]hler|cooler|ventilateur|tasche|\bbag\b|"
+                r"h[üu]lle|huelle|\bcase\b|cover|kabel|cable|netzteil|adapter|chargeur|"
+                r"chargers?|ladeger[äa]t|dock|st[äa]nder|staender|\bmaus\b|mouse|folie|"
+                r"panzerglas|armband|halterung", clean, re.IGNORECASE)):
         return None, 0.0, "", False, []
     if cpu and (conf >= 0.6 or "unverified" not in why):
         return cpu, conf, why, False, []

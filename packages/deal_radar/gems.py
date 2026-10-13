@@ -163,6 +163,10 @@ def collect_full(store, days: float = 14.0,
                       "cpu": cpu, "multi": multi, "single": single, "tdp_w": tdp,
                       "kind": kind, "fav": lid in favs,
                       "estimated": estimated,
+                      # Same rule as the search pipeline (orchestrator): bench
+                      # per euro > 400 is almost never the system itself —
+                      # cooler, charger, empty box. Review material, not a gem.
+                      "implausible": bool(pe and multi and multi / pe > 400),
                       "barebone_uplift": uplift, "full_price": full_price,
                       "ppe": round(multi / pe, 1) if pe else 0,
                       "ppe_full": round(multi / full_eur, 1) if full_eur else 0,
@@ -198,20 +202,26 @@ def board(items: list[dict], min_bench: int = 8000, max_risk: float | None = Non
         pool = [x for x in pool if x.get("kind", "offer") == "offer"]
     if max_risk is not None:
         pool = [x for x in pool if (x.get("risk") or 0) <= max_risk]
+
+    def _rank(xs: list[dict], key) -> list[dict]:
+        """Rank by key; implausible (bench/€ > 400) sorts last, never hidden —
+        same review-lane philosophy as the search pipeline."""
+        return sorted(xs, key=lambda z: (bool(z.get("implausible")), key(z)))[:limit]
+
     eff = [x for x in pool if (x.get("ppw") or 0) >= 700]
-    boards = sorted((x for x in items if x.get("board") and not x.get("socketed")
-                     and not x.get("platform_only")
-                     and x.get("kind", "offer") == "offer"
-                     and (x["multi"] or 0) >= min_bench),
-                    key=lambda z: -z["eff_ppe"])[:limit]
+    boards = _rank([x for x in items if x.get("board") and not x.get("socketed")
+                    and not x.get("platform_only")
+                    and x.get("kind", "offer") == "offer"
+                    and (x["multi"] or 0) >= min_bench],
+                   lambda z: -z["eff_ppe"])
     platforms = sorted((x for x in items if x.get("board")
                         and x.get("kind", "offer") == "offer"
                         and (x.get("socketed") or x.get("platform_only"))
                         and not (x.get("multi") and _has_own_cpu(x))),
                        key=lambda z: (z.get("price") is None, z.get("price") or 0))[:limit]
-    return {"ppe": sorted(pool, key=lambda z: -(z.get("ppe_full") or z["ppe"]))[:limit],
-            "efficient": sorted(eff, key=lambda z: -z["ppe"])[:limit],
-            "ppw": sorted([x for x in pool if x.get("ppw")], key=lambda z: -z["ppw"])[:limit],
-            "raw": sorted(pool, key=lambda z: -(z["multi"] or 0))[:limit],
+    return {"ppe": _rank(pool, lambda z: -(z.get("ppe_full") or z["ppe"])),
+            "efficient": _rank(eff, lambda z: -z["ppe"]),
+            "ppw": _rank([x for x in pool if x.get("ppw")], lambda z: -z["ppw"]),
+            "raw": _rank(pool, lambda z: -(z["multi"] or 0)),
             "boards": boards, "platforms": platforms,
             "n": len(pool)}

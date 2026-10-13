@@ -2413,11 +2413,18 @@ def test_resolution_part_digit_gates():
 
 
 def test_accessory_titles_get_no_estimate():
-    """Keyboards/fans for a laptop line are parts, never estimate carriers."""
+    """Keyboards/fans for a laptop line are parts, never estimate carriers.
+
+    A WEAK/family hint in an accessory title stays unrated; a NAMING-GRADE
+    exact token (i5-14400F) resolves — it is benched, then implausible-flagged
+    downstream into review, never silently dropped (see test_core's
+    test_implausible_price_flagged_not_hidden, the authoritative contract).
+    """
     from deal_radar.scoring import resolve_cpu_with_seeds
     assert resolve_cpu_with_seeds(
         "Russisch Tastatur für Dell Latitude 5420 5430 5421")[0] is None
-    assert resolve_cpu_with_seeds("Intel Core i5-14400F ventilateur")[0] is None
+    cpu, conf, _, _, _ = resolve_cpu_with_seeds("Intel Core i5-14400F ventilateur")
+    assert cpu == "i5-14400F" and conf >= 0.85
     # exact-CPU bundles still resolve (solid mention wins)
     cpu, _, _, est, _ = resolve_cpu_with_seeds(
         "Mobo Combo-Z170 Pro Gaming Motherboard Intel i7-6700k 16GB RAM")
@@ -2462,3 +2469,70 @@ def test_board_games_excluded():
     assert board_info("Harry Potter Magical Beasts Board game NEU")[0] is False
     assert board_info("Monopoly board game Brettspiel")[0] is False
     assert board_info("ThinkPad X270 Mainboard i5")[0] is True
+
+
+def test_accessory_head_and_hard_parts():
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    # weak (bare-token) CPU claims inside accessory heads are dropped
+    assert resolve_cpu_with_seeds("AC/DC Adapter Ladegerät für GEEKOM A8 8745HS")[0] is None
+    # NAMING-GRADE exact tokens survive (bench + implausible-flag downstream —
+    # never silently dropped; the board excludes them as implausible)
+    cpu, conf, _, _, _ = resolve_cpu_with_seeds(
+        "19V Netzteil für CHUWI AuBox Ryzen 9 6900HX")
+    assert cpu == "Ryzen 9 6900HX" and conf >= 0.85
+    # hard parts veto (battery/case) unless whole-system context
+    assert resolve_cpu_with_seeds("Batterie pour Elitebook 840")[0] is None
+    assert resolve_cpu_with_seeds("LENOVO ThinkPad P52 komplettes unteres Gehäuse")[0] is None
+    assert resolve_cpu_with_seeds("Laptop mit neuem Akku und SSD, ThinkPad T480")[0] is not None
+    # whole broken-screen machines still resolve
+    cpu, _, _, _, _ = resolve_cpu_with_seeds("MacBook Air M1 2020 Display defekt sonst ok")
+    assert cpu is not None
+
+
+def test_compat_clauses_stripped():
+    """Seeds match the item, not its compatibility list (LTE modem for ProBook
+    carries no i5-1135G7)."""
+    from deal_radar.scoring import resolve_cpu_with_seeds, strip_compat
+    assert "ProBook" not in strip_compat("Modem für ProBook 430 G8, EliteBook 830")
+    assert "i7-8750H" in strip_compat("Board i7-8750H für Gaming")
+    assert resolve_cpu_with_seeds(
+        "HP XMM 7360 Fibocom L850-GL M.2 LTE Modul für EliteBook 830 G8")[0] is None
+    assert resolve_cpu_with_seeds(
+        "Lenovo ThinkPad E15 Gen 2 Châssis complet avec écran")[0] is None
+    # real mentions survive the strip
+    cpu, _, _, _, _ = resolve_cpu_with_seeds("ThinkPad T480 i7-8650U 16GB für Büro")
+    assert cpu == "i7-8650U"
+
+
+def test_used_with_clause_and_display_units():
+    """A board 'wurde zusammen mit Ryzen 2400G' was used with it, not sold
+    with it; a 'Display LCD Einheit' is a screen, never a system."""
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    assert resolve_cpu_with_seeds(
+        "Gigabyte B450M DS3H – AM4\nWurde zusammen mit einem Ryzen 5 2400G "
+        "und 16 GB DDR4 betrieben.")[0] is None
+    # bundle phrasing still resolves (CPU is part of the item)
+    assert resolve_cpu_with_seeds("Gigabyte B450M DS3H + Ryzen 5 2400G Komplett")[0] is not None
+    assert resolve_cpu_with_seeds(
+        "Lenovo Thinkpad P1 Gen4 Display LCD Einheit 3840x2400px")[0] is None
+    assert resolve_cpu_with_seeds("ThinkPad T480 LCD Modul getauscht")[0] is None
+    assert resolve_cpu_with_seeds("Samsung Bildschirm 24 Zoll Monitor")[0] is None
+
+
+def test_compat_list_and_narration_verbs():
+    """Real junk that used to top the board: an LTE modem whose compat list
+    continues past a colon, and an AIO cooler narrating what it cooled."""
+    from deal_radar.scoring import resolve_cpu_with_seeds
+    modem = ("HP XMM 7360 Fibocom L850-GL M.2 LTE Modul\n"
+             "Drahtloses Mobilfunkmodem, 4G LTE, M.2 Card, 150 Mbps, für "
+             "(for WWAN Ready configurations): EliteBook 735 G6, 745 G5, 745 G6, "
+             "83X G7, 83X G8, 840r G4, 84X G7, 84X G8, 850 G6, 85X G7, 85X G8; "
+             "ProBook 430 G8, 44X G8, 45X G8, 640 G5, 650 G5; Spectre x360")
+    assert resolve_cpu_with_seeds(modem)[0] is None
+    cooler = ("NZXT Kraken Z73 RGB White 360 mm AIO Wasserkühlung\n"
+              "Die Wasserkühlung war eingebaut. Sie kühlte einen Ryzen 7 5800X3D "
+              "problemlos und leise.")
+    assert resolve_cpu_with_seeds(cooler)[0] is None
+    # exact tokens in compat lists still bench (flag downstream)
+    cpu, conf, _, _, _ = resolve_cpu_with_seeds("Kabel für HP i7-1165G7 16GB")
+    assert cpu == "i7-1165G7" and conf >= 0.85
