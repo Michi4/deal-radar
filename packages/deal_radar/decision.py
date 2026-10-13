@@ -628,7 +628,7 @@ def heuristic_decide(title: str, description: str, price: float | None,
     import re as _re
     # buy-request / parts / repair ads are not buyable offers — penalty, evidence-logged
     want_ad = bool(_re.search(r"^\s*(ankauf|suche|gesuch|tausch\w*)\b|[\s(](gesucht|ankauf|tausch\w*)\b", hay))
-    parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
+    parts_ad = bool(_re.search(r"\b(backcover|r[üu]ckglas|r[üu]ckseite|ersatzteil|defekt|bastler|reparatur|reparieren|displaytausch|display\s*assembly|ersatzdisplay|palmrest|unterschale|oberschale|nur teile|f[üu]r teile|wasserschaden|icloud|frp)\b", hay))
     _acc_stems = ("hülle", "huelle", "case", "cover", "folie", "panzerglas", "schutzglas",
                   "kameraschutz", "displayschutz", "leerverkauf", "leer ", " leer", "ovp leer",
                   "empty box", "box only", "nur ovp", "nur verpackung", "verpackung", "schachtel",

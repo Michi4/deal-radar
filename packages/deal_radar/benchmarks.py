@@ -77,8 +77,17 @@ def parse_passmark_detail(html: str) -> tuple[int | None, int | None]:
     return (int(mt.group(1)) if mt else None, int(st.group(1)) if st else None)
 
 
+def _digit_core(s: str) -> str:
+    """First model-number run (e.g. "ryzen 5 1600" -> "1600", "i7-8750h" -> "8750")."""
+    import re as _re2
+    m = _re2.search(r"\d{3,5}", s)
+    return m.group(0) if m else ""
+
+
 def closest_known_cpu(name: str) -> tuple[str | None, float]:
-    """Closest real CPU when the exact page 404s: difflib over static DB + cached PassMark + GPU table."""
+    """Closest real CPU when the exact page 404s: difflib over static DB + cached PassMark + GPU table.
+    The digit core must match (same first 2 digits, length ±1) — otherwise
+    "Ryzen 5 1600" would inherit a 7600X score (+70% inflation)."""
     import difflib
     want = _norm(name)
     candidates: dict[str, str] = {c: c for c in STATIC_DB}
@@ -95,6 +104,16 @@ def closest_known_cpu(name: str) -> tuple[str | None, float]:
     except Exception:
         pass
     normed = {_norm(c): c for c in candidates}
+    want_core = _digit_core(want)
+    if want_core:
+        gated = []
+        for c in normed:
+            cc = _digit_core(c)
+            if len(cc) >= 2 and cc[:2] == want_core[:2] and abs(len(cc) - len(want_core)) <= 1:
+                gated.append(c)
+        if not gated:
+            return None, 0.0  # no same-generation candidate: honest miss
+        normed = {c: normed[c] for c in gated}
     best = difflib.get_close_matches(want, list(normed), n=1, cutoff=0.75)
     if not best:
         return None, 0.0

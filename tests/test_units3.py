@@ -2387,3 +2387,26 @@ def test_gems_bare_cpu_completion():
         assert items[0]["ppe_full"] == round(13810 / 185, 1)
     finally:
         G.cached_cpu = real_cached
+
+
+def test_resolution_part_digit_gates():
+    from deal_radar.benchmarks import closest_known_cpu
+    from deal_radar.scoring import extract_cpu, resolve_cpu_with_seeds
+    # screen resolution is not a CPU
+    assert extract_cpu("Pro Tragbarer Monitor 16 Zoll 2.5K 2560 x 1600 144Hz USB-C")[0] is None
+    assert resolve_cpu_with_seeds("Monitor 27 Zoll 1920x1080 HDMI")[0] is None
+    # spare parts carry no bench
+    assert resolve_cpu_with_seeds("Apple MacBook Air M1 2020 A2337 Display Assembly DEFEKT")[0] is None
+    assert resolve_cpu_with_seeds("Palmrest Tastatur Lenovo Thinkpad X1 Yoga gen 4")[0] is None
+    # whole machines with broken screens still resolve
+    cpu, _, _, _, _ = resolve_cpu_with_seeds("MacBook Air M1 2020 Display defekt sonst ok")
+    assert cpu is not None
+    # closest match stays within generation (no 1600->7600X inflation).
+    # _gpu_mem cleared: other tests populate the shared GPU table.
+    from unittest.mock import patch
+    with patch.dict("deal_radar.benchmarks._gpu_mem", {}, clear=True):
+        assert closest_known_cpu("Ryzen 5 1600")[0] is None
+        assert closest_known_cpu("Ryzen 5 2600")[0] is None
+        assert closest_known_cpu("Ryzen 5 5500")[0] is None
+        name, score = closest_known_cpu("Ryzen 7 580H")
+        assert name is not None and score >= 0.9  # typo tolerance kept

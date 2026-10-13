@@ -480,8 +480,12 @@ BOARD_WORDS = re.compile(
     r"mainboard|motherboard|logic\s*board|logicboard|baseboard|systemboard|"
     r"hauptplatine|systemplatine|\bplatine\b", re.IGNORECASE)
 
-#: Daughter/sub boards carry no CPU (USB/LAN/audio/power/LED IO boards) —
-#: excluded from board-CPU estimates even though they say "platine".
+#: Spare-part nouns: the listing SELLS the part, not a system containing it.
+#: "Display Assembly" / palmrest / case shells must never inherit a CPU bench,
+#: while "Display defekt" (broken screen on a whole machine) flows normally.
+PART_NOUNS = re.compile(
+    r"display\s*assembly|ersatzdisplay|displayeinheit|palmrest|unterschale|"
+    r"oberschale|topcase|bottomcase|displaydeckel|tastaturabdeckung", re.IGNORECASE)
 #: Compounds only: a bare "usb" (USB-C port mention) must never nuke a real board.
 IO_BOARD_WORDS = re.compile(
     r"i/o\b|io[-\s]?(board|platine|karte)|usb[-\s]?(board|platine)|"
@@ -693,12 +697,14 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
                       r"|\b(\d{4})\s*(hs|hx|h|u|g|ge|x3d|x|f)\b", t)
         if m:
             # RAM-speed markings are not CPUs ("PC2-5300U", "667 MHz DIMM").
+            # Screen resolutions are not CPUs ("2560 x 1600", "1920x1080").
             # Intel context is not an AMD CPU ("INTEL i7-8750H" is not Ryzen 7).
             _ctx = t[max(0, m.start() - 10):m.end() + 10]
             _is_ram = bool(re.search(r"pc\d*-\d+|\d+\s*mhz|\bdimm\b|\bsodimm\b", _ctx, re.IGNORECASE))
+            _is_res = bool(re.search(r"\d{3,4}\s*x\s*\d{3,4}", _ctx))
             _is_intel = bool(re.search(r"\bintel\b|\bi[3579]\b", _ctx))
             tier, num, suf = "", "", ""
-            if not _is_ram and not _is_intel:
+            if not _is_ram and not _is_intel and not _is_res:
                 if m.group(1):
                     tier, num, suf = m.group(1), m.group(2), m.group(3)
                 else:
@@ -745,6 +751,10 @@ def resolve_cpu_with_seeds(text: str) -> tuple[str | None, float, str, bool, lis
     seed ("X1 Carbon Gen 6" + "i5" -> i5-8350U first, not the i7 base).
     """
     clean = strip_marketplace_suffix(text)
+    # Spare parts are never systems: a display assembly carries no bench even
+    # when it names the machine it fits.
+    if PART_NOUNS.search(clean):
+        return None, 0.0, "", False, []
     cpu, conf, why = extract_cpu(clean)
     # Solid mentions win immediately; vague unverified fragments ("ryzen 5",
     # "ryzen 7") defer to the seed tables below, which attach candidates.
