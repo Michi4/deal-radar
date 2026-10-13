@@ -44,6 +44,10 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 13 (homeserver bang-buck): M75q-G2 5600GE complete E350 (51.5, 35W) is THE
+repurpose gem; M75q-G1 3400GE E139 (55.8); B100 N100 E120 (idle king ~8W);
+1235U boards E112+ (63 eff, eBay board chest); NUC8 E140 (55.6); MS-01 12950HX/48GB
+E480 stays virtualization king. ebay-web proven top board source.
 ROUND 12 (EVO-X2 + homeserver): EVO-X2/128 verified E3299.99 (256GB/s shared).
 2x = E6.6k/256GB pools MEMORY, not speed (~10-20 tok/s — pipeline gives no
 single-stream speedup). M1U-128 E5.3k stays 3x faster (800GB/s, 45-80 tok/s).
