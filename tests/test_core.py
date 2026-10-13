@@ -1302,7 +1302,8 @@ def test_advise_offer_targets():
 
 
 def test_implausible_price_flagged_not_hidden():
-    """E20 'i5-14400F cooler' (25k marks) lands in review with a reason."""
+    """Naming-grade CPU inside a cooler listing still gets benched, then the
+    too-good flag pushes it to review with a reason (never hidden)."""
     import asyncio
     import os
     import tempfile
@@ -1310,24 +1311,30 @@ def test_implausible_price_flagged_not_hidden():
 
     from deal_radar.store import Store
 
-    async def go():
+    async def go(title, price, keywords="8845hs"):
         reg = DriverRegistry()
         reg.register(_fake_driver(
-            [L(title="Intel Core i5-14400F ventilateur", description="cooler only",
-               price=20.0, images=[])], driver_id="g"))
+            [L(title=title, description="cooler only",
+               price=price, images=[])], driver_id="g"))
         st = Store(os.path.join(tempfile.mkdtemp(), "c2.db"))
         try:
             with patch("deal_radar.benchmarks.fetch_passmark_cpu",
-                       return_value={"multi": 25406, "single": 3000,
+                       return_value={"multi": 28260, "single": 3700,
                                      "source": "t", "ts": 9999999999.0}):
-                out = await run_search({"keywords": "14400f", "sources": ["g"], "limit": 5,
+                out = await run_search({"keywords": keywords, "sources": ["g"], "limit": 5,
                                         "enrich": True, "benchmarks": True}, reg, st)
         finally:
             st.close()
         return out
 
-    out = asyncio.run(go())
+    out = asyncio.run(go("Noctua Kühler für Ryzen 7 8845HS, neu", 20.0))
     r = out["results"][0]
     assert r["risk"]["score"] >= 0.35
     assert any("implausible" in w for w in r["why"])
     assert r["lane"] in ("review", "hidden", "top")
+
+    # bare cooler words with only weak CPU hints stay fully unrated
+    out = asyncio.run(go("Intel Core i5-14400F ventilateur", 20.0, "14400f"))
+    assert out["results"], "cooler listing itself must survive filtering"
+    ens = out["results"][0].get("enrichments", [])
+    assert not [e for e in ens if e.get("field") == "cpu_benchmark"]
