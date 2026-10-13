@@ -44,6 +44,11 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 6 (20k+ shootout): MLLSE 7840HS/24/1TB E350 (80.6, verified 1TB+USB4+box)
+BEATS eBay H255 E360 (79.8) on perf-per-euro; eBay keeps new+warranty crown.
+New: AM18 16/512 E450 (62.7), UM790Pro 32/1TB E550 (54.0, strongest sub-600),
+UM780 XTX E466 (spec unverified), TA95X3D board E759 (62129 MT raw king, worst eff).
+UM690Pro E359 = barebone (complete E484). No Halo/Ultra/M4/Genoa silicon on market.
 ROUND 5 (apple/defect): M1 Air donors E180-320, M2 16/512 donor E490, Mini M1 E250,
 M3 Air 16/256 E650 floor. Fixed live: resolution-as-CPU (2560X monitor), part
 nouns carry no bench, closest-match same-generation gate (1600/2600/5500 honest
