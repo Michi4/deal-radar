@@ -44,6 +44,12 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+ROUND 12 (EVO-X2 + homeserver): EVO-X2/128 verified E3299.99 (256GB/s shared).
+2x = E6.6k/256GB pools MEMORY, not speed (~10-20 tok/s — pipeline gives no
+single-stream speedup). M1U-128 E5.3k stays 3x faster (800GB/s, 45-80 tok/s).
+512GB fully: nothing under E10k (M3U-512 E11k). Homeserver: MS-01 12950HX/48GB
+E480, 12600H bare E300, ECC 32GB E80+, HBA330 E60, CSE-836 16-bay E650, QNAP
+10GbE E309. 64GB EVO (E2.xk) is a trap (Q3 needs ~120GB).
 ROUND 11 (AI-rig 40 tok/s): floor is M1 Ultra 128GB — eBay E5295+20 ship (Bonn, DE,
 item 940005703473) beats local E6500 OVP. M2U-128/4TB E6599 stretch, M2U-192 E8490
 dream. 64GB boxes (E2680-4899) are TRAPS (weights don't fit V4.1-Flash). DGX/Halo
