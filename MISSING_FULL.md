@@ -44,6 +44,11 @@ Desktop chips: 8700F+cooler E145 (104), 13600KF E210 (103), 12600KF E145 (93).
 Cooler-trap fixed: >500 bench-per-euro flags review (E20 14400F FAN, not chip).
 M3 Air headless E420 desktop-donor noted. Old hunt server retired (8099),
 canonical hunt server 8090 runs all current code.
+DEPLOYED 2026-10-13: Frankfurt (130.61.104.107) pulled to 870f36e, rebuilt,
+dealradar-api healthy with 12 drivers incl ebay-web (ebay-web degrades loudly
+there until session/cookies land; prod edge behind Authelia+app login, 401 as
+designed). New-AI finds: M5 Max Studio E2725 (amazon.de, 64GB trap), no refurb
+Studios on Apple AT right now.
 ROUND 14 (no-mogger + AI reframe): 3090s sit E1399-1500 (solo can't hold Flash
 weights — but a single 3090 does 40+ tok/s on 32B distills; reframe offered).
 M1-Pro-14 defect trio on eBay: no-display E215 (item 117252189906), cracked+locked
