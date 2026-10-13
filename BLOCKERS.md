@@ -40,13 +40,16 @@
   iPhone 15/16 models, 6/6 real USB-C phones). If OpenCode ever opens server-side free
   use, `_providers()` already supports a second failover provider via CLOUD_API_URL_2 etc.
 
-## eBay HTML verdict 2026-10-13 (3 approaches dead, decoys proven)
-- curl/curl_cffi/headless-shell, laptop AND Frankfurt: 403 Error Page.
-- Headed Chromium 151 + real user login (visible window, Vienna laptop): login OK,
-  search page loads BUT serves DECOY CARDS (hrefs ebay.com/itm/123456, empty titles,
-  $20.00 rows, 594 fake "results"). Scraping it would inject FAKE listings.
-- VERDICT: no HTML driver, ever — worse than no driver. ONLY the official Browse
-  API path (needs YOUR exemption clicks, documented below). Evidence: /tmp/opencode/hunt/ebay-minipc.json.
+## eBay HTML verdict 2026-10-13 (CORRECTED: headed+session WORKS)
+- curl/curl_cffi/headless-shell, laptop AND Frankfurt: 403 Error Page (anonymous dead).
+- Headed Chromium 151 + real user login: REAL results (60 cards, screenshot-matched).
+  Page mixes 2 decoy placeholder slots (ebay.com/itm/123456, empty titles) into real
+  ebay.at items — parser skips them (JUNK_TITLES + /itm/123456 filter, unit-tested).
+- SHIPPED: drivers/ebay_web/ (session-web driver, CDP nav lock, title-verify retry),
+  registered as builtin `ebay-web` (12 drivers live), fixture tests + live test green,
+  proven end-to-end through the app pipeline (25/25 correct-query boards, full enrich).
+  Needs EBAY_CDP_URL (debug Chrome, headed once for login; cookies persist in profile).
+  Frankfurt run pending cookie/session refresh there — same pattern applies.
 
 - [ ] eBay live proof: client-credentials mint implemented + unit-tested (mocked token + search),
   App ID/Cert ID fields in Secrets UI. Owner's keyset is DISABLED with the banner

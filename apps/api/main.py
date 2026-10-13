@@ -495,7 +495,7 @@ async def _model_bootstrap() -> None:
         pass
 
 
-BUILTIN_IDS = ("ebay", "allegro", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo",
+BUILTIN_IDS = ("ebay", "ebay-web", "allegro", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo",
                "minisforum", "gmktec", "aoostar", "acemagic")
 
 
@@ -512,6 +512,7 @@ def load_drivers() -> None:
 
     from allegro.driver import AllegroDriver
     from ebay.driver import EbayDriver
+    from ebay_web.driver import EbayWebDriver
     from kleinanzeigen.driver import KleinanzeigenDriver
     from ricardo.driver import RicardoDriver
     from shopify.driver import SHOPS, make_shopify_driver
@@ -528,6 +529,9 @@ def load_drivers() -> None:
     off = disabled_drivers()
     if "ebay" not in off:
         registry.register(EbayDriver(transport_from_config(cfg.get("ebay"))))
+    if "ebay-web" not in off:
+        # session driver: needs EBAY_CDP_URL (debug Chrome) or it degrades loudly
+        registry.register(EbayWebDriver())
     if "allegro" not in off:
         registry.register(AllegroDriver(transport_from_config(cfg.get("allegro"))))
     for shop_id, shop_name, base_url, currency in SHOPS:
