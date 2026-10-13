@@ -82,6 +82,11 @@ class ShopifyDriver(MarketplaceDriver):
             if not _match(blob, query.keywords):
                 continue
             variants = [v for v in (p.get("variants") or []) if isinstance(v, dict)]
+            # buyable only: a sold-out €139 barebone must never outrank a
+            # purchasable €199 complete unit. Missing flag = available.
+            variants = [v for v in variants if v.get("available", True)]
+            if not variants:
+                continue
             prices: list[float] = []
             for v in variants:
                 try:

@@ -2292,3 +2292,51 @@ def test_unverified_defers_to_seeds():
     # no seed anywhere -> old unverified behavior preserved
     cpu, _, why, est, _ = resolve_cpu_with_seeds("Mini pc AMD Ryzen 3 con 8gb ram")
     assert est is False and "unverified" in why
+
+
+def test_shopify_skips_unavailable_variants():
+    """Ghost deals stay out: sold-out variants never set the price; fully
+    sold-out products vanish from results."""
+    import asyncio
+    from shopify.driver import ShopifyDriver
+
+    from deal_radar.driver_sdk import SearchQuery
+
+    feed = {"products": [
+        {"id": 1, "title": "UM560 Refurbished", "handle": "um560", "tags": [],
+         "body_html": "Ryzen 5 5625U mini pc",
+         "images": [],
+         "variants": [
+             {"price": "139.00", "available": False, "title": "Barebone"},
+             {"price": "199.00", "available": True, "title": "16GB+512GB"},
+         ]},
+        {"id": 2, "title": "UM690 Refurbished", "handle": "um690", "tags": [],
+         "body_html": "Ryzen 9 6900HX mini pc",
+         "images": [],
+         "variants": [
+             {"price": "289.00", "available": False, "title": "16GB+512GB"},
+         ]},
+    ]}
+
+    class FakeT:
+        async def get(self, url, headers=None):
+            class R:
+                status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+                def json(self_inner):
+                    return feed
+            return R()
+
+    from shopify import driver as S
+    S._CATALOG.clear()
+    try:
+        d = ShopifyDriver(transport=FakeT(), shop_id="minisforum",
+                          shop_name="Minisforum EU", base_url="https://minisforumpc.eu")
+        out = asyncio.run(d.search(SearchQuery(keywords="ryzen mini pc", limit=10)))
+        assert len(out) == 1 and out[0].price == 199.0, [(x.title, x.price) for x in out]
+        assert "Barebone" not in out[0].title
+    finally:
+        S._CATALOG.clear()
