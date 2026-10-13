@@ -102,6 +102,45 @@ def test_orchestrator_offline():
     asyncio.run(_run())
 
 
+def test_closest_bench_labeled_and_gated():
+    """No exact PassMark page: near substitute (>=85%) attaches labeled at its
+    own confidence; far substitutes stay honestly unknown (never 0.97)."""
+    import asyncio
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    from deal_radar.store import Store
+
+    async def _hunt(title, closest):
+        reg = DriverRegistry()
+        reg.register(_fake_driver(
+            [L(title=title, description="mini pc", price=300.0, images=[])], driver_id="g"))
+        st = Store(os.path.join(tempfile.mkdtemp(), "c.db"))
+        real = {"multi": 28515, "single": 3719, "source": "cpubenchmark.net", "ts": 0.0}
+
+        def fake_fetch(cpu):
+            return None if "8745H" in cpu and "8745HS" not in cpu else dict(real)
+
+        try:
+            with patch("deal_radar.benchmarks.fetch_passmark_cpu", side_effect=fake_fetch), \
+                 patch("deal_radar.benchmarks.closest_known_cpu", return_value=closest):
+                out = await run_search({"keywords": "mini", "sources": ["g"], "limit": 5,
+                                        "enrich": True, "benchmarks": True}, reg, st)
+        finally:
+            st.close()
+        ens = out["results"][0].get("enrichments", [])
+        return {e.get("field"): e for e in ens}
+
+    by_field = asyncio.run(_hunt("UM870 Ryzen 7 8745H Barebone", ("Ryzen 7 8745HS", 0.867)))
+    assert by_field["cpu_benchmark"]["value"] == 28515
+    assert by_field["cpu_benchmark"]["confidence"] == 0.87
+    assert "8745HS" in by_field["cpu_benchmark"]["sources"][0]["detail"]
+
+    by_field = asyncio.run(_hunt("UM870 Ryzen 7 8745H Barebone", ("ryzen 7 5800h", 0.77)))
+    assert "cpu_benchmark" not in by_field  # far match: honestly unknown
+
+
 def test_driver_fixture_parsing():
     from kleinanzeigen.driver import next_page_url, parse_cards, parse_price, slugify
     from willhaben.driver import parse_dom_fallback, parse_next_data

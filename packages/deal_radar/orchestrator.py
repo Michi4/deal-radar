@@ -383,27 +383,37 @@ async def run_search(intent: dict[str, Any], registry: DriverRegistry,
                 try:
                     from .benchmarks import closest_known_cpu, fetch_passmark_cpu
                     real = await asyncio.to_thread(fetch_passmark_cpu, str(cpu_fact.value))
+                    _via_closest = ""
                     if real is None:
-                        # closest-real-match fallback (list endpoint is JS-walled)
+                        # closest-real-match fallback (list endpoint is JS-walled).
+                        # Only near-matches (>=85%) attach a score, labeled with the
+                        # substitute; far matches stay honestly unknown instead of
+                        # locking in a wrong number at high confidence.
                         alt, score = closest_known_cpu(str(cpu_fact.value))
                         if alt and alt.lower() != str(cpu_fact.value).lower():
-                            bn_why.append(f"exact page miss — closest real CPU: {alt} ({score:.0%})")
-                            metrics.inc("benchmark_closest_retry")
-                            real = await asyncio.to_thread(fetch_passmark_cpu, alt)
-                            if real:
-                                bn_why.append(f"benchmark via closest match {alt}")
+                            if score >= 0.85:
+                                bn_why.append(f"exact page miss — closest real CPU: {alt} ({score:.0%})")
+                                metrics.inc("benchmark_closest_retry")
+                                real = await asyncio.to_thread(fetch_passmark_cpu, alt)
+                                if real:
+                                    _via_closest = f" via closest match {alt} ({score:.0%})"
+                                    bn_why.append(f"benchmark{_via_closest}")
+                            else:
+                                bn_why.append(f"exact page miss — no close match (best {alt} {score:.0%}), left unknown")
+                                metrics.inc("benchmark_no_close_match")
                     if real:
+                        _conf = 0.97 if not _via_closest else round(score, 2)
                         enrich = [e for e in enrich if e.field not in ("cpu_benchmark",)]
-                        enrich.append(EnrichmentFact(field="cpu_benchmark", value=real["multi"], confidence=0.97,
+                        enrich.append(EnrichmentFact(field="cpu_benchmark", value=real["multi"], confidence=_conf,
                                                      status=FactStatus.EXTERNAL,
-                                                     sources=[Evidence(type="external", detail="cpubenchmark.net")]))
+                                                     sources=[Evidence(type="external", detail=f"cpubenchmark.net{_via_closest}")]))
                         for sf in ("single", "class", "socket", "clockspeed", "turbo", "tdp", "cores",
                                    "threads", "cache_l1i", "cache_l1d", "cache_l2", "cache_l3",
                                    "rank_mt", "rank_st", "first_seen", "samples"):
                             if real.get(sf) is not None:
-                                enrich.append(EnrichmentFact(field=f"cpu_{sf}", value=real[sf], confidence=0.95,
+                                enrich.append(EnrichmentFact(field=f"cpu_{sf}", value=real[sf], confidence=_conf,
                                                              status=FactStatus.EXTERNAL,
-                                                             sources=[Evidence(type="external", detail="cpubenchmark.net")]))
+                                                             sources=[Evidence(type="external", detail=f"cpubenchmark.net{_via_closest}")]))
                         metrics.inc("benchmark_real")
                         if override:
                             cpu_fact.status = FactStatus.VERIFIED

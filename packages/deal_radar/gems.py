@@ -24,7 +24,9 @@ def collect_full(store, days: float = 14.0,
     they rank approximately instead of vanishing into "unrated".
     """
     from .decision import heuristic_decide
-    from .scoring import resolve_cpu_with_seeds
+    from .scoring import extract_ram as _ram
+    from .scoring import extract_storage as _stor
+    from .scoring import is_barebone, resolve_cpu_with_seeds
     cutoff = time.time() - days * 86400
     try:
         rows = store.db.execute(
@@ -63,6 +65,19 @@ def collect_full(store, days: float = 14.0,
             counts["estimated"] += 1
         else:
             counts["rated"] += 1
+        # complete-system cost: barebone units need RAM (~85/16GB) and a drive
+        # (~40/512GB) added before perf/€ means anything. Raw ppe kept too.
+        uplift = 0
+        try:
+            if is_barebone(f"{title}\n{desc}"):
+                if _ram(f"{title}\n{desc}") is None:
+                    uplift += 85
+                gb, _ = _stor(f"{title}\n{desc}")
+                if not gb:
+                    uplift += 40
+        except Exception:
+            uplift = 0
+        full_price = (price or 0) + uplift if price else 0
         single = (bench or {}).get("single")
         tdp = None
         try:
@@ -75,7 +90,9 @@ def collect_full(store, days: float = 14.0,
                       "cpu": cpu, "multi": multi, "single": single, "tdp_w": tdp,
                       "kind": kind, "fav": lid in favs,
                       "estimated": estimated,
+                      "barebone_uplift": uplift, "full_price": full_price,
                       "ppe": round(multi / price, 1) if price else 0,
+                      "ppe_full": round(multi / full_price, 1) if full_price else 0,
                       "ppw": round(multi / tdp, 1) if tdp else 0})
     return items, counts
 
@@ -88,14 +105,16 @@ def collect(store, days: float = 14.0, fav_ids: set[str] | None = None) -> tuple
 
 def board(items: list[dict], min_bench: int = 8000, max_risk: float | None = None,
           systems_only: bool = True, limit: int = 30) -> dict:
-    """Three ranked lists. Systems-only drops accessory/parts/want kinds."""
+    """Three ranked lists. Systems-only drops accessory/parts/want kinds.
+    The perf/€ list ranks by complete-system cost (barebone uplift included);
+    raw ppe stays on each row for transparency."""
     pool = [x for x in items if (x["multi"] or 0) >= min_bench]
     if systems_only:
         pool = [x for x in pool if x.get("kind", "offer") == "offer"]
     if max_risk is not None:
         pool = [x for x in pool if (x.get("risk") or 0) <= max_risk]
     eff = [x for x in pool if (x.get("ppw") or 0) >= 700]
-    return {"ppe": sorted(pool, key=lambda z: -z["ppe"])[:limit],
+    return {"ppe": sorted(pool, key=lambda z: -(z.get("ppe_full") or z["ppe"]))[:limit],
             "efficient": sorted(eff, key=lambda z: -z["ppe"])[:limit],
             "ppw": sorted([x for x in pool if x.get("ppw")], key=lambda z: -z["ppw"])[:limit],
             "raw": sorted(pool, key=lambda z: -(z["multi"] or 0))[:limit],

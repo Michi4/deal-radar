@@ -2078,6 +2078,9 @@ def test_gems_collect_full_counts_split():
                         # clothes -> unrated_nonsystem
                         ("a:4", "Nike Training Shorts Blue Mens XL", 30.0, "EUR", "https://x.example/4", "t",
                          _j.dumps({"description": "", "images": []})),
+                        # barebone 0/0 unit, cached bench -> rated with uplift
+                        ("a:5", "Firebat Ryzen 7 H255 0GB 0TB Barebone", 100.0, "EUR", "https://x.example/5", "t",
+                         _j.dumps({"description": "", "images": []})),
                     ]
             return C()
 
@@ -2085,16 +2088,24 @@ def test_gems_collect_full_counts_split():
         db = FakeDB()
 
     real_cached = G.cached_cpu
-    G.cached_cpu = lambda cpu: {"multi": 8000, "single": 2000} if cpu == "i5-8350U" else None
+    benches = {"i5-8350U": {"multi": 8000, "single": 2000},
+               "Ryzen 7 255": {"multi": 8200, "single": 3700}}
+    G.cached_cpu = lambda cpu: benches.get(cpu)
     try:
         items, counts = G.collect_full(FakeStore())
-        assert counts == {"rated": 1, "estimated": 1,
+        assert counts == {"rated": 2, "estimated": 1,
                           "unrated_systems": 1, "unrated_nonsystem": 1}, counts
-        assert {x["id"] for x in items} == {"a:1", "a:2"}
+        assert {x["id"] for x in items} == {"a:1", "a:2", "a:5"}
         assert next(x for x in items if x["id"] == "a:2")["estimated"] is True
         assert next(x for x in items if x["id"] == "a:1")["estimated"] is False
+        bb = next(x for x in items if x["id"] == "a:5")
+        assert bb["barebone_uplift"] == 125 and bb["full_price"] == 225.0
+        assert bb["ppe"] == 82.0 and bb["ppe_full"] == round(8200 / 225, 1)
+        # perf/€ board ranks complete-system cost: a:1 (40/40) beats a:5 (raw 82, full 36.4)
+        b = G.board(items)
+        assert next(x["id"] for x in b["ppe"]) == "a:1"
         items2, unrated = G.collect(FakeStore())
-        assert unrated == 1 and len(items2) == 2
+        assert unrated == 1 and len(items2) == 3
     finally:
         G.cached_cpu = real_cached
 
@@ -2150,3 +2161,16 @@ def test_offer_targets_plain_and_barebone():
     assert b["pay_for_100"] == round(28261 / 100 + 85) and b["barebone_uplift"] == 85
     # RAM included -> no uplift even when flagged
     assert offer_targets(28261, barebone=True, ram_gb=16)["barebone_uplift"] == 0
+
+
+def test_extract_cpu_ryzen_h_split():
+    from deal_radar.scoring import extract_cpu, resolve_cpu_with_seeds
+    cpu, conf, _ = extract_cpu("ACEMAGIC GAME Mini PC AMD Ryzen 7 H255 16GB LPDDR5 512GB SSD")
+    assert cpu == "Ryzen 7 255" and conf >= 0.8, (cpu, conf)
+    cpu, conf, _ = extract_cpu("Firebat Mini PC AMD Ryzen 7 H 255 0GB 0TB")
+    assert cpu == "Ryzen 7 255" and conf >= 0.8, (cpu, conf)
+    cpu, conf, _, est, _ = resolve_cpu_with_seeds("Ryzen 7 H255 16GB/512GB")
+    assert cpu == "Ryzen 7 255" and est is False
+    # no regression: normal + PRO forms unchanged
+    assert extract_cpu("Ryzen 7 8845HS mini pc")[0] == "Ryzen 7 8845HS"
+    assert extract_cpu("Ryzen 5 PRO 5650U laptop")[0] == "Ryzen 5 PRO 5650U"

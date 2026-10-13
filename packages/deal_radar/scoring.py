@@ -502,12 +502,23 @@ def extract_cpu(text: str) -> tuple[str | None, float, str]:
             if tier and suf in ("u", "h", "hx", "p", "g", "g7", "t", "f", "k", "kf", "hk"):
                 return f"i{tier}-{num}{suf.upper()}", 0.6, f"bare '{num}{suf}' -> i{tier}"
     # explicit Ryzen with number: "Ryzen 5 PRO 5650U", "Ryzen 7 8845HS",
-    # "Ryzen 3 4300U", "Ryzen 5 5600G", "Ryzen 9 9950X3D" (normalized)
-    m = re.search(r"ryzen\s*([3579])(?:\s+(pro))?\s*(\d{3,4}[a-z0-9]*)", t)
+    # "Ryzen 3 4300U", "Ryzen 5 5600G", "Ryzen 9 9950X3D" (normalized).
+    # Sellers split the letter: "Ryzen 7 H 255", "Ryzen 7 H255" (= Ryzen 7 255).
+    # Adjacent tier+model ("Ryzen 5800H") keeps the tier digit in the model
+    # ("5800H", NOT "800H"); spaced ("Ryzen 7 255") takes the rest as-is.
+    m = re.search(r"ryzen\s*([3579])(?:\s+(pro))?\s*(h\s*)?(\d{3,4}[a-z0-9]*)", t)
     if m:
-        g = f"Ryzen {m.group(1)} " + ("PRO " if m.group(2) else "") \
-            + re.sub(r"\s+", "", m.group(3)).upper()
-        return g, 0.85, f"mentioned '{g}'"
+        tier, pro, hsplit, rest = m.group(1), m.group(2), m.group(3), \
+            re.sub(r"\s+", "", m.group(4)).upper()
+        adjacent = bool(re.match(r"ryzen\s*[3579]\d", t[m.start():m.start() + 12]))
+        digits = re.match(r"\d+", rest)
+        if adjacent and not pro and not hsplit and digits and len(digits.group(0)) == 3:
+            rest = tier + rest
+        g = f"Ryzen {tier} " + ("PRO " if pro else "") + rest
+        ev = f"mentioned '{g}'"
+        if hsplit:
+            ev += " (seller split 'H' prefix)"
+        return g, 0.85, ev
     # bare AMD numbers: "8845HS", "R7 7840U", "7735 HS", "5600G" -> tier from 2nd
     # digit (2/3/4->Ryzen 3, 5/6->Ryzen 5, 7/8->Ryzen 7, 9->Ryzen 9).
     # Skipped when an explicit "Ryzen <tier>" prefix exists (handled above).

@@ -84,15 +84,26 @@ class ShpockDriver(MarketplaceDriver):
         # A genuinely empty query has ~0 summaries; a dump has dozens, none matching.
         if items and (query.keywords or "").strip():
             import re as _re3
+
+            from deal_radar import metrics as _mx
             toks = [t.lower() for t in _re3.findall(r"[a-z0-9äöü]{3,}", query.keywords.lower())]
-            hits = sum(1 for it in items
-                       if any(t in f"{it['title']} {it['description']}".lower() for t in toks))
-            if not hits:
-                from deal_radar import metrics as _mx
-                _mx.inc("shpock_unfiltered_dump")
-                raise RuntimeError(
-                    "shpock ignored the keyword (unfiltered bestseller dump) — retry later, "
-                    "via proxy, or paste the persisted itemSearch hash (see BLOCKERS.md)")
+            if toks:
+                kept, dropped = [], 0
+                for it in items:
+                    blob = f"{it['title']} {it['description']}".lower()
+                    if any(t in blob for t in toks):
+                        kept.append(it)
+                    else:
+                        dropped += 1
+                if dropped:
+                    _mx.inc("shpock_junk_dropped")
+                if kept:
+                    items = kept
+                else:
+                    _mx.inc("shpock_unfiltered_dump")
+                    raise RuntimeError(
+                        "shpock ignored the keyword (unfiltered bestseller dump) — retry later, "
+                        "via proxy, or paste the persisted itemSearch hash (see BLOCKERS.md)")
         out: list[CanonicalListing] = []
         for it in items:
             blob = f"{it['title']} {it['description']}".lower()

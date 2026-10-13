@@ -1446,7 +1446,7 @@ async def gems(min_bench: int = 8000, days: float = 14.0, limit: int = 30,
     out["rated"] = counts["rated"]
     out["items"] = len(items)
     if advise:
-        cand = sorted(items, key=lambda z: -z["ppe"])[:30]
+        cand = sorted(items, key=lambda z: -(z.get("ppe_full") or z["ppe"]))[:30]
         goal = (note.strip() or "best raw performance per euro; barebone ok; "
                                    "efficiency (perf/watt) matters")
         prompt = f"Goal: {goal}\nListings (JSON):\n{json.dumps(cand, ensure_ascii=False)[:12000]}"
