@@ -28,6 +28,13 @@ Cheat-code confirmed: 5700U board €32, 5500U board €24, X13/T14s 4650U board
 eBay verdict (manual — item+search pages 403 from here, 2 approaches tried): the €360 H255
 NEW 16/512 stands as best complete deal (79.8 pts/€); only used-barebone UM870 (€340 all-in,
 83.8) and ES/budget plays beat it on paper. Coupon POWEREBAY10 ends Oct 14.
+CORRECTION 2026-10-13: minisforum refurbished ghosts — UM560 E139/UM690 E289
+variants are SOLD OUT (avail False); shopify driver now buyable-only (sold-out
+variants never price, dead products vanish). Available refurbished: UM760 Slim
+7640HS barebone E239, UM880 PLUS 8845HS barebone E359, BD775i SE 7745HX board E279.
+Best complete deal stands: eBay H255 NEW 16/512 E360 (79.8). Budget king: AMR5
+offer E140 (128). Board kings: P1G4 11800H+T1200 E79 (98 eff), X13 board E75 (63.6),
+5700U board E32 (~101 eff). UM560 refurb 16/512 E199 complete (71.8) IF restocked.
 
 ## STATUS 2026-10-12 II (verify GREEN, 86%, CI-tracked)
 DONE: GemsView split counts + est. badges; frequency warmup (live: 25 fetches -> 831 rankable from 0);
