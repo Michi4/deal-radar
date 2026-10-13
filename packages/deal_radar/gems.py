@@ -15,6 +15,15 @@ def cached_cpu(cpu: str) -> dict | None:
     return _cc(cpu)
 
 
+def _board_word(blob: str) -> bool:
+    """Raw board-word presence (motherboard/mainboard/carte mère/...)."""
+    try:
+        from .scoring import board_info as _bi
+        return bool(_bi(blob)[0])
+    except Exception:
+        return False
+
+
 def _board_fields(blob: str, price: float | None, multi: int) -> dict:
     """Board leaderboard math: soldered boards rank by effective complete cost
     (price + typical completion minus already-included RAM/SSD); socket
@@ -114,7 +123,8 @@ def collect_full(store, days: float = 14.0,
             counts["rated"] += 1
         # complete-system cost: barebone units need RAM (~85/16GB) and a drive
         # (~40/512GB) added before perf/€ means anything. Bare CPUs (tray chips
-        # like "E5-2667 v4 SR2LF") need board+RAM on top (~150). Raw ppe kept too.
+        # like "E5-2667 v4 SR2LF") and chip-only listings with no system context
+        # ("Ryzen 5 5600x" alone) need board+RAM on top (~150). Raw ppe kept too.
         uplift = 0
         try:
             import re as _reU
@@ -125,10 +135,14 @@ def collect_full(store, days: float = 14.0,
                 gb, _ = _stor(blob)
                 if not gb:
                     uplift += 40
-            elif cpu and _ram(blob) is None and _reU.search(
-                    r"\btray\b|\bboxed\b|\bsr[0-9a-z]{3}\b|\bcpu\b|\bprozessor\b|\bprocessor\b",
-                    blob, _reU.IGNORECASE):
-                uplift += 150
+            elif cpu and _ram(blob) is None and not _board_word(blob):
+                if _reU.search(r"\btray\b|\bboxed\b|\bsr[0-9a-z]{3}\b|\bcpu\b|\bprozessor\b|"
+                               r"\bprocessor\b|\bchip\b|\bpuce\b|\bprocesseur\b|\bprocessore\b|"
+                               r"\bprocesador\b", blob, _reU.IGNORECASE) or not _reU.search(
+                               r"laptop|notebook|mini\s*pc|desktop|\bpc\b|thinkpad|elitebook|"
+                               r"macbook|server|workstation|imac|\bnuc\b|tablet|phone|console",
+                               blob, _reU.IGNORECASE):
+                    uplift += 150
         except Exception:
             uplift = 0
         full_price = (price or 0) + uplift if price else 0

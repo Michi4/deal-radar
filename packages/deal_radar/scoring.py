@@ -478,7 +478,8 @@ BOARD_CPU_SEED = {
 
 BOARD_WORDS = re.compile(
     r"mainboard|motherboard|logic\s*board|logicboard|baseboard|systemboard|"
-    r"hauptplatine|systemplatine|\bplatine\b", re.IGNORECASE)
+    r"hauptplatine|systemplatine|\bplatine\b|carte\s*m[èe]re|scheda\s*madre|"
+    r"placa\s*base|moederbord", re.IGNORECASE)
 
 #: Spare-part nouns: the listing SELLS the part, not a system containing it.
 #: "Display Assembly" / palmrest / case shells must never inherit a CPU bench,

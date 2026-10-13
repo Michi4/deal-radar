@@ -2448,3 +2448,10 @@ def test_ultra_suffix_tight():
     assert extract_cpu("Ultra 9 285HX workstation")[0] == "Core Ultra 9 285HX"
     assert extract_cpu("Core Ultra 7 258V convertible")[0] == "Core Ultra 7 258V"
     assert extract_cpu("Gaming PC Core Ultra 7 265K RTX 5060")[0] == "Core Ultra 7 265K"
+
+
+def test_board_i18n_and_chip_only_uplift():
+    from deal_radar.scoring import board_info
+    assert board_info("Carte mère MacBook Air 2019 A1932")[0] is True
+    assert board_info("Scheda madre Asus K7M + CPU Athlon")[0] is True
+    assert board_info("ThinkPad T480 laptop")[0] is False
