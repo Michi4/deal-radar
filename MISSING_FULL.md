@@ -193,3 +193,22 @@ Root-caused 4 junk classes that topped the board and killed them:
 - gems.board demotes implausible (bench/€ > 400) to the tail — flag, never hide.
 Verified: 253 tests green, ruff+mypy clean. Board top is now all real systems
 (LTE modem + AIO cooler + ideapad-3-fr false-positive expelled); rated 1025→1100.
+
+## Round 16 — blocked sources unlocked via debug browser + mainboard hunt (2026-10-14)
+Chrome CDP (localhost:9222, eBay profile with live session) now drives ALL three
+previously-walled sources directly. New tooling in `scripts/browser_hunt/` (cdp.py,
+batch_ebay.py, scrape_ka.py, scrape_wh.py, combine.py + README with the gotchas).
+- 5 eBay batches (~50 queries, ~1,900 cards), kleinanzeigen 5 queries (100 cards),
+  willhaben 8 queries with scroll-to-load (8 -> 33+ each). 847 offers scored
+  through deal-radar's own resolve+PassMark pipeline.
+- **NEW CROWN for laptop mainboards: Lenovo IdeaPad 5 14IAL7 mainboard,
+  i5-1235U + 16GB RAM — €30** (willhaben, PayLivery, verified live on the item
+  page). ppe 413 — 1.7x the previous best (X13 Yoga i5-1145G7 @ €24 = 381).
+- Other modern-chip finds: Dell Vostro 3530 i7-1355U €71 (ppe 196, verified
+  live), Dell Inspiron 5400 i5-1035G1 €28 (258), Dell Precision 7530 i7-8850H
+  €54 (187), ThinkPad X13 Gen 3 i5-1235U 8GB €75 (165), Dell 3571 i7-12700H
+  €232 (24,925 multi — highest modern board under €250).
+- Standing king P1 Gen 4 i7-11800H+T1200 €79 still live (ppe 95.9 w/ uplift).
+- Fixes while parsing: Intel 4-digit gen heuristic (i5-1235U is 12th-gen, not
+  10th), willhaben `€ 30` euro-first price form, kleinanzeigen counter-badge
+  anchor vs title anchor.
