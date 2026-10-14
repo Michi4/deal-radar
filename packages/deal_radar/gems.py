@@ -145,12 +145,26 @@ def collect_full(store, days: float = 14.0,
                     uplift += 150
         except Exception:
             uplift = 0
-        full_price = (price or 0) + uplift if price else 0
+        # All-in cost: item + SHIPPING. Round 21 proved cards without shipping
+        # rank China/US listings as cheapest while $100/$567 freight makes them
+        # the most expensive. shipping_cost lives on the listing blob (drivers
+        # must wire it — ebay-web does since round 22).
+        ship = 0.0
+        try:
+            import json as _j2
+            _blob2 = _j2.loads(data or "{}")
+            _sc = _blob2.get("shipping_cost")
+            if _sc is None:
+                _sc = (_blob2.get("attributes") or {}).get("shipping")
+            ship = float(_sc or 0.0)
+        except (TypeError, ValueError):
+            ship = 0.0
+        full_price = (price or 0) + uplift + ship if price else 0
         try:
             pe = to_eur(price, cur or "EUR") or 0
         except Exception:
             pe = price or 0
-        full_eur = pe + uplift if pe else 0
+        full_eur = pe + uplift + ship if pe else 0
         single = (bench or {}).get("single")
         tdp = None
         try:
@@ -167,7 +181,8 @@ def collect_full(store, days: float = 14.0,
                       # per euro > 400 is almost never the system itself —
                       # cooler, charger, empty box. Review material, not a gem.
                       "implausible": bool(pe and multi and multi / pe > 400),
-                      "barebone_uplift": uplift, "full_price": full_price,
+                      "barebone_uplift": uplift, "ship": round(ship, 2),
+                      "full_price": full_price,
                       "ppe": round(multi / pe, 1) if pe else 0,
                       "ppe_full": round(multi / full_eur, 1) if full_eur else 0,
                       "ppw": round(multi / tdp, 1) if tdp else 0,

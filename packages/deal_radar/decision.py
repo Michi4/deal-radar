@@ -668,8 +668,18 @@ def heuristic_decide(title: str, description: str, price: float | None,
     _periph_stems = ("tastatur", "keyboard", "touchpad", "maus", "mouse", "ddr2", "ddr3",
                      "sodimm", "dimm", "speicherriegel", "kühler", "kuehler", "cooler",
                      "lüfter", "luefter", "arbeitsspeicher", "valu ram", "valueram")
-    accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|adapter|chargeur|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff|bag|handtasche|shorts|hosen?|shirt|hemd(en)?|bluse(n)?|kleid(er)?|dress|jeans|jacke(n)?|jacket|hoodie|pullover|mantel|socken|sneaker|schuhe|shoes|boots|stiefel|sandalen|m[üu]tze|smartwatch|apple watch|galaxy watch|\bwatch\b)\b", hay)) \
-        or any(s in _title for s in _acc_stems) \
+    # stock-cooler bundles ("ryzen 5 2600 + wraith kühler") are real offers:
+    # cooler stems never fire when an explicit bundle signal is present.
+    _cooler_stems = ("wraith", "boxkühler", "boxkuhler", "tower kühler",
+                     "tower cooler", "cpu kühler", "cpu cooler", "dissipateur",
+                     "dissipatore", "disipador")
+    _bundle_sig = bool(_re.search(r"\+|\binkl\b|inklusive|bundle|combo", _title))
+    _acc_hit = any(s in _title for s in _acc_stems)
+    if _bundle_sig and _acc_hit and not any(s in _title for s in _acc_stems
+                                            if s not in _cooler_stems):
+        _acc_hit = False
+    accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|adapter|chargeur|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff|bag|handtasche|shorts|hosen?|shirt|hemd(en)?|bluse(n)?|kleid(er)?|dress|jeans|jacke(n)?|jacket|hoodie|pullover|mantel|socken|sneaker|schuhe|shoes|boots|stiefel|sandalen|m[üu]tze|smartwatch|apple watch|galaxy watch|\bwatch\b|lüfter|luefter|\bfan\b|heatsink|heatpipe|wasser\s?block|water\s?block|wasserk[üu]hlung|backplate|w[äa]rmeleitpad|nvlink|sli-?bridge|\briser\b|bracket|st[üu]tze|gpu-?halter)\b", hay)) \
+        or _acc_hit \
         or (not _has_compute and any(s in _title for s in _periph_stems))
     if want_ad:
         match = round(match * 0.3, 3)
@@ -677,6 +687,15 @@ def heuristic_decide(title: str, description: str, price: float | None,
         match = round(match * 0.4, 3)
     elif accessory_ad:
         match = round(match * 0.25, 3)
+    # option ads (3+ distinct GPU models, price = cheapest option's): demote
+    # like parts — the headline price is unreliable, never hide outright.
+    from .scoring import is_option_ad as _is_option_ad
+    try:
+        option_ad = bool(_is_option_ad(f"{title}\n{description}"))
+    except Exception:
+        option_ad = False
+    if option_ad:
+        match = round(match * 0.4, 3)
     # kind caps: non-offers can never outrank real offers, no matter the keyword hits
     if want_ad:
         match = min(match, 0.30)
@@ -684,6 +703,8 @@ def heuristic_decide(title: str, description: str, price: float | None,
         match = min(match, 0.45)
     elif accessory_ad:
         match = min(match, 0.30)
+    if option_ad:
+        match = min(match, 0.45)
     low_info = len(description or "") < 40
     kind = "want" if want_ad else ("parts" if parts_ad else ("accessory" if accessory_ad else "offer"))
     # condition from text signals (replaces placeholder 0.5)
@@ -694,11 +715,11 @@ def heuristic_decide(title: str, description: str, price: float | None,
         cond = max(cond, 0.78)
     if _re.search(r"\b(gebrauchsspuren|normale spuren|b-stock|b-ware)\b", hay):
         cond = min(cond, 0.55)
-    if _re.search(r"\b(defekt|kaputt|gesprungen|risse?|kratzer|fehler|reparatur|bastler|f[üu]r teile)\b", hay):
+    if _re.search(r"\b(defekt|kaputt|gesprungen|risse?|kratzer|fehler|reparatur|bastler|f[üu]r teile|for parts|as-?is|untested|ungepr[üu]ft|sold as|defective)\b", hay):
         cond = 0.25
     return {"match": match, "fuzzy": round(fuzzy, 3), "low_info": low_info,
             "want_ad": want_ad or accessory_ad, "parts_ad": parts_ad, "kind": kind,
-            "condition": round(cond, 2),
+            "condition": round(cond, 2), "option_ad": option_ad,
             "needs_stage_b": bool(0.35 <= match <= 0.75 or low_info)}
 
 

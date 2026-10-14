@@ -99,3 +99,21 @@ def test_nav_lock_serializes():
 
     asyncio.run(main())
     assert entered == [1, 2, 1, 2]
+
+
+def test_search_wires_shipping_cost():
+    """Round 21: shipping sat in attributes only, so every ranking ignored it
+    (a $567-freight 'cheapest' 3090 was the most expensive all-in)."""
+    import asyncio
+    from unittest.mock import patch
+
+    from deal_radar.driver_sdk import SearchQuery
+
+    d = EbayWebDriver()
+    with patch.object(EbayWebDriver, "_page_html", return_value=FIX):
+        out = asyncio.run(d.search(SearchQuery(keywords="ryzen", limit=100)))
+    by_id = {x.native_id: x for x in out}
+    igel = by_id["278303530945"]
+    assert igel.shipping_cost == 14.49
+    for x in out:
+        assert x.shipping_cost is None or x.shipping_cost >= 0

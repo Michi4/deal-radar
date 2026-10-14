@@ -950,6 +950,15 @@ GPU_SPECS = {
     "h100": {"vram": 80, "bw": 3350}, "a6000": {"vram": 48, "bw": 768},
     "6000ada": {"vram": 48, "bw": 960}, "titanrtx": {"vram": 24, "bw": 672},
     "2080ti": {"vram": 11, "bw": 616}, "1080ti": {"vram": 11, "bw": 484},
+    "3060": {"vram": 12, "bw": 360}, "3060ti": {"vram": 8, "bw": 448},
+    "3070": {"vram": 8, "bw": 448}, "4060ti": {"vram": 16, "bw": 288},
+    "4070super": {"vram": 12, "bw": 504}, "3080ti": {"vram": 12, "bw": 912},
+    "6700xt": {"vram": 12, "bw": 384}, "6800": {"vram": 16, "bw": 512},
+    "6800xt": {"vram": 16, "bw": 512}, "6900xt": {"vram": 16, "bw": 512},
+    "vii": {"vram": 16, "bw": 1024}, "mi50": {"vram": 16, "bw": 1024},
+    "t4": {"vram": 16, "bw": 320}, "arc770": {"vram": 16, "bw": 512},
+    "a4000": {"vram": 16, "bw": 448}, "a5000": {"vram": 24, "bw": 768},
+    "rtx8000": {"vram": 48, "bw": 672}, "a40": {"vram": 48, "bw": 696},
     "m1max": {"vram": 64, "bw": 400}, "m1ultra": {"vram": 128, "bw": 800},
     "m2max": {"vram": 96, "bw": 400}, "m2ultra": {"vram": 192, "bw": 800},
     "m3max": {"vram": 128, "bw": 400}, "m3ultra": {"vram": 512, "bw": 800},
@@ -977,6 +986,52 @@ def extract_gpu(text: str) -> tuple[str | None, float, str]:
             full = len(re.findall(r"\d", g)) >= 3 or bool(_IGPU_FULL.search(g))
             return g, (0.8 if full else 0.45), f"mentioned '{g}'"
     return None, 0.0, ""
+
+
+#: Distinct datacenter/pro GPU model tokens. An ad naming 3+ of them
+#: ("P4 8GB P40 24GB K80 24GB M40 24GB P100 16GB GPU Karte") is a choose-one
+#: option ad: the shown price belongs to the CHEAPEST option, never to the
+#: headline card. Learned the hard way (round 21: €94 "P100" was a P4 8GB).
+_OPTION_GPU_PATS = [
+    r"tesla\s*p4\b", r"\bp40\b", r"\bk80\b", r"\bm40\b", r"tesla\s*p100\b",
+    r"\bp100\b", r"tesla\s*v100\b", r"\bv100\b", r"tesla\s*a100\b", r"\ba100\b",
+    r"tesla\s*t4\b", r"rtx\s*\d{3,4}", r"rx\s*\d{3,4}", r"gtx\s*\d{3,4}",
+    r"titan\s*(rtx|x[p]?)", r"quadro\s*\w*\s*\d*", r"arc\s*a\d{3}",
+    r"radeon\s*vii\b", r"\bmi\d{2,3}\b",
+]
+
+
+def is_option_ad(text: str) -> bool:
+    """True when a listing names 3+ DISTINCT GPU models (choose-one ad).
+
+    The displayed price is the cheapest option's — ranking it as the headline
+    card's price produces fake €/GB kings. Only the model count matters, never
+    the price itself.
+    """
+    t = (text or "").lower()
+    seen = set()
+    for pat in _OPTION_GPU_PATS:
+        m = re.search(pat, t)
+        if m:
+            seen.add(re.sub(r"\s+", "", m.group(0)))
+    return len(seen) >= 3
+
+
+def gpu_vram_gb(text: str) -> int | None:
+    """Advertised VRAM GB for a GPU listing title, via GPU_SPECS keys.
+
+    Longest-key match wins ("7900xtx" before "7900xt"). Returns None when no
+    known model is named — never guess.
+    """
+    t = re.sub(r"[^a-z0-9]", "", (text or "").lower())
+    t = t.replace("arca", "arc")  # "arc a770" -> "arca770" -> "arc770"
+    for key in sorted(GPU_SPECS, key=len, reverse=True):
+        if key in t:
+            try:
+                return int(GPU_SPECS[key]["vram"])
+            except (KeyError, TypeError, ValueError):
+                continue
+    return None
 
 
 def enrich_gpu(listing: CanonicalListing) -> list[EnrichmentFact]:

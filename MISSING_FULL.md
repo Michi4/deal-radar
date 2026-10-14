@@ -288,3 +288,29 @@ Verified live (gone:false): P100-16GB €103, 6700XT-12GB €272, RTX8000-48GB �
 - Big single card: Quadro RTX 8000 48GB €1,696 = 35.3 €/GB (fits 70B Q5).
 - Traps: €94 "P100" listing is a choose-one multi-GPU ad (cheapest option = P4 8GB);
   €355 3080Ti-FE "AS-I" = as-is gamble; A770 €267 hit was the 8GB version.
+
+## Round 22 — app learns from real-world use (2026-10-15)
+User: "nur ebay", Versand vergessen, "use doch dealradar". Fixes IN the app:
+- ebay-web driver now maps card shipping into CanonicalListing.shipping_cost
+  (it sat in attributes only -> total_cost() saw None -> every ranking ignored
+  freight; a $567-freight 3090 ranked "cheapest").
+- gems board ranks ALL-IN (item + shipping): new row fields ship/total, ppe_full
+  over full_eur incl freight. Regression test proves the $100-freight trap loses.
+- decision accessory: GPU cooling/parts ungated (lüfter/fan/heatsink/wasserblock/
+  waterblock/backplate/nvlink/riser/bracket/stütze) — 21 junk cards ("0.9 €/GB
+  kings") were fans/coolers. Stock-cooler BUNDLES ("ryzen + wraith", "+") stay
+  offers via new _cooler_stems bundle guard (code comment promised it, code did
+  not do it). Naming-grade cooler mentions still bench+flag (Noctua contract kept).
+- NEW is_option_ad() (>=3 distinct GPU models -> price = cheapest option's,
+  demoted like parts, never hidden) + gpu_vram_gb() via extended GPU_SPECS
+  (3060/6700xt/6800/6900xt/vii/mi50/t4/arc770/a4000/a5000/rtx8000/a40 added).
+- cond 0.25 now also for for-parts/as-is/untested/ungeprüft/sold-as.
+- browser_hunt: WH euro-FIRST price bug fixed (model numbers parsed as prices:
+  "Zotac RTX 3090 € 1.300" -> 3090, "Radeon VII € 300" -> 2); verify_items.py
+  added (item-page price+shipping+strict sold detection). Its own postmortems
+  fixed: USD comma decimals ($115,89 -> 10430), truncated shipnum shadowing,
+  bare "verkauft"/"reserviert" matching nav/footer/similar-ads.
+Verified: 258 tests green, ruff+mypy clean. All-in truth: P100 €149 (9.3/GB),
+RX 6800 €403 free-ship (25.2/GB, best desktop), 3060 €321 (26.8), 6700XT €363
+($100 ship flips it), 3090-Turbo €1,762 ($567 ship trap), WH local 3060 €270 /
+6700XT €275 / Radeon VII €300 (live, "funktioniert einwandfrei") win.

@@ -264,6 +264,11 @@ class EbayWebDriver(MarketplaceDriver):
                 images=[it["image"]] if it["image"] else [],
                 seller=Seller(name=it["seller"] or "ebay seller"),
                 location=it["location"], condition=cond,
+                # shipping used to sit in attributes only, so total_cost() saw
+                # None and every ranking silently ignored it (round 21: cards
+                # with $567/$323 shipping ranked as cheapest). Wire it through.
+                shipping_cost=(it["shipping"] or 0.0) if (it["shipping"] or it["free_shipping"]) else None,
+                shipping_available=bool(it["free_shipping"] or it["shipping"]),
                 attributes={"shipping": it["shipping"], "free_shipping": it["free_shipping"],
                             "rating": it["rating"], "seller_kind": it["seller_kind"],
                             "auction": it["auction"], "coupon": it["coupon"],

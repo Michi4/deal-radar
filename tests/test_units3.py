@@ -2536,3 +2536,92 @@ def test_compat_list_and_narration_verbs():
     # exact tokens in compat lists still bench (flag downstream)
     cpu, conf, _, _, _ = resolve_cpu_with_seeds("Kabel für HP i7-1165G7 16GB")
     assert cpu == "i7-1165G7" and conf >= 0.85
+
+
+def test_gpu_parts_are_accessories_not_offers():
+    """Round 21: GPU fans/coolers/brackets ranked as cards (0.9 €/GB kings).
+    They are accessories even when they name the card they fit."""
+    from deal_radar.decision import heuristic_decide as h
+    for t in ["MSI RTX 3090 GAMING X TRIO Ersatz GPU Lüfter Set",
+              "GPU Lüfter für ASUS TUF RTX 3060 3070 3080 3090",
+              "Barrow GPU Water Block für Gigabyte RX 7900 XTX",
+              "Grafikkarten Halter Stütze RTX3090 RTX4080 RTX4090",
+              "NVIDIA NVLink Bridge 2-Slot für RTX 3090 A5000",
+              "SXM2 to PCIe Adapter Board für Tesla P100 V100"]:
+        assert h(t, "", 21.0, "rtx")["kind"] == "accessory", t
+    # real bundles with the card/cooler itself stay offers
+    assert h("Ryzen 5 2600 + Wraith Kühler Bundle", "", 89.0, "ryzen")["kind"] == "offer"
+    # naming-grade CPU in a cooler stays an offer (benched + flagged downstream)
+    assert h("Noctua Kühler für Ryzen 7 8845HS, neu", "", 20.0, "8845hs")["kind"] == "offer"
+
+
+def test_option_ads_demoted_never_hidden():
+    """Round 21: the €94 'P100' was a choose-one ad (cheapest option = P4 8GB).
+    Price unreliable -> demoted like parts, still visible."""
+    from deal_radar.decision import heuristic_decide as h
+    from deal_radar.scoring import is_option_ad
+    ad = "Nvidia Tesla P4 8GB P40 24GB K80 24GB M40 24GB P100 16GB GPU Karte"
+    assert is_option_ad(ad) is True
+    assert h(ad, "", 94.0, "tesla")["option_ad"] is True
+    assert h(ad, "", 94.0, "tesla")["match"] <= 0.45
+    single = "Nvidia Tesla P100 16GB HBM2 PCIe GPU Accelerator"
+    assert is_option_ad(single) is False
+    assert h(single, "", 103.0, "tesla")["option_ad"] is False
+    # as-is gambles tank condition but stay visible
+    assert h("RTX 3080 Ti Founders Edition AS-IS", "", 355.0, "rtx")["condition"] == 0.25
+
+
+def test_gpu_vram_map():
+    """VRAM lookup for €/GB ranking: longest-key wins, never guess."""
+    from deal_radar.scoring import gpu_vram_gb
+    assert gpu_vram_gb("DELL NVIDIA RTX 3060 12GB GDDR6") == 12
+    assert gpu_vram_gb("MSI Mech Radeon RX 6700 XT 12GB") == 12
+    assert gpu_vram_gb("PowerColor Red Devil RX 6900 XT 16GB") == 16
+    assert gpu_vram_gb("ASRock RX 7900 XT Phantom Gaming 20GB") == 20
+    assert gpu_vram_gb("ASRock RX 7900 XTX Taichi 24GB") == 24
+    assert gpu_vram_gb("NVIDIA QUADRO RTX 8000 48GB") == 48
+    assert gpu_vram_gb("Nvidia Tesla P100 16GB HBM2") == 16
+    assert gpu_vram_gb("ASRock Intel Arc A770 Phantom Gaming 16GB") == 16
+    assert gpu_vram_gb("Netzteil für CHUWI AuBox") is None
+
+
+def test_board_ranks_all_in_with_shipping():
+    """Round 21: the board must rank by item + shipping, not item alone
+    (a $100-freight 'cheaper' card lost to the free-shipping one)."""
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    from deal_radar import gems as G
+    from deal_radar.store import Store
+
+    db = os.path.join(tempfile.mkdtemp(), "ship.db")
+    st = Store(db)
+    try:
+        from deal_radar.contracts import CanonicalListing as L
+
+        cheap_far = L(id="t:1", source="t", native_id="1", url="u1",
+                      title="PowerColor Red Dragon RX 6800 16GB",
+                      price=400.0, currency="EUR", shipping_cost=0.0)
+        # cheaper item but $100 freight -> loses all-in
+        trap = L(id="t:2", source="t", native_id="2", url="u2",
+                 title="MSI Mech RX 6700 XT 12GB",
+                 price=272.0, currency="EUR", shipping_cost=89.29)
+        st.upsert(cheap_far)
+        st.upsert(trap)
+        import deal_radar.benchmarks as B
+        fake = {"v3:ryzen 7 5800u": {"multi": 20000, "single": 3000, "source": "t",
+                                     "ts": 9999999999.0}}
+        with patch.dict(B._mem, {}, clear=True), \
+                patch.object(B, "_load", return_value=dict(fake)), \
+                patch("deal_radar.scoring.resolve_cpu_with_seeds",
+                      return_value=("Ryzen 7 5800U", 0.85, "m", False, [])):
+            items, _ = G.collect_full(st, days=30)
+        by_id = {x["id"]: x for x in items}
+        assert by_id["t:1"]["ship"] == 0.0
+        assert by_id["t:2"]["ship"] == 89.29
+        # all-in gap is exactly the freight, whatever uplift applies
+        assert round(by_id["t:2"]["full_price"] - by_id["t:1"]["full_price"], 2) == \
+            round((272.0 + 89.29) - 400.0, 2)
+    finally:
+        st.close()

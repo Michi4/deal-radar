@@ -29,11 +29,20 @@ JS = r"""
     const txt = (a.innerText || '').replace(/\s+/g, ' ').trim();
     if (txt.length < 12) continue;
     // willhaben writes "€ 20" (euro first); eBay-style "20 €" also possible.
+    // IMPORTANT: prefer the number AFTER the euro sign. A ([\d.,]+)\s*€ search
+    // matches model numbers in the title ("Zotac RTX 3090 € 1.300" parsed as
+    // 3090 — real bug, round 21). Before-€ is only a fallback.
     const eidx = txt.indexOf('€');
     if (eidx < 0) continue;
-    const win = txt.slice(Math.max(0, eidx - 14), eidx + 14);
-    const m = win.match(/€\s*([\d.,]+)|([\d.,]+)\s*€/);
-    const price = m ? (m[1] || m[2]) : '';
+    let price = '';
+    const after = txt.slice(eidx).match(/^€\s*([\d.,]+)/);
+    if (after) {
+      price = after[1];
+    } else {
+      const win = txt.slice(Math.max(0, eidx - 14), eidx + 14);
+      const m = win.match(/([\d.,]+)\s*€/);
+      price = m ? m[1] : '';
+    }
     // title = everything before the euro sign
     let title = txt.slice(0, eidx).replace(/\s*-\s*$/, '').trim();
     if (title.length < 8) continue;
