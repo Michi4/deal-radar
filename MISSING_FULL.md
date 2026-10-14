@@ -248,3 +248,17 @@ batch_ebay.py, scrape_ka.py, scrape_wh.py, combine.py + README with the gotchas)
 - A100 80GB used still €10.7k+, RTX 6000 Ada 48GB €7.1k+ — dead ends.
 - Verdict: no box is ≥256GB AND 40 tok/s under €7k. Ladder: ~€2k EPYC-256
   (5-10 tok/s) → €4.6k M1U-128 (fast, half capacity) → €8.2k M3U-256 (both).
+
+## Round 19 — AI 512GB ladder (2026-10-14)
+10 eBay queries + WH sweep. Findings:
+- NO single-box 512GB-unified Apple on the used market (eBay 0 hits, WH 0 hits
+  — only storage-512 false positives). New M3 Ultra 512GB CTO is ~€10-11k.
+- Cheapest 512GB-capable: Supermicro 2HE 24-bay + 2x Xeon E5-2690v4 + 512GB
+  DDR4 €3,036 eBay (137232153914, 28C/56T); modern pick Supermicro 2x EPYC 7452
+  + 512GB/1TB from €3,482 (397978307775, 64C/128T, 8ch DDR4-3200).
+- DIY RAM alone is worse: cheapest 512GB DDR4 kit new €2,485 (32x16GB-2133);
+  8x64GB-3200 3DS €3,933 — always buy the complete server, never the kit.
+- WH: HPE DL385 2x EPYC 7742 + 512GB €11,900 (128C total, overkill);
+  ASUS RS700A dual-7763 €6,300 (bare, no RAM stated).
+- Verdict: 512GB = EPYC-server territory €3-3.5k at ~8-12 tok/s CPU inference.
+  512GB + 40 tok/s does not exist under ~€10k (M3 Ultra 512GB new).
