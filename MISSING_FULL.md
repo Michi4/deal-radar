@@ -212,3 +212,21 @@ batch_ebay.py, scrape_ka.py, scrape_wh.py, combine.py + README with the gotchas)
 - Fixes while parsing: Intel 4-digit gen heuristic (i5-1235U is 12th-gen, not
   10th), willhaben `€ 30` euro-first price form, kleinanzeigen counter-badge
   anchor vs title anchor.
+
+## Round 17 — full sweep: broken-screen-usable + complete minis (2026-10-14)
+- 3 more eBay batches (brk1/brk2/mini1, ~30 queries), KA batch ka3 (6 queries),
+  WH batch wh2 (5 queries). Total pool now 1,267 clean + broken-display pass.
+- combine2.py: broken-display-usable lane (display/bildschirm/screen + complete
+  system, dead-board signals excluded: no-power, mainboard-defekt, parts-only).
+- Best broken-usable (headless homeserver): Dell Latitude 5300 i5-8265U cracked
+  LCD €57 (ppe 101), Acer Swift SF314-42 R7-4700U ohne Display €181, IdeaPad Flex 5
+  R5-4500U cracked €134, ProBook 440 G8 i5-1135G7 line-on-screen €178, Yoga C640
+  i5-10210U cracked €101, Spin 5 i7-1065G7 display-dead €250, XPS 13 9310
+  i7-1165G7 €271. POWER-DEAD units explicitly excluded (not usable).
+- Best complete minis: Firebat H255 bare €285 (ppe 100), Gem12 Pro Max 8845HS
+  homeserver €333, EM780 7840U/32GB €300, H255/16GB/512GB NEU €400, Geekom A7
+  7940HS/32GB/2TB €390, AM18 7840HS/16/512 OVP €450, UM790 Pro 7940HS/32/1TB
+  €550, EQR5 5825U/16/500 €349, AM08 Pro 7730U/32/1TB €399.
+- Standing crowns re-verified live: IdeaPad 5 i5-1235U/16GB €30 WH (PayLivery),
+  Vostro i7-1355U €71 / Precision 7530 i7-8850H €54 / Inspiron 5400 i5-1035G1
+  €28 eBay (all gone:false, prices via .x-price-primary in USD ~0.90 EUR).
