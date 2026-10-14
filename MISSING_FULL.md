@@ -262,3 +262,19 @@ batch_ebay.py, scrape_ka.py, scrape_wh.py, combine.py + README with the gotchas)
   ASUS RS700A dual-7763 €6,300 (bare, no RAM stated).
 - Verdict: 512GB = EPYC-server territory €3-3.5k at ~8-12 tok/s CPU inference.
   512GB + 40 tok/s does not exist under ~€10k (M3 Ultra 512GB new).
+
+## Round 20 — 4-tier verdict, Q4-floor rule (2026-10-14)
+User: no cap, 4 tiers (best / reasonable-best / reasonable-overall / cheapest-fast),
+speed first, NO retard quants (Q4 floor, Q6+ preferred). GPU floor sweep (6 queries):
+- RTX 3060 12GB cheapest Dell OEM €317 (920027963459); RX 6700 XT 12GB €279
+  (377461352474, weaker llama.cpp backend — NVIDIA preferred).
+- Tesla P40 24GB real card €245 (389221097025) — 24GB for €245, Pascal, ~250W,
+  needs 8-pin+cooling; 2x = 48GB @ ~€500, fits 70B Q4 split.
+- RTX 3090 24GB cheapest Palit JP €1,326 (198677345234), MSI Trio €1,597.
+- 4060 Ti 16GB €758+ — dead value vs 3090.
+KEY CONSEQUENCE of Q4-floor: full Flash Q4 ~160GB+ctx does NOT fit 128GB boxes
+at any sane quant → M1U-128/M3U-128 are OUT for full Flash (32B distills only).
+Tiers: (1) M3U-512 new ~€10.5k CTO — only 512GB+fast box on earth; (2) M3U-256
+used €8,200 WH — Flash Q6 fits, fast; (3) dual-7532+256GB €4,500 KA Halle —
+Flash Q6 fits, 8-12 tok/s, doubles as homeserver; (4) 3060-12GB €317 box
+~€500 all-in (14B Q6 fast) / 3090 €1,326 step-up (32B Q4-Q5 fast).
