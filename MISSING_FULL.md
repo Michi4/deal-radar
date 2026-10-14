@@ -278,3 +278,13 @@ Tiers: (1) M3U-512 new ~€10.5k CTO — only 512GB+fast box on earth; (2) M3U-2
 used €8,200 WH — Flash Q6 fits, fast; (3) dual-7532+256GB €4,500 KA Halle —
 Flash Q6 fits, 8-12 tok/s, doubles as homeserver; (4) 3060-12GB €317 box
 ~€500 all-in (14B Q6 fast) / 3090 €1,326 step-up (32B Q4-Q5 fast).
+
+## Round 21 — cheapest VRAM/€, GDDR6+ floor (2026-10-15)
+20 eBay GPU queries. GDDR5 excluded per user (min GDDR6, better welcome).
+Coolers/fans/adapters/cables/defective filtered; MXM-laptop modules excluded.
+Verified live (gone:false): P100-16GB €103, 6700XT-12GB €272, RTX8000-48GB €1696.
+- Absolute: Tesla P100 16GB HBM2 €103 = 6.4 €/GB (Pascal/server/no display).
+- Desktop plug&play: RX 6700 XT 12GB €272 = 22.7 €/GB; RTX 3060 12GB €301 = 25.1.
+- Big single card: Quadro RTX 8000 48GB €1,696 = 35.3 €/GB (fits 70B Q5).
+- Traps: €94 "P100" listing is a choose-one multi-GPU ad (cheapest option = P4 8GB);
+  €355 3080Ti-FE "AS-I" = as-is gamble; A770 €267 hit was the 8GB version.
