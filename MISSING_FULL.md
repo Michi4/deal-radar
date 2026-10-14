@@ -230,3 +230,21 @@ batch_ebay.py, scrape_ka.py, scrape_wh.py, combine.py + README with the gotchas)
 - Standing crowns re-verified live: IdeaPad 5 i5-1235U/16GB €30 WH (PayLivery),
   Vostro i7-1355U €71 / Precision 7530 i7-8850H €54 / Inspiron 5400 i5-1035G1
   €28 eBay (all gone:false, prices via .x-price-primary in USD ~0.90 EUR).
+
+## Round 18 — AI 256GB+ ladder (2026-10-14)
+20 eBay AI queries (1,142 cards) + KA/WH high-RAM sweep. Findings:
+- Single-box 256GB unified exists exactly once: M3 Ultra 256GB/2TB €8,200 WH
+  (1053100579). Only box that is BOTH ≥256GB AND 40-tok/s-class.
+- M1 Ultra 128GB/2TB €4,600 WH Fischamend (1329708543, verified live
+  gone:false) — new cheapest 128GB Ultra, beats Bonn €5,315. M3 Ultra 128GB
+  €5,100 w/ AppleCare (1143292912).
+- EVO-X2 128GB price UP: GMKtec 128GB/2TB now €5,804 eBay (406967941449) vs
+  €3,299.99 earlier → 2x pooled-256GB now ~€11.6k, no longer sub-7k.
+- DGX Spark 128GB cheapest ASUS Ascent GX10 €6,243 (157654794658) → 2x ~€12.5k.
+- Cheapest 256GB-capable (CPU inference, slow): EPYC 7282+H12SSL-i from €1,527
+  (377466613823) + 256GB DDR4 RDIMM ~€464 (325154460749) = ~€2k total;
+  2x EPYC 7302+256GB+H11DSI €3,000 VB KA; EPYC 7551P 32C+256GB+HL15 €2,999 VB;
+  2x EPYC 7532+256GB+2TB+18TB workstation €4,500 KA Halle (64C/128T).
+- A100 80GB used still €10.7k+, RTX 6000 Ada 48GB €7.1k+ — dead ends.
+- Verdict: no box is ≥256GB AND 40 tok/s under €7k. Ladder: ~€2k EPYC-256
+  (5-10 tok/s) → €4.6k M1U-128 (fast, half capacity) → €8.2k M3U-256 (both).
