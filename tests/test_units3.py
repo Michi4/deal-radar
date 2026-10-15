@@ -2670,3 +2670,21 @@ def test_gpu_ask_box_offline():
     assert fb["subqueries"] == ["rx 7900 xtx"]
     fb2 = nl_fallback("best cheapest anything with best graphics card")
     assert len(fb2["subqueries"]) == 3 and "3090" in fb2["models"]
+
+
+def test_ram_floor_parsing_and_filter():
+    """Round 29: 'more ram' / '32gb ram' must survive the Ask box into a filter."""
+    from deal_radar.contracts import CanonicalListing as L
+    from deal_radar.decision import nl_fallback
+    from deal_radar.filter_engine import apply_filters
+    assert nl_fallback("laptop with more ram")["hard"].get("min_ram_gb") == 32
+    assert nl_fallback("notebook mit 32gb ram unter 700")["hard"].get("min_ram_gb") == 32
+    # bare SSD sizes must NOT become RAM floors
+    assert "min_ram_gb" not in nl_fallback("laptop mit 512gb ssd")
+    assert "min_ram_gb" not in nl_fallback("thinkpad x1 carbon")
+    ok = L(id="a", source="t", native_id="a", url="u", title="EliteBook 835 G10 32GB RAM",
+           price=600.0, currency="EUR")
+    small = L(id="b", source="t", native_id="b", url="u", title="Pavilion Plus 16GB RAM",
+              price=690.0, currency="EUR")
+    assert apply_filters(ok, {"min_ram_gb": 32}).passed is True
+    assert apply_filters(small, {"min_ram_gb": 32}).passed is False

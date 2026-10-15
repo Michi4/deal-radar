@@ -138,6 +138,15 @@ def apply_filters(listing: CanonicalListing, hard: dict[str, Any] | None,
         return FilterResult(False, [f"price {listing.price} > max {hard['max_price']}"], missing)
     if hard.get("min_price") is not None and listing.price is not None and listing.price < float(hard["min_price"]):
         return FilterResult(False, [f"price {listing.price} < min {hard['min_price']}"], missing)
+    # RAM floor shorthand ("32gb", "more ram"): missing RAM info passes quietly.
+    if hard.get("min_ram_gb") is not None:
+        try:
+            from .scoring import extract_ram as _ram
+            _rgb = _ram(f"{listing.title or ''}\n{listing.description or ''}")
+        except Exception:
+            _rgb = None
+        if _rgb is not None and _rgb < float(hard["min_ram_gb"]):
+            return FilterResult(False, [f"ram {_rgb}GB < min {hard['min_ram_gb']}GB"], missing)
     _NEGATE = {"contains": "not_contains", "regex": "not_regex",
                  "equals": "not_equals", "in": "not_in"}
     for rule in (blacklist or []):

@@ -566,6 +566,18 @@ def nl_fallback(text: str) -> dict:
     mloc = re.search(r"(?:near|nearby|bei|around|aroundabout|um|in der n(?:ä|a)he von|n(?:ä|a)he)\s+([a-zäöüß\- ]{2,30}?)(?:,| unter | under | |$)", tl)
     if mloc:
         location = mloc.group(1).strip()
+    # RAM floor ("32gb ram", "mehr/mehr als X ram", "more ram"): the RAM word is
+    # REQUIRED — bare "512gb" is usually the SSD (round 29 postmortem catch).
+    # "more/more than ram" without a number means 32 (next real step over 16).
+    mram = re.search(r"(\d{2,3})\s*gb\s*(ram|arbeitsspeicher|memory|unified|lpddr|ddr)",
+                      tl)
+    if mram:
+        try:
+            hard["min_ram_gb"] = int(mram.group(1))
+        except ValueError:
+            pass
+    elif re.search(r"(mehr(\s+als)?|more(\s+than)?)\s+(ram|arbeitsspeicher|memory)", tl):
+        hard["min_ram_gb"] = 32
     # category browse intent ("alle laptops", "everything in phones", "autos unter 5000")
     category = ""
     cat_words = {"laptop": "laptops", "laptops": "laptops", "notebook": "laptops",

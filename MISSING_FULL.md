@@ -416,3 +416,16 @@ buy better for the proceeds. OLED nice-to-have.
   i7-1365U/32GB €583 eBay; x360-1040-G8 i5/32GB €605 eBay; Spectre x360 15
   €699 WH; Zenbook 14 OLED AI7/32GB/2TB €1,050 WH (stretch gem); T14s G5
   Ultra7/32GB/Touch €890-999 WH.
+
+## Round 29 — XPS 13 9340 replacement + RAM floor (2026-10-15)
+User rig: 155H (24.433 MT live cpubenchmark, rank 804/6051), 16GB 94% full,
+weak battery. Rules: 32GB+ target (16GB gems too), budget = resale (~€500-600:
+XPS 9340 32GB €950 WH / 64GB €1.399 / bought €400), <=14", CPU >=24k + iGPU >=
+Arc-155H, OLED nice-to-have.
+- VERIFIED: EliteBook 835 G10 7840U/32GB/Neu €600 KA (the pick: 24.4k + 780M +
+  32GB at resale+100); Elitebook 865 G10 PRO/32GB €700; Pavilion Plus €690;
+  Envy x360 8840HS OLED 14" €770 (stretch OLED); 835 G10 32GB/1TB+Dock €990.
+- DEAD: Zenbook OLED €500 (page removed).
+- APP: hard.min_ram_gb filter (extract_ram, missing->pass) + nl_fallback parses
+  "32gb ram"/"more ram" (RAM word REQUIRED: bare "512gb SSD" must not become a
+  RAM floor). Ask "laptop with more ram" now filters. 262 tests green.
