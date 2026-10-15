@@ -441,3 +441,13 @@ posture (self-hostable now, public later).
   (+.env.sample), no live secrets in repo (only sk-test placeholder), README
   quickstart + required-vs-optional env table + ToS note + generic compose.
 - verify.sh GREEN.
+
+## Round 31 — sub-600 14" to beat a €400 XPS (2026-10-15)
+User: August €400 XPS (155H/16GB) must be beaten at same money, else ass.
+3 server searches + 8 eBay + 5 WH. Honest result: NOTHING at €400-500 matches
+155H (24.4k) + Arc — the August buy was itself the anomaly.
+- THE upgrade: EliteBook 835 G10 7840U/32GB/Neu €600 KA (24.4k + 780M + 2x RAM,
+  resale +~100). 865 G10 PRO/32GB €700. Pavilion Plus €690. Envy 8840HS €650-700.
+- OLED trap: Swift Go 14 OLED €449 WH is i5-1335U (13.7k, weaker CPU) — display
+  sidegrade, CPU downgrade. Stated, not recommended.
+- T14s-G2 32GB €549 = 5850U-class (fails CPU bar). Zenbook Duo OLED €875+ (over).
