@@ -395,3 +395,12 @@ w/ best GPU, (3) cheapest anything w/ best GPU (user ref: 4070 Ti S @ €385).
 - Qwen3/Gemma-27B @40tok/s note: 27B Q4 ~17GB -> 20GB+ cards (XTX/3090/7900XT);
   16GB (4070 Ti S) only via Q3/offload — stated honestly in answer.
 Verified: 261 tests green, ruff+mypy clean.
+
+## Round 28 — ALL GPUs, full spectrum (2026-10-15)
+User: don't restrict to 4070TiS, look at EVERYTHING. 30 eBay queries (~1.800
+cards) + WH 8 + KA + 3 server searches (vinted/KA/WH live).
+- Verified live: Zotac 4070 Ti S €400 KA (!!), 3080 Vision OC €349 KA (!!),
+  4060 Palit €230 WH, 7800XT TUF €480 WH, 9070XT €650 WH, 3080 €400 WH.
+- Local beats China everywhere all-in (shipping trap, round 21 rule holds).
+- GPU_ALIASES += 5090/5080/5070ti/5070/5060ti/5060 (round-27 gap).
+Verified: 261 tests green.

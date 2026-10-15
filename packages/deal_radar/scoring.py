@@ -1047,6 +1047,9 @@ GPU_ALIASES = {
     "3090ti": "rtx 3090 ti", "3080ti": "rtx 3080 ti", "3060ti": "rtx 3060",
     "6800xt": "rx 6800 xt", "6900xt": "rx 6900 xt", "6700xt": "rx 6700 xt",
     "titanrtx": "titan rtx", "rtx8000": "quadro rtx 8000",
+    "5090": "rtx 5090", "5080": "rtx 5080",
+    "5070ti": "rtx 5070 ti", "5070": "rtx 5070",
+    "5060ti": "rtx 5060 ti", "5060": "rtx 5060",
 }
 
 
