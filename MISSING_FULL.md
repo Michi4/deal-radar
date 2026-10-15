@@ -314,3 +314,21 @@ Verified: 258 tests green, ruff+mypy clean. All-in truth: P100 €149 (9.3/GB),
 RX 6800 €403 free-ship (25.2/GB, best desktop), 3060 €321 (26.8), 6700XT €363
 ($100 ship flips it), 3090-Turbo €1,762 ($567 ship trap), WH local 3060 €270 /
 6700XT €275 / Radeon VII €300 (live, "funktioniert einwandfrei") win.
+
+## Round 23 — Strix Halo sweep: 8060S + 8050S, every platform (2026-10-15)
+20 eBay queries + 4 dealradar-server searches (10 drivers each) + WH 6 + KA 5.
+Server results carried the round (correct prices, lanes): cheapest 8060S = Flow
+Z13 395+ 32GB/2TB €1,900 KA (verified live) / 32GB/1TB €1,999 (verified live);
+GPD WIN 5 395+ 64GB/2TB €1,950 (verified live); EVO-X2 128GB/2TB €3,199 KA
+(verified live, vs eBay €5,826); ZBook Ultra G1a PRO 395 64GB/1TB €2,450
+(verified live); KI-Workstation 395 64GB €2,200 WH; MS-S1 Max 128GB €3,699;
+Corsair WS300 128GB €4,000 WH; 128GB Halo box €4,999; ZBook 128GB €3,900;
+Flow Z13 2025 128GB/2TB €3,300; eBay new-import: Flow Z13 390 (8050S) 32GB
+€1,523, 395+ 64GB €2,508, ZBook PRO 385 (8050S) 32GB neuwertig €1,703,
+OneXPlayer Super X 395 €2,670, X13-2025 395/128GB €4,470, ZBook 395/128GB/4TB
+€8,165 (expensive gem: 4TB). 8050S completes: Framework Desktop 385 32GB/2TB
+€1,650 KA (verified live); 385 board NEW + Noctua €999 (verified live).
+BUG (mine, fixed): KA thousand-tail prices ("3.299 €" -> "299 €") in scrape_ka
++ item regex — same class as WH round-21. App eu_price was already correct.
+Expensive-but-gems: ZBook 128GB/4TB €8,165 new, Kojima Z13-KJP 128GB €5,378,
+GPD Win 5 Max 128GB €4,400, Halo 128GB/2TB box €4,999, Corsair €4,000.

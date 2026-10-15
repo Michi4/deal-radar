@@ -28,7 +28,9 @@ JS = r"""
     const art = li.querySelector('article');
     if (!art) continue;
     const txt = (art.innerText || '').replace(/\s+/g, ' ');
-    const m = txt.match(/([\d.]+,\d{2}|\d+)\s*€/);
+    // thousand-aware: (\d+)\s*€ matches the TAIL of "3.299 €" (-> "299 €").
+    // Real bug, round 23. Always match the full thousand group first.
+    const m = txt.match(/(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€/);
     const title = best.replace(/\s+/g, ' ');
     if (title.length < 8) continue;
     const url = 'https://www.kleinanzeigen.de' + href;
