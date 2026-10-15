@@ -8,7 +8,7 @@ bot-walled. They are a *hunting* tool, separate from the drivers in `drivers/`.
 
 ```bash
 /usr/bin/google-chrome-stable \
-  --user-data-dir=/tmp/opencode/hunt/ebay-profile \
+  --user-data-dir=$HUNT_DIR/ebay-profile \
   --remote-debugging-port=9222 --remote-allow-origins=* \
   --no-first-run --no-default-browser-check about:blank &
 ```
@@ -25,6 +25,8 @@ The eBay profile carries a logged-in session, so item pages load without the
 ```bash
 cd scripts/browser_hunt
 
+# All scripts honor HUNT_DIR (default /tmp/opencode/hunt) for outputs
+# and resolve the repo for imports — no hardcoded paths, works on any box.
 # batch eBay searches (sequential, 4s polite gap)
 python3 batch_ebay.py '["thinkpad mainboard","mainboard i7-11800h"]' /tmp/mb1.json
 

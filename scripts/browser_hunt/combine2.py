@@ -2,11 +2,14 @@
 """Full sweep ranking: clean boards + broken-display-usable + minis, all sources."""
 import glob
 import json
+import os
 import re
 import sys
 
-sys.path.insert(0, "/home/michi/hider/projects/deal-radar/packages")
-sys.path.insert(0, "/home/michi/hider/projects/deal-radar/drivers")
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(REPO, "packages"))
+sys.path.insert(0, os.path.join(REPO, "drivers"))
+HUNT = os.environ.get("HUNT_DIR", "/tmp/opencode/hunt")
 from deal_radar.benchmarks import cached_cpu  # noqa: E402
 from deal_radar.scoring import resolve_cpu_with_seeds  # noqa: E402
 
@@ -86,9 +89,9 @@ def add(title, price, url, src):
     rows.append(rec)
 
 
-for f in sorted(glob.glob("/tmp/opencode/hunt/mb[0-9]*.json")
-                + glob.glob("/tmp/opencode/hunt/brk[0-9]*.json")
-                + glob.glob("/tmp/opencode/hunt/mini[0-9]*.json")):
+for f in sorted(glob.glob(os.path.join(HUNT, "mb[0-9]*.json"))
+                + glob.glob(os.path.join(HUNT, "brk[0-9]*.json"))
+                + glob.glob(os.path.join(HUNT, "mini[0-9]*.json"))):
     try:
         d = json.load(open(f))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -105,7 +108,7 @@ for f in sorted(glob.glob("/tmp/opencode/hunt/mb[0-9]*.json")
 for fn, src in (("ka2", "kleinanzeigen"), ("ka3", "kleinanzeigen"),
                 ("wh1", "willhaben"), ("wh2", "willhaben")):
     try:
-        d = json.load(open(f"/tmp/opencode/hunt/{fn}.json"))
+        d = json.load(open(os.path.join(HUNT, f"{fn}.json")))
     except FileNotFoundError:
         continue
     for q, dd in d.items():
@@ -118,7 +121,7 @@ for fn, src in (("ka2", "kleinanzeigen"), ("ka3", "kleinanzeigen"),
 rows.sort(key=lambda r: -r["ppe"])
 broken_rows.sort(key=lambda r: -r["ppe"])
 json.dump({"clean": rows, "broken_display": broken_rows},
-          open("/tmp/opencode/hunt/combined2.json", "w"),
+          open(os.path.join(HUNT, "combined2.json"), "w"),
           ensure_ascii=False, indent=1)
 from collections import Counter  # noqa: E402
 print(f"clean: {len(rows)} | broken-display-usable: {len(broken_rows)}")

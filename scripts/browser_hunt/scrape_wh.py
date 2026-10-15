@@ -6,11 +6,12 @@ inner text carries "<title> <price> € <shipping> <date>".
 """
 import json
 import re
+import os
 import subprocess
 import sys
 import time
 
-CDP = "/tmp/opencode/hunt/cdp.py"
+CDP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cdp.py")
 
 JS = r"""
 (async () => {

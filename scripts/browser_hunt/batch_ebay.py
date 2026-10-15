@@ -8,7 +8,8 @@ import time
 
 HUNT = "/tmp/opencode/hunt"
 CDP = os.path.join(HUNT, "cdp.py")
-CARDS = os.path.join(HUNT, "ebay_cards.js")
+HERE = os.path.dirname(os.path.abspath(__file__))
+CARDS = os.path.join(HERE, "ebay_cards.js")
 
 QUERIES = json.loads(sys.argv[1])
 OUT = sys.argv[2]

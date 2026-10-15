@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Combined ranking across eBay + kleinanzeigen + willhaben dumps."""
 import json
+import os
 import re
 import sys
 
-sys.path.insert(0, "/home/michi/hider/projects/deal-radar/packages")
-sys.path.insert(0, "/home/michi/hider/projects/deal-radar/drivers")
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(REPO, "packages"))
+sys.path.insert(0, os.path.join(REPO, "drivers"))
+HUNT = os.environ.get("HUNT_DIR", "/tmp/opencode/hunt")
 from deal_radar.benchmarks import cached_cpu  # noqa: E402
 from deal_radar.scoring import resolve_cpu_with_seeds  # noqa: E402
 
@@ -65,7 +68,7 @@ def add(title, price, url, src):
 
 # eBay
 import glob  # noqa: E402
-for f in sorted(glob.glob("/tmp/opencode/hunt/mb[0-9]*.json")):
+for f in sorted(glob.glob(os.path.join(HUNT, "mb[0-9]*.json"))):
     try:
         d = json.load(open(f))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -81,7 +84,7 @@ for f in sorted(glob.glob("/tmp/opencode/hunt/mb[0-9]*.json")):
 
 # kleinanzeigen
 try:
-    d = json.load(open("/tmp/opencode/hunt/ka2.json"))
+    d = json.load(open(os.path.join(HUNT, "ka2.json")))
     for q, dd in d.items():
         for c in dd.get("cards", []) or []:
             m = re.search(r"([\d.]+,\d{2}|\d+)\s*€", c.get("price") or "")
@@ -91,7 +94,7 @@ except FileNotFoundError:
 
 # willhaben
 try:
-    d = json.load(open("/tmp/opencode/hunt/wh1.json"))
+    d = json.load(open(os.path.join(HUNT, "wh1.json")))
     for q, dd in d.items():
         for c in dd.get("cards", []) or []:
             add(c.get("title"), c.get("price"), c.get("url"), "willhaben")
@@ -100,7 +103,7 @@ except FileNotFoundError:
 
 # de-dup by url already handled; de-dup near-identical titles across sources
 rows.sort(key=lambda r: (r["ppe"] * -1))
-json.dump(rows, open("/tmp/opencode/hunt/combined.json", "w"),
+json.dump(rows, open(os.path.join(HUNT, "combined.json"), "w"),
           ensure_ascii=False, indent=1)
 print(f"combined: {len(rows)} scored offers")
 from collections import Counter  # noqa: E402

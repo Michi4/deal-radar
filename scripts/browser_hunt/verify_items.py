@@ -6,11 +6,12 @@ Writes JSON to stdout. Sequential, polite gaps. Single shared CDP tab.
 """
 import json
 import re
+import os
 import subprocess
 import sys
 import time
 
-CDP = "/tmp/opencode/hunt/cdp.py"
+CDP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cdp.py")
 FX = 0.90  # USD->EUR incl VAT rule of thumb for AT cards
 
 JS = r"""
@@ -146,9 +147,9 @@ def main():
             print(f"[{i}/{len(urls)}] FAIL {u[-14:]} {str(e)[:90]}", flush=True)
             out.append({"url": u, "error": str(e)[:150]})
         time.sleep(3)
-    json.dump(out, open("/tmp/opencode/hunt/verified.json", "w"),
+    json.dump(out, open(os.path.join(os.environ.get("HUNT_DIR", "/tmp/opencode/hunt"), "verified.json"), "w"),
               ensure_ascii=False, indent=1)
-    print("wrote /tmp/opencode/hunt/verified.json")
+    print("wrote $HUNT_DIR/verified.json")
 
 
 if __name__ == "__main__":

@@ -5,11 +5,12 @@ Structure (verified live): UL > LI > ARTICLE.flex justify-between > H3 > A[href]
 with price in ARTICLE text as "320 € VB" / "1.299,99 €".
 """
 import json
+import os
 import subprocess
 import sys
 import time
 
-CDP = "/tmp/opencode/hunt/cdp.py"
+CDP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cdp.py")
 
 JS = r"""
 (() => {

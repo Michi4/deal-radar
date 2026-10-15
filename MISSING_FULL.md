@@ -429,3 +429,15 @@ Arc-155H, OLED nice-to-have.
 - APP: hard.min_ram_gb filter (extract_ram, missing->pass) + nl_fallback parses
   "32gb ram"/"more ram" (RAM word REQUIRED: bare "512gb SSD" must not become a
   RAM floor). Ask "laptop with more ram" now filters. 262 tests green.
+
+## Round 30 — public-ready: portable hunt tools (2026-10-15)
+User: stop personal shopping, make search better for EVERYONE, public-service
+posture (self-hostable now, public later).
+- scripts/browser_hunt/* no longer hardcode /tmp/opencode/hunt or
+  /home/michi/...: HUNT_DIR env (default keeps old path), repo-relative
+  imports, CDP referenced as sibling. Proven: HUNT_DIR=/tmp/hunt-port run from
+  a plain checkout scored 273 offers with zero personal paths.
+- Public posture verified, no code needed: LICENSE present, .env gitignored
+  (+.env.sample), no live secrets in repo (only sk-test placeholder), README
+  quickstart + required-vs-optional env table + ToS note + generic compose.
+- verify.sh GREEN.
