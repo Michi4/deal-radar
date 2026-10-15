@@ -605,6 +605,19 @@ def nl_fallback(text: str) -> dict:
             subqueries = hit["queries"]
     except Exception:
         hit = None
+    if not hit:
+        # dGPU intents (round 27): exact models, VRAM floors, "best graphics".
+        try:
+            from .scoring import expand_gpu_query as _gpu_q
+            ghit = _gpu_q(t)
+            if ghit:
+                if not kw or len(kw.split()) <= 3:
+                    kw = ghit["queries"][0]
+                models = ghit["models"]
+                subqueries = ghit["queries"]
+                hit = {"gpu": ghit["gpu"]}
+        except Exception:
+            pass
     return {"keywords": kw if category else (kw or tl[:80]), "category": category, "location": location, "hard": hard, "blacklist": blacklist,
             "whitelist": [], "attributes": attrs, "risk": {}, "enrich": True, "limit": 20,
             "models": models, "subqueries": subqueries,

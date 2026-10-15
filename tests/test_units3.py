@@ -2653,3 +2653,20 @@ def test_rackmount_is_accessory():
     from deal_radar.decision import heuristic_decide as h
     assert h("19 Zoll GMKtec EVO-X2 Mini PC Rack Mount - 2HE", "", 58.0, "evo")["kind"] == "accessory"
     assert h("Rackmount für Minisforum MS-S1 MAX 19 Zoll 2HE", "", 61.0, "ms-s1")["kind"] == "accessory"
+
+
+def test_gpu_ask_box_offline():
+    """Round 27, real-world hunts: dGPU names, VRAM floors, 'best graphics'."""
+    from deal_radar.decision import nl_fallback
+    from deal_radar.scoring import expand_gpu_query
+    assert expand_gpu_query("7900 xtx")["gpu"] == "rx 7900 xtx"
+    assert expand_gpu_query("rtx 4070 ti super")["gpu"] == "rtx 4070 ti super"
+    g = expand_gpu_query(" irgendwas über 16gb vram")
+    assert g["min_vram"] == 16 and "7900xtx" in g["models"] and "3090" in g["models"]
+    g2 = expand_gpu_query("best cheapest laptop with best graphics card")
+    assert g2["gpu"] == "best-gpu" and any("laptop" in q for q in g2["queries"])
+    assert expand_gpu_query("thinkpad x1 carbon") is None
+    fb = nl_fallback("7900 xtx oder irgendwas über 16gb vram")
+    assert fb["subqueries"] == ["rx 7900 xtx"]
+    fb2 = nl_fallback("best cheapest anything with best graphics card")
+    assert len(fb2["subqueries"]) == 3 and "3090" in fb2["models"]

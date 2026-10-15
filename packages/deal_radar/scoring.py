@@ -1038,6 +1038,79 @@ def expand_igpu_query(text: str) -> dict | None:
     return None
 
 
+#: Multiword dGPU names users actually type (normalized -> canonical query).
+#: Single tokens (3090, 4090) are covered via GPU_SPECS keys.
+GPU_ALIASES = {
+    "7900xtx": "rx 7900 xtx", "7900xt": "rx 7900 xt",
+    "4070tisuper": "rtx 4070 ti super", "4070ti": "rtx 4070 ti",
+    "4070super": "rtx 4070 super", "4080super": "rtx 4080 super",
+    "3090ti": "rtx 3090 ti", "3080ti": "rtx 3080 ti", "3060ti": "rtx 3060",
+    "6800xt": "rx 6800 xt", "6900xt": "rx 6900 xt", "6700xt": "rx 6700 xt",
+    "titanrtx": "titan rtx", "rtx8000": "quadro rtx 8000",
+}
+
+
+def expand_gpu_query(text: str) -> dict | None:
+    """Map dGPU names / VRAM wishes / 'best graphics card' to queries + model gate.
+
+    Returns {gpu, queries, models, min_vram} or None. Offline Ask-box support
+    for the three real-world hunts (round 27):
+    - "7900 xtx" -> exact model gate (xtx, not xt)
+    - "über 16gb vram / over 16gb vram" -> every known model with >= that VRAM
+    - "best graphics card" (+ laptop) -> top value-tier device queries
+    """
+    tl = (text or "").lower()
+    norm = re.sub(r"[^a-z0-9]", "", tl)
+    models: list[str] = []
+    queries: list[str] = []
+    gpu = ""
+    min_vram = 0
+    # exact multiword models first ("4070 ti super", not "4070")
+    for alias in sorted(GPU_ALIASES, key=len, reverse=True):
+        if alias in norm:
+            canon = GPU_ALIASES[alias]
+            gpu = canon
+            models.append(canon)
+            queries.append(canon + (" laptop" if "laptop" in tl or "notebook" in tl else ""))
+            break
+    if not gpu:
+        # single-token models via GPU_SPECS keys ("3090", "4090", "a100"...)
+        for key in sorted(GPU_SPECS, key=len, reverse=True):
+            if key in norm:
+                gpu = key
+                models.append(key)
+                queries.append(key + (" laptop" if "laptop" in tl or "notebook" in tl else ""))
+                break
+    # "...über/over X (gb) vram" -> gate on every known model above the line
+    m = re.search(r"(?:über|over|more than|mehr als|mindestens|at least|mit mindestens)\s*(\d{1,3})\s*(?:gb\s*)?vram", tl)
+    if m:
+        try:
+            min_vram = int(m.group(1))
+        except ValueError:
+            min_vram = 0
+    if min_vram:
+        big = sorted({k for k, v in GPU_SPECS.items()
+                      if isinstance(v, dict) and (v.get("vram") or 0) >= min_vram})
+        if big:
+            models = big
+            if not queries:
+                queries = ["rtx 3090 OR rx 7900 xtx OR rtx 4070 ti super"
+                           + (" laptop" if "laptop" in tl or "notebook" in tl else "")]
+    # "best graphics card / beste grafikkarte" -> top value tiers
+    if not gpu and re.search(r"best\w*\s+(graphics?\s*cards?|gpus?)|best\w*\s+grafikkarte",
+                             tl):
+        lap = " laptop" if "laptop" in tl or "notebook" in tl else ""
+        queries = [f"rtx 3090 OR rx 7900 xtx OR rtx 4080{lap}",
+                   f"rtx 4070 ti super OR rx 7900 xt{lap}",
+                   f"rx 6800 OR rtx 3060 12gb{lap}"]
+        models = ["3090", "7900 xtx", "4080", "4070 ti super", "7900 xt",
+                  "6800", "3060 12gb", "6700 xt"]
+        gpu = "best-gpu"
+    if not queries:
+        return None
+    return {"gpu": gpu, "queries": queries, "models": models, "min_vram": min_vram}
+
+
 def lookup_gpu_spec(name: str) -> dict | None:
     """Static VRAM/bandwidth by normalized GPU name (no network)."""
     n = re.sub(r"[^a-z0-9]+", "", (name or "").lower())

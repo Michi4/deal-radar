@@ -382,3 +382,16 @@ iGPU board: 8060S from €1.900 (Flow Z13 32GB/2TB, live) / €1.950 GPD WIN 5 6
 GPD Win 5 385 32GB €1.500 KA, Flow 390 32GB €1.523 eBay, Framework 385 €1.650,
 ZBook 385 €1.703; 890M: SER9 Pro 32GB €929 KA, A9 Max 32GB €850 WH, EVO 14 €1.370;
 780M class from €500 (Blaze) / €600 (EliteBook 32GB).
+
+## Round 27 — three real-world hunts + GPU ask-box (2026-10-15)
+User tests: (1) 7900 XTX / >16GB VRAM for 27B-class @40tok/s, (2) cheapest laptop
+w/ best GPU, (3) cheapest anything w/ best GPU (user ref: 4070 Ti S @ €385).
+- Server (enrich+bench): XTX Nitro+ €400 KA live (!) / €850-950 cluster / €900 WH+
+  vinted; 4070 Ti S Yeston €500 KA live / Zotac €799 / vinted €750-799; Strix 3090
+  €1,099 KA live / €1,190+; eBay-China loses all-in everywhere (XTX €1,239+).
+- expand_gpu_query() + nl_fallback wiring: exact dGPU aliases, über-X-GB-VRAM
+  gates, "best graphics card" (+laptop) tier fan-out. All three test sentences
+  now resolve offline with queries + model gates (unit-tested).
+- Qwen3/Gemma-27B @40tok/s note: 27B Q4 ~17GB -> 20GB+ cards (XTX/3090/7900XT);
+  16GB (4070 Ti S) only via Q3/offload — stated honestly in answer.
+Verified: 261 tests green, ruff+mypy clean.
