@@ -404,3 +404,15 @@ cards) + WH 8 + KA + 3 server searches (vinted/KA/WH live).
 - Local beats China everywhere all-in (shipping trap, round 21 rule holds).
 - GPU_ALIASES += 5090/5080/5070ti/5070/5060ti/5060 (round-27 gap).
 Verified: 261 tests green.
+
+## Round 29 — XPS 13 9340 replacement at selling value (2026-10-15)
+User: XPS 13 9340 (155H/Arc/16GB, bought €400 used, RAM at 94%) -> sell it,
+buy better for the proceeds. OLED nice-to-have.
+- Selling value: comps 9340/32GB €950 WH, 9340/64GB €1,399 KA/vinted ->
+  16GB base ≈ €550-650 realistic (€400 buy was a steal).
+- Replacements at proceeds: EliteBook 835 G10 7840U/32GB €600 KA Neu (live,
+  round 24) = same money, 2x RAM; Yoga Slim 7x SD-X-Elite/32GB/1TB/3K-OLED
+  €740 WH (live); T14 G4/32GB/Garantie €619 WH (live); Dragonfly G4
+  i7-1365U/32GB €583 eBay; x360-1040-G8 i5/32GB €605 eBay; Spectre x360 15
+  €699 WH; Zenbook 14 OLED AI7/32GB/2TB €1,050 WH (stretch gem); T14s G5
+  Ultra7/32GB/Touch €890-999 WH.
