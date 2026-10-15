@@ -451,3 +451,11 @@ User: August €400 XPS (155H/16GB) must be beaten at same money, else ass.
 - OLED trap: Swift Go 14 OLED €449 WH is i5-1335U (13.7k, weaker CPU) — display
   sidegrade, CPU downgrade. Stated, not recommended.
 - T14s-G2 32GB €549 = 5850U-class (fails CPU bar). Zenbook Duo OLED €875+ (over).
+
+## Round 32 — 800+ ladder (2026-10-15)
+User: up to €800 (haggle), above OK too, prefer resale money (~€600).
+3 server searches + 8 eBay + 5 WH. NEW: Swift Go 14 2.8K OLED 155H/32GB/1TB
+€760 KA (verified live) — same CPU + 2x RAM + OLED for resale+~200. Zenbook 14
+OLED 155H/32GB/1TB €929 KA. Yoga 7 155H/32GB/2.8K €1,299. MSI Prestige 16" €899.
+Verdict ladder: €600 835 (resale zone) -> €700-760 Envy/Swift (stretch zone) ->
+€929+ (above zone).
