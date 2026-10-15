@@ -57,8 +57,17 @@ small { font-size: var(--fs-xs); max-width: 100%; }
 }
 .card {
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 0.75rem; overflow: hidden;
+  border-radius: 0.875rem; overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
+.card:not(.skel):hover { border-color: var(--acc); box-shadow: 0 6px 22px rgb(16 185 129 / 0.13); }
+.skel { pointer-events: none; }
+.skel-bar { border-radius: 6px; height: 0.9rem; animation: shine 1.2s infinite; background: linear-gradient(90deg, var(--line) 25%, var(--bg2) 50%, var(--line) 75%); background-size: 200% 100%; }
+@keyframes shine { to { background-position: -200% 0; } }
+.empty { color: var(--mut); padding: 2rem 1rem; text-align: center; }
+.chip { background: var(--bg2); border: 1px solid var(--line); border-radius: 99px; color: var(--ink); cursor: pointer; font-size: var(--fs-sm); font-weight: 600; padding: 0.35rem 0.9rem; }
+.chip:hover { border-color: var(--acc); }
+.histrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.75rem; }
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1rem; }
 .eyebrow { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.5rem; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: var(--fs-xs); font-weight: 700; }

@@ -364,3 +364,21 @@ sentence, AI does everything, filter after, one-click AI-picks).
 - GPU_SPECS: 3060/3070/4060ti/4070super/3080ti/6700xt/6800/6900xt/vii/mi50/t4/
   arc770/a4000/a5000/rtx8000/a40 vram+bw added (round-21 cards were unmapped).
 Verified: 260 tests green, ruff+mypy clean.
+
+## Round 26 — frontend consistency pass + iGPU board (2026-10-15)
+User: simpler but fully controllable, beautiful, consistent, PM-grade.
+- ResultCard: human lane line (was "top · 0.72 · kleinanzeigen"), all-in total
+  chip when shipping known, image placeholder, score floats to tooltip.
+- SearchView: hero Ask bar (PM-style focus ring) + one-tap iGPU preset chips
+  (8060S/8050S/890M/140V/780M) that fill + run NL.
+- tokens: radius-14 cards with hover lift, skeleton shimmer, shared .chip,
+  empty states. Zero emojis in web/ (grep clean), no raw debug dumps.
+- Gems keeps "start igpu hunt" + AI summary (= AI-picks flow).
+- journeys: layout audit GREEN; journey-smoke mini-pc times out IDENTICALLY on
+  HEAD (sandbox drivers return nothing) -> BLOCKERS entry, not a regression.
+- verify.sh GREEN (lint+typecheck+tests+web build+docker).
+iGPU board: 8060S from €1.900 (Flow Z13 32GB/2TB, live) / €1.950 GPD WIN 5 64GB /
+€1.999 Flow 32GB/1TB / EVO-X2 128GB €3.150 KA (new low via Ask-box!); 8050S:
+GPD Win 5 385 32GB €1.500 KA, Flow 390 32GB €1.523 eBay, Framework 385 €1.650,
+ZBook 385 €1.703; 890M: SER9 Pro 32GB €929 KA, A9 Max 32GB €850 WH, EVO 14 €1.370;
+780M class from €500 (Blaze) / €600 (EliteBook 32GB).

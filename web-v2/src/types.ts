@@ -14,6 +14,7 @@ export interface Listing {
   seller?: { name?: string };
   pickup_available?: boolean;
   shipping_available?: boolean;
+  shipping_cost?: number | null;
   attributes?: Record<string, unknown>;
 }
 export interface Scored {

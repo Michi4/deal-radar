@@ -153,3 +153,15 @@ headers or bodies (all custom stacks: Tengine/Alibaba, CloudFront/Amazon, Cloudf
 for Alternate/Cyberport/Geizhals/BackMarket, Akamai fronting idealo, nginx for bazos.sk).
 Only incidental `/feed` substrings inside JS bundles (amazon, nbb) — not product endpoints.
 Geizhals/idealo feeds are partner-only; no `products.json` anywhere.
+
+## journey-smoke mini-pc E2E timeout (2026-10-15, round 26)
+- `scripts/journeys.sh` journey-smoke waits 5 min for `.rgrid .res` results and
+  times out. Reproduced identically on unmodified HEAD (`git stash` run) in this
+  sandbox, so NOT a regression from the SearchView/ResultCard rebuild (layout
+  audit is GREEN with the changes; `.modeseg`, `#searchbtn`, `.rgrid .res`
+  selectors all still present).
+- Likely cause: live drivers return zero usable results in this sandbox
+  (kleinanzeigen/vinted blocked, willhaben throttled), so the result grid never
+  fills. Needs: re-run against production Frankfurt where drivers are warmer,
+  or a fixture-backed smoke mode. Human: run `BASE=https://dealradar.home.websters.at
+  ./scripts/journeys.sh` from a warm network to confirm green.

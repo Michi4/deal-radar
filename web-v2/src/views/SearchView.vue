@@ -10,10 +10,17 @@
         </button>
       </div>
 
-      <form v-if="ui.mode === 'nl'" @submit.prevent="runNL" class="row">
-        <input v-model="nlText" class="inp grow" placeholder="Describe what you want…" aria-label="natural language query" />
-        <button class="btn btn-primary" type="submit" :disabled="!nlText.trim()">Ask</button>
+      <form v-if="ui.mode === 'nl'" @submit.prevent="runNL" class="heroask" role="search">
+        <div class="askfield">
+          <Sparkles :size="20" />
+          <input v-model="nlText" class="askinput" placeholder="Describe what you want… e.g. anything with 8060S" aria-label="natural language query" />
+        </div>
+        <button class="btn btn-primary askgo" type="submit" :disabled="!nlText.trim()">Ask</button>
       </form>
+      <div v-if="ui.mode === 'nl'" class="presets" aria-label="try an integrated-graphics hunt">
+        <span class="eyebrow">try:</span>
+        <button v-for="p in presetHunts" :key="p.label" class="chip" @click="runPreset(p)" :title="p.tip">{{ p.label }}</button>
+      </div>
       <form v-else @submit.prevent="runKw" class="row">
         <input v-model="kwText" id="q" class="inp grow" placeholder="Keywords (e.g. ThinkPad X1)" aria-label="keywords" />
         <button class="btn btn-primary" type="submit" :disabled="!kwText.trim()" id="searchbtn">Search</button>
@@ -415,6 +422,18 @@ async function runKw() {
     else if (done.status === 'stopped') { search.results = done.results || []; refilter(); statusLine.value = `stopped — ${search.results.length} partial results`; }
   } catch (e) { statusLine.value = 'search failed: ' + (e instanceof Error ? e.message : String(e)); }
 }
+const presetHunts = [
+  { label: '8060S', q: 'anything with 8060S', tip: 'Fastest iGPU: Strix Halo boxes, Flow Z13, EVO-X2' },
+  { label: '8050S', q: 'anything with 8050S', tip: 'Strix Halo light: Max 385/390, ZBook, Framework' },
+  { label: '890M', q: 'laptop with 890M', tip: 'Ryzen AI 9 HX 370-class, best value iGPU' },
+  { label: 'Arc 140V', q: 'laptop with Arc 140V', tip: 'Lunar Lake, efficient + modern' },
+  { label: '780M', q: 'laptop with 780M under 800', tip: 'Cheapest good iGPU: 7840U/8840HS machines' },
+];
+function runPreset(p: { q: string }) {
+  nlText.value = p.q;
+  ui.setMode('nl');
+  runNL();
+}
 async function runNL() {
   const q = nlText.value.trim();
   if (!q) return;
@@ -505,6 +524,17 @@ onMounted(async () => {
 .adv summary { cursor: pointer; font-weight: 600; min-height: var(--tap); display: flex; align-items: center; gap: 0.375rem; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; background: var(--acc); }
 .advgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.625rem; margin: 0.625rem 0; }
+.heroask { display: flex; gap: 0.375rem; background: var(--card); border: 2px solid var(--line); border-radius: 1.125rem; box-shadow: 0 10px 32px rgb(16 185 129 / 0.10); padding: 0.375rem; transition: border-color 0.15s, box-shadow 0.15s; }
+.heroask:focus-within { border-color: var(--acc); box-shadow: 0 10px 34px rgb(16 185 129 / 0.22); }
+.askfield { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 auto; min-width: 0; padding: 0 0.5rem 0 1rem; color: var(--mut); }
+.askinput { background: transparent; border: none; color: var(--ink); flex: 1; font-size: 1.1rem; min-width: 0; padding: 0.9rem 0.2rem; }
+.askinput::placeholder { color: var(--mut); opacity: 0.75; }
+.askinput:focus { outline: none; }
+.askgo { border-radius: 0.8rem; min-width: 7rem; font-size: 1rem; }
+.presets { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
+.chip { background: var(--bg2); border: 1px solid var(--line); border-radius: 99px; color: var(--ink); cursor: pointer; font-size: var(--fs-sm); font-weight: 600; padding: 0.35rem 0.9rem; }
+.chip:hover { border-color: var(--acc); }
+@media (max-width: 600px) { .askgo { min-width: 5rem; } .askinput { font-size: 1rem; } }
 .fld { display: flex; flex-direction: column; gap: 0.25rem; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.9; }
 .fld .inp, .fld select.inp { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .srcs { display: flex; gap: 0.375rem; flex-wrap: wrap; }
