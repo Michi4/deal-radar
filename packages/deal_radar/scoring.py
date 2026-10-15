@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from .contracts import CanonicalListing, EnrichmentFact, Evidence, FactStatus
 
@@ -966,6 +967,75 @@ GPU_SPECS = {
     "dgxspark": {"vram": 128, "bw": 273}, "aimax": {"vram": 128, "bw": 256},
     "strixhalo": {"vram": 128, "bw": 256},
 }
+
+
+#: Integrated GPUs that matter for local AI: name variants, host chips,
+#: searchable device queries, tier (lower = faster). Shared memory — no
+#: dedicated VRAM, so gpu_vram_gb() stays None for these (honest).
+#: Learned from real hunts (round 23/24): users ask for the iGPU name
+#: ("8060S"), listings name the chip or device ("Max+ 395", "Flow Z13").
+IGPU_TABLE: list[dict[str, Any]] = [
+    {"igpu": "Radeon 8060S", "tier": 1,
+     "names": ["8060s", "radeon 8060s"],
+     "chips": ["Ryzen AI Max+ 395", "Ryzen AI Max 395", "Max+ PRO 395"],
+     "match": ["max+ 395", "max 395", "395", "strix halo", "flow z13",
+               "evo-x2", "evox2", "8060s"],
+     "queries": ["ryzen ai max 395 laptop", "rog flow z13 395",
+                 "evo-x2 128gb", "strix halo 128gb"]},
+    {"igpu": "Radeon 8050S", "tier": 2,
+     "names": ["8050s", "radeon 8050s"],
+     "chips": ["Ryzen AI Max 390", "Ryzen AI Max 385", "Max PRO 385"],
+     "match": ["max 390", "max 385", "390", "385", "strix halo",
+               "zbook ultra", "framework desktop", "8050s"],
+     "queries": ["ryzen ai max 390 laptop", "ryzen ai max 385",
+                 "zbook ultra 385", "framework desktop 385"]},
+    {"igpu": "Arc B390", "tier": 3,
+     "names": ["b390", "arc b390"],
+     "chips": ["Core Ultra X9 388H", "Panther Lake 388H"],
+     "match": ["b390", "388h", "panther lake", "ultra x9"],
+     "queries": ["panther lake laptop", "core ultra x9 laptop"]},
+    {"igpu": "Radeon 890M", "tier": 4,
+     "names": ["890m", "radeon 890m"],
+     "chips": ["Ryzen AI 9 HX 370", "Ryzen AI 9 365"],
+     "match": ["hx 370", "hx 365", "890m", "xmg evo", "geekom a9"],
+     "queries": ["ryzen ai 9 hx 370 laptop", "ryzen ai 9 365 laptop"]},
+    {"igpu": "Arc 140V", "tier": 5,
+     "names": ["140v", "arc 140v"],
+     "chips": ["Core Ultra 7 258V", "Core Ultra 7 256V", "Lunar Lake"],
+     "match": ["258v", "256v", "lunar lake", "140v", "arc 140v"],
+     "queries": ["lunar lake laptop", "core ultra 258v laptop"]},
+    {"igpu": "Radeon 880M", "tier": 6,
+     "names": ["880m", "radeon 880m"],
+     "chips": ["Ryzen AI 7 PRO 350", "Ryzen AI 7 350"],
+     "match": ["ai 7 350", "880m"],
+     "queries": ["ryzen ai 7 350 laptop"]},
+    {"igpu": "Radeon 780M", "tier": 7,
+     "names": ["780m", "radeon 780m"],
+     "chips": ["Ryzen 7 7840U", "Ryzen 7 7840HS", "Ryzen 7 8840HS",
+                "Ryzen 7 8845HS", "Ryzen 9 7940HS"],
+     "match": ["7840u", "7840hs", "8840hs", "8845hs", "7940hs", "780m"],
+     "queries": ["ryzen 7 7840u laptop", "ryzen 7 8840hs laptop",
+                 "ryzen 7 7840hs mini pc"]},
+]
+
+
+def expand_igpu_query(text: str) -> dict | None:
+    """Map an iGPU name to its chips + ready search queries.
+
+    Returns {igpu, tier, chips, queries} for the best (lowest-tier) match,
+    else None. Powers the offline Ask-box: "anything with 8060S" works
+    without any cloud model.
+    """
+    tl = (text or "").lower()
+    norm = re.sub(r"[^a-z0-9]", "", tl)
+    for row in sorted(IGPU_TABLE, key=lambda r: r["tier"]):
+        for name in row["names"]:
+            if re.sub(r"[^a-z0-9]", "", name) in norm:
+                return {"igpu": row["igpu"], "tier": row["tier"],
+                        "chips": list(row["chips"]),
+                        "match": list(row.get("match", [])),
+                        "queries": list(row["queries"])}
+    return None
 
 
 def lookup_gpu_spec(name: str) -> dict | None:

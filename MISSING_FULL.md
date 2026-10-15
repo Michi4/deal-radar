@@ -345,3 +345,22 @@ GEEKOM A9 Max HX370/32GB/1TB €850 WH, Vivobook 16 Flip 258V/32GB/1TB/OLED
 €645 eBay, LG gram 17 258V/32GB €842 eBay (ohne Ladegerät), XMG EVO 14 HX370/
 32GB/2TB €1.370 KA. Perf note: 8050S ~= RTX 4050 mobile -> used 4050/3060
 laptops are the same class at €600-800 (deferred, user: later).
+
+## Round 25 — Ask-box understands iGPUs + igpu hunt pack (2026-10-15)
+User: everything here must work standalone on dealradar.home.websters.at (type a
+sentence, AI does everything, filter after, one-click AI-picks).
+- NEW IGPU_TABLE (scoring.py): 8060S/8050S/B390/890M/140V/880M/780M with chips,
+  device match-tokens and ready device queries; expand_igpu_query() maps the iGPU
+  name listings never use to the chips/devices they do use.
+- nl_fallback() detects iGPU intents offline: keywords -> first device query,
+  models = chips + device tokens (model gate passes BOTH "Flow Z13" and
+  "Max+ 395"), subqueries = ready device queries, igpu label kept.
+- /searches/nl fans out over subqueries (not bare "395" tokens) with bounded
+  model gate. PROVEN LIVE: "anything with 8060S" -> 16 real results (EVO-X2
+  128GB €3.150 KA new low! Flow Z13 395+, MS-S1 Max, rack mounts...).
+- NEW /hunt pack "igpu" (halo / 890M+lunar / 780M class) + Gems "start igpu hunt"
+  button next to value hunt; dist rebuilt+committed.
+- Rack mounts ranked TOP at €49 -> mount/rackmount/einbaurahmen now accessories.
+- GPU_SPECS: 3060/3070/4060ti/4070super/3080ti/6700xt/6800/6900xt/vii/mi50/t4/
+  arc770/a4000/a5000/rtx8000/a40 vram+bw added (round-21 cards were unmapped).
+Verified: 260 tests green, ruff+mypy clean.

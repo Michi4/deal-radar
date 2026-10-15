@@ -587,8 +587,28 @@ def nl_fallback(text: str) -> dict:
     kw = re.sub(r"\s+", " ", kw).strip()
     if category:
         kw = ""
+    # iGPU intents ("anything with 8060S", "laptop mit 890M unter 1000€"):
+    # listings name the chip or device, never the iGPU — expand to the first
+    # device query for keywords and keep chips as model gate. Works fully
+    # offline so the Ask box answers without any cloud model.
+    models: list[str] = []
+    subqueries: list[str] = []
+    try:
+        from .scoring import expand_igpu_query as _igpu_q
+        hit = _igpu_q(t)
+        if hit:
+            kw = hit["queries"][0] if not kw or len(kw.split()) <= 2 else kw
+            # chips name the silicon, match tokens name the devices — the model
+            # gate needs both ("Flow Z13" and "Max+ 395" must both pass).
+            models = hit["chips"] + hit.get("match", [])
+            # fan-out runs these ready device queries, not bare model tokens.
+            subqueries = hit["queries"]
+    except Exception:
+        hit = None
     return {"keywords": kw if category else (kw or tl[:80]), "category": category, "location": location, "hard": hard, "blacklist": blacklist,
-            "whitelist": [], "attributes": attrs, "risk": {}, "enrich": True, "limit": 20}
+            "whitelist": [], "attributes": attrs, "risk": {}, "enrich": True, "limit": 20,
+            "models": models, "subqueries": subqueries,
+            "igpu": (hit or {}).get("igpu", "") if hit else ""}
 
 
 async def stage_b_via_cloud(title: str, description: str, price: float | None,
@@ -678,7 +698,7 @@ def heuristic_decide(title: str, description: str, price: float | None,
     if _bundle_sig and _acc_hit and not any(s in _title for s in _acc_stems
                                             if s not in _cooler_stems):
         _acc_hit = False
-    accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|adapter|chargeur|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff|bag|handtasche|shorts|hosen?|shirt|hemd(en)?|bluse(n)?|kleid(er)?|dress|jeans|jacke(n)?|jacket|hoodie|pullover|mantel|socken|sneaker|schuhe|shoes|boots|stiefel|sandalen|m[üu]tze|smartwatch|apple watch|galaxy watch|\bwatch\b|lüfter|luefter|\bfan\b|heatsink|heatpipe|wasser\s?block|water\s?block|wasserk[üu]hlung|backplate|w[äa]rmeleitpad|nvlink|sli-?bridge|\briser\b|bracket|st[üu]tze|gpu-?halter)\b", hay)) \
+    accessory_ad = bool(_re.search(r"\b(h[üu]lle(n)?|case(s)?|cover(s)?|schutzh[üu]lle|folie(n)?|panzerglas|leere?\s*(ovp|box)|ovp\s*leer|empty\s*box|nur\s*(ovp|verpackung)|verpackung|karton|bumper|g[üu]rtelclip|armband|ladekabel|ladeger[äa]t|netzteil|adapter|chargeur|halterung|st[äa]nder|dock|rucksack|tasche|laptoptasche|notebooktasche|sleeve|m[äa]ppchen|etui|beutel|umh[äa]ngetasche|vertrag|tarif|allnet|monatlich|abo|gewinnspiel|verlosung|gagner|tariff|bag|handtasche|shorts|hosen?|shirt|hemd(en)?|bluse(n)?|kleid(er)?|dress|jeans|jacke(n)?|jacket|hoodie|pullover|mantel|socken|sneaker|schuhe|shoes|boots|stiefel|sandalen|m[üu]tze|smartwatch|apple watch|galaxy watch|\bwatch\b|lüfter|luefter|\bfan\b|heatsink|heatpipe|wasser\s?block|water\s?block|wasserk[üu]hlung|backplate|w[äa]rmeleitpad|nvlink|sli-?bridge|\briser\b|bracket|st[üu]tze|gpu-?halter|mount|rackmount|rack-mount|einbaurahmen)\b", hay)) \
         or _acc_hit \
         or (not _has_compute and any(s in _title for s in _periph_stems))
     if want_ad:

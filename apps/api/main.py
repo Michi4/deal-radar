@@ -923,8 +923,10 @@ async def create_nl_search(q: NLQuery):
     if (q.category or "").strip():
         parsed["category"] = q.category.strip().lower()
         parsed["keywords"] = ""
-    models = (parsed.get("models", []) or [])[:6]  # bound fan-out
-    queries = models or [parsed.get("keywords", q.text)]
+    # iGPU intents fan out over ready device queries ("ryzen ai max 395 laptop",
+    # "rog flow z13 395", ...), not bare model tokens ("395" alone finds nothing).
+    queries = parsed.get("subqueries") or (parsed.get("models", []) or [])[:6] or [parsed.get("keywords", q.text)]
+    models = (parsed.get("models", []) or [])[:12]  # bound gate list
     intents = []
     for kw in queries:
         intents.append({"keywords": kw, "category": parsed.get("category", ""),
@@ -932,7 +934,7 @@ async def create_nl_search(q: NLQuery):
                         "hard": {"min_match": 0.2, **(parsed.get("hard", {}) or {})},
                         "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
                         "ranking": None, "attributes": parsed.get("attributes", {}),
-                        "models": parsed.get("models", []) or [],
+                        "models": models,
                         "required": parsed.get("required", []),
                         "enrich": True, "enrich_top_n": q.enrich_top_n, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
                         "vision": q.vision, "details": q.details,
@@ -943,7 +945,7 @@ async def create_nl_search(q: NLQuery):
             "sources": q.sources or default_sources(), "hard": {"min_match": 0.2, **(parsed.get("hard", {}) or {})},
             "blacklist": parsed.get("blacklist", []), "whitelist": [], "risk": {},
             "ranking": None, "attributes": parsed.get("attributes", {}),
-            "models": parsed.get("models", []) or [],
+            "models": models,
             "required": parsed.get("required", []),
             "enrich": True, "enrich_top_n": q.enrich_top_n, "max_pages": q.max_pages, "ocr": q.ocr, "benchmarks": q.benchmarks,
             "vision": q.vision, "details": q.details,
@@ -1402,6 +1404,18 @@ HUNT_PACKS = {
          "sources": None, "limit": None, "max_pages": None,
          "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
     ],
+    # best integrated graphics, fastest first: halo, then 890M/lunar, then 780M class
+    "igpu": [
+        {"keywords": "ryzen ai max 395 OR strix halo OR flow z13 395 OR evo-x2",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+        {"keywords": "ryzen ai 9 hx 370 OR ryzen ai max 390 OR lunar lake OR 258v",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+        {"keywords": "ryzen 7 7840u OR ryzen 7 8840hs OR ryzen 7 7840hs",
+         "sources": None, "limit": None, "max_pages": None,
+         "enrich_top_n": 0, "details": False, "vision": False, "ocr": False, "benchmarks": True},
+    ],
 }
 
 
@@ -1410,7 +1424,7 @@ async def start_hunt_pack(pack: str = "value"):
     """One click, three broad unlimited searches (mini PCs, laptops/desktops, high-end).
     Then POST /advise with the returned ids for the full AI summary."""
     if pack not in HUNT_PACKS:
-        return JSONResponse({"error": "unknown pack (try 'value' or 'ai-rig')"}, status_code=404)
+        return JSONResponse({"error": "unknown pack (try 'value', 'ai-rig' or 'igpu')"}, status_code=404)
     ids = []
     for q in HUNT_PACKS[pack]:
         intent = SearchIntent(keywords=q["keywords"], sources=q["sources"],

@@ -3,7 +3,8 @@
     <h2>Gems <small>best measured value across everything seen</small></h2>
     <div class="panel">
       <div class="row">
-        <button class="btn btn-primary" @click="hunt" :disabled="hunting" title="One click, three broad unlimited searches">start value hunt (3 searches)</button>
+        <button class="btn btn-primary" @click="() => hunt('value')" :disabled="hunting" title="One click, three broad unlimited searches">start value hunt (3 searches)</button>
+        <button class="btn" @click="() => hunt('igpu')" :disabled="hunting" title="One click: best integrated graphics, fastest iGPU first">start igpu hunt (3 searches)</button>
         <button class="btn" @click="summarize" :disabled="busy" title="AI summary + ranking over it all">AI summary of it all</button>
         <label class="ck"><input type="checkbox" v-model="favOnly" @change="load" /> favorites only</label>
       </div>
@@ -155,11 +156,11 @@ async function summarize() {
   } catch (e) { ui.toast('summary failed'); }
   busy.value = false;
 }
-async function hunt() {
+async function hunt(pack = 'value') {
   hunting.value = true;
   try {
-    const r = await api<{ ids?: string[] }>('/hunt', { method: 'POST' });
-    ui.toast(`value hunt started: ${(r?.ids || []).length} searches — come back, then AI summary`);
+    const r = await api<{ ids?: string[] }>(`/hunt?pack=${pack}`, { method: 'POST' });
+    ui.toast(`${pack} hunt started: ${(r?.ids || []).length} searches — come back, then AI summary`);
   } catch (e) { ui.toast('hunt failed'); }
   hunting.value = false;
 }

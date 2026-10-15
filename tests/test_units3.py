@@ -2625,3 +2625,31 @@ def test_board_ranks_all_in_with_shipping():
             round((272.0 + 89.29) - 400.0, 2)
     finally:
         st.close()
+
+
+def test_igpu_ask_box_offline():
+    """Round 25: 'anything with 8060S' must work in the Ask box with NO cloud —
+    listings name chips/devices, never the iGPU."""
+    from deal_radar.decision import nl_fallback
+    from deal_radar.scoring import expand_igpu_query
+    hit = expand_igpu_query("anything with 8060S")
+    assert hit and hit["igpu"] == "Radeon 8060S"
+    assert "ryzen ai max 395 laptop" in hit["queries"][0]
+    assert expand_igpu_query("laptop mit 890M unter 1000")["igpu"] == "Radeon 890M"
+    assert expand_igpu_query("780m mini pc")["igpu"] == "Radeon 780M"
+    assert expand_igpu_query("thinkpad x1 carbon") is None
+    fb = nl_fallback("anything with 8060S")
+    assert "max" in fb["keywords"] and "395" in fb["keywords"]
+    assert any("395" in m for m in fb["models"])
+    # device listings pass the model gate via match tokens
+    fb2 = nl_fallback("laptop mit 890M unter 1000 Euro")
+    assert fb2["hard"].get("max_price") == 1000
+    assert any("hx 370" in m for m in fb2["models"])
+    assert fb2["igpu"] == "Radeon 890M"
+
+
+def test_rackmount_is_accessory():
+    """Round 25: EVO-X2 rack mounts ranked 'top' at €49 in the 8060S hunt."""
+    from deal_radar.decision import heuristic_decide as h
+    assert h("19 Zoll GMKtec EVO-X2 Mini PC Rack Mount - 2HE", "", 58.0, "evo")["kind"] == "accessory"
+    assert h("Rackmount für Minisforum MS-S1 MAX 19 Zoll 2HE", "", 61.0, "ms-s1")["kind"] == "accessory"
