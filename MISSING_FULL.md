@@ -332,3 +332,16 @@ BUG (mine, fixed): KA thousand-tail prices ("3.299 €" -> "299 €") in scrape_
 + item regex — same class as WH round-21. App eu_price was already correct.
 Expensive-but-gems: ZBook 128GB/4TB €8,165 new, Kojima Z13-KJP 128GB €5,378,
 GPD Win 5 Max 128GB €4,400, Halo 128GB/2TB box €4,999, Corsair €4,000.
+
+## Round 24 — iGPU-only under 1k/1.5k (no dGPUs) (2026-10-15)
+User correction: ONLY integrated graphics (dGPU round was wrong direction).
+3 dealradar-server searches (enrich+benchmarks, 10 drivers) + eBay 6 + WH 5 + KA 5.
+Server lanes carried it again (top/good): EliteBook 835 G10 7840U/32GB €600 KA
+(verified live, Neu!), Pavilion Plus 14 7840U/1TB €690 WH, Elitebook 865 G10
+PRO 7840U/32GB €700 KA, Envy x360 8840HS €650-700, IdeaPad Slim3 8840HS €799,
+Zenbook 14 8840HS €800, Nitro Blaze 7 handheld 8840HS €500 WH (not deleted),
+MacBook Air M4 13" €900 WH (page live, price in title), Air 15 M4 €1.000-1.100,
+GEEKOM A9 Max HX370/32GB/1TB €850 WH, Vivobook 16 Flip 258V/32GB/1TB/OLED
+€645 eBay, LG gram 17 258V/32GB €842 eBay (ohne Ladegerät), XMG EVO 14 HX370/
+32GB/2TB €1.370 KA. Perf note: 8050S ~= RTX 4050 mobile -> used 4050/3060
+laptops are the same class at €600-800 (deferred, user: later).
