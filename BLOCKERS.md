@@ -135,6 +135,14 @@
   1688/taobao still unprobed through this transport (Chinese app-shells); next
   step when the owner wants CN-warehouse supply.
 
+- [ ] China warehouses (1688/taobao) probed via the CDP transport 2026-10-18:
+  1688 `s.1688.com/selloffer/offer_search.htm?keywords=minipc` in a real Chrome
+  redirects to the homepage shell (titles the landing page, 32x `captcha`, 48x
+  `登录`), i.e. a login wall — anonymous search does not render offers. The CDP
+  infrastructure is ready; what is needed is (a) the operator logged into 1688 in
+  the Chrome profile, and (b) one captured result page so the parser is written
+  against the real DOM (never invented). Same shape for taobao. On request.
+
 ## New-product markets probe 2026-10-12
 
 Method: exactly ONE polite GET per site (curl, timeout 15s, UA `hobbyist-research-probe/1.0`,

@@ -4,9 +4,14 @@ services:
     ports: ["8099:8099"]
     volumes: [dealdata:/data]
     restart: unless-stopped
+    # Makes CDP_URL=http://host.docker.internal:9222 resolve to the host on Linux
+    # (Docker Desktop already provides it). Used by session drivers (aliexpress,
+    # ebay-web) to reach a Chrome started on the host with --remote-debugging-port.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     healthcheck: { test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8099/health',timeout=4)"], interval: 30s, timeout: 5s, retries: 3 }
     environment:
       EBAY_OAUTH_TOKEN: ${EBAY_OAUTH_TOKEN:-}
+      CDP_URL: ${CDP_URL:-}
       JEV_API_KEY: ${JEV_API_KEY:-}
       KEV_URL: ${KEV_URL:-}
       CLOUD_API_URL: ${CLOUD_API_URL:-}
