@@ -357,6 +357,7 @@ function fmtErrors(err?: Record<string, string>): string {
     const m = String(e[k] || '').slice(0, 120);
     if (/cooling down/i.test(m)) return `${k} cooling down (${m.slice(m.indexOf('retrying'))})`;
     if (/EBAY_APP_ID|EBAY_OAUTH_TOKEN/i.test(m)) return `${k} needs credentials (Admin → Secrets)`;
+    if (/CDP_URL|debug browser/i.test(m)) return `${k} needs a debug browser (Admin → Secrets: CDP_URL)`;
     if (/403|blocked/i.test(m)) return `${k} blocked by site — retry later or via proxy`;
     return `${k}: ${m}`;
   };
