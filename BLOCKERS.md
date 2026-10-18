@@ -135,6 +135,18 @@
   1688/taobao still unprobed through this transport (Chinese app-shells); next
   step when the owner wants CN-warehouse supply.
 
+- [ ] Prod AliExpress/browser sources (2026-10-18): the repo `docker-compose.yml`
+  now ships `extra_hosts: host.docker.internal:host-gateway` + `CDP_URL`
+  passthrough, but the **prod** stack uses its own compose file in
+  `~/docker/deal-radar/` (separate, includes signal-api). To enable AliExpress on
+  prod: add `extra_hosts: ["host.docker.internal:host-gateway"]` and
+  `CDP_URL: ${CDP_URL:-}` to that file, run a headless Chrome on the host once
+  (`google-chrome --headless=new --remote-debugging-port=9222 --user-data-dir=...`),
+  set `CDP_URL=http://host.docker.internal:9222` in `~/docker/deal-radar/.env`,
+  then `docker compose up -d`. Not done unilaterally — it starts a browser on the
+  owner's server (RAM) and the datacenter IP may be treated differently by
+  AliExpress; the owner decides.
+
 - [ ] China warehouses (1688/taobao) probed via the CDP transport 2026-10-18:
   1688 `s.1688.com/selloffer/offer_search.htm?keywords=minipc` in a real Chrome
   redirects to the homepage shell (titles the landing page, 32x `captcha`, 48x
