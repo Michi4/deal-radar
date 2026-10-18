@@ -120,6 +120,16 @@ def transport_from_config(cfg: dict[str, Any] | None) -> TransportProvider:
         return RotatingProxyTransport(cfg.get("urls", []))
     if t == "tls":
         return TlsImpersonatingTransport(cfg.get("impersonate", "chrome124"))
+    if t == "cdp":
+        import os
+
+        from .cdp import DEFAULT_CDP_URL, CdpTransport
+        endpoint = str(cfg.get("url") or os.getenv("CDP_URL") or DEFAULT_CDP_URL)
+        return CdpTransport(cdp_url=endpoint,
+                            timeout=float(cfg.get("timeout", 90.0)),
+                            settle=float(cfg.get("settle", 5.0)),
+                            ready_selector=cfg.get("ready_selector", ""),
+                            min_bytes=int(cfg.get("min_bytes", 8000)))
     return DirectTransport(timeout=float(cfg.get("timeout", 15.0)))
 
 

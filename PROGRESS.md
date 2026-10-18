@@ -1,5 +1,18 @@
 # PROGRESS.md — 2026-09-29 FINISH session (Michi4 authorship)
 
+## 2026-10-18 — AliExpress live via the debug browser (CDP transport)
+- SHIPPED: `packages/deal_radar/cdp.py` (generic CDP session transport,
+  `{"type":"cdp"}` in `TRANSPORTS_JSON`, `CDP_URL` secret) + `drivers/aliexpress/`
+  (new-product marketplace). LIVE-VERIFIED: `CDP_URL=... pytest
+  tests/live/test_aliexpress_live.py -m live` → real cards (UM870 @342€, AI X1
+  @461€, laptop boards 56-100€). Fixtures are real DOM captures. verify GREEN
+  (272 passed, 85%). Unconfigured → clean error + excluded from defaults.
+- Next 5: (1) deploy + set `CDP_URL` on prod host (Chrome under xvfb);
+  (2) 1688/taobao probe through CDP; (3) wire AliExpress into the `value` hunt
+  pack / gems board end-to-end on prod; (4) run the "absolute gems" comparison
+  (new AliExpress vs used UM870/UN1290/139D7); (5) cookie-injection transport for
+  display-less servers.
+
 ## What changed since last report (2026-10-12: recognition fix + brand stores)
 - RECOGNITION FIX (MISSING_FULL §0, commits a885d53/1afd709/3ce17fb, pushed, CI green-tracked):
   `resolve_cpu_with_seeds()` (exact > tier-narrowed family estimate), vinted suffix

@@ -47,6 +47,34 @@ Goal: a new folder `drivers/<id>/driver.py` that passes `python -m deal_radar.re
   ```
 - `SearchQuery` carries `.sid` (search id, may be `""` in tests) and `.cat_map` (dict).
 
+## Session sites (JS app-shells, anti-bot) — the CDP transport
+Some targets render results only in a real browser and refuse anonymous HTTP
+(AliExpress, eBay-at, ...). Such a driver is a **normal driver** whose transport
+happens to be the debug browser: write it exactly like an HTTP driver and keep
+the parser a pure function of the returned HTML (that is what makes it testable).
+```python
+from deal_radar.cdp import CdpTransport  # transport_from_config({"type": "cdp"})
+class MyDriver(MarketplaceDriver):
+    def __init__(self, transport=None):
+        super().__init__(transport)          # a CdpTransport instance
+    @staticmethod
+    def configured() -> bool:
+        import os; return bool(os.getenv("CDP_URL"))
+    async def search(self, query):
+        resp = await self.transport.get("https://site/search?q=...")  # rendered DOM
+        items = parse_my_search(resp.text)   # pure -> unit test on a saved capture
+```
+- Setup: `google-chrome --remote-debugging-port=9222 --user-data-dir=<profile>`,
+  log in once, set `CDP_URL` (Admin → Secrets) or a per-driver
+  `TRANSPORTS_JSON` `{"<id>": {"type": "cdp", "url": "..."}}` (Docker:
+  `http://host.docker.internal:9222`). No `configured()` → clean error + excluded
+  from defaults; never fake listings.
+- Capture the fixture by saving `document.documentElement.outerHTML` **from that
+  same browser** (real DOM), not by hand-typing JSON.
+- Politeness: one navigation per page, `rate_limit_rpm` low (≤6). No captcha
+  solving, no identity forgery — it is the operator's own logged-in browser.
+- Reference implementation: `drivers/aliexpress/driver.py` (+ `drivers/ebay_web/`).
+
 ## Enrichers (for humans or AI assistants)
 Goal: a class in `enrichers/custom/<id>.py` (via Lab) or `packages/deal_radar/enrich.py`.
 Contract (exact — listing is an OBJECT with attribute access, NOT a dict):

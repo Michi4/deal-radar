@@ -1,5 +1,24 @@
 # DECISIONS.md — choices made autonomously (per AGENTS.md, no stopping to ask)
 
+## 2026-10-18 — AliExpress via the debug browser (CDP), not the affiliate API
+- Owner asked for AliExpress + China warehouses "at any cost" (chrome-debug-browser,
+  own account). Probed: anonymous HTTP gets a 301 stub (Tengine `AE_GLOBAL_UNLOGIN`),
+  ali pages are JS app-shells; the affiliate Portals API needs a traffic-source review.
+- Shipped a **generic CDP session transport** (`packages/deal_radar/cdp.py`,
+  `{"type":"cdp"}` in `TRANSPORTS_JSON`, `CDP_URL` secret) that renders a URL in the
+  operator's own Chrome and returns the DOM. It is the same boundary as the existing
+  `ebay_web` driver — a browser the operator launched and logged into; no captcha
+  solving, no identity forgery, one polite navigation per search.
+- AliExpress driver is a normal HTTP-shaped driver over that transport: parser is a
+  pure function of the DOM, so it is unit-tested on **real captures** and its cards
+  map 1:1 to `CanonicalListing` (title/price/images/sold/sponsored/new).
+- Chose CDP-over-profile over `SESSION_COOKIES_JSON` cookie injection: the profile
+  already carries the login, so no secret file to leak. Cookie injection stays a
+  documented option for a headless server with no display.
+- Honesty: unconfigured → clean RuntimeError, excluded from `default_sources()`,
+  `configured:false` in `/drivers` (Store shows "needs: CDP_URL (debug browser)").
+
+
 - AI host over app host/spare host for Kev+Ollama: 11GB RAM, WG-meshed, idle. spare host unreachable (BLOCKERS).
 - Laptop keeps Kev+Ollama+VL copies (dev/fallback, vision backend for pipeline).
 - Jev dropped (no key); Kev + local + OpenRouter-free cover all AI slots.

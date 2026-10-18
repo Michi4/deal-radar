@@ -122,18 +122,18 @@ Lab auto-PR (GH_TOKEN); eBay exemption + Allegro creds (human clicks).
 
 ## 2. Markets / drivers — "search everywhere, new+used, any currency"
 
-- [ ] AliExpress + China warehouses + 1688/1881/taobao: no driver (BLOCKERS: affiliate-API approval wall). User proposed: 3rd-party API, chrome-debug-browser/CDP, user-supplied account/temp-mail. Missing: generic CDP/authenticated-session transport + account-cookie driver template + `docs/DRIVER_AUTHORING.md` CDP chapter. Try 3 approaches each, log in BLOCKERS, build behind interface with clean error until creds.
+- [x] AliExpress: SHIPPED (2026-10-18, commit for `drivers/aliexpress/` + `packages/deal_radar/cdp.py`). Generic CDP session transport (`transport_from_config({"type":"cdp"})`, `CDP_URL` secret) renders the real grid in a headed Chrome; card parser is a pure function of the DOM, unit-tested on real captures (`tests/fixtures/aliexpress-search-*.html`) and live-verified (`CDP_URL=... pytest tests/live/test_aliexpress_live.py -m live` → real UM870 @342€, AI X1 @461€). Ended up needing NO affiliate approval — the debug-browser path works. Open: 1688/taobao/1881 still unprobed with the CDP transport; account-cookie injection (`SESSION_COOKIES_JSON`) not built (CDP profile carries the login instead); `docs/DRIVER_AUTHORING.md` CDP chapter pending.
 - [ ] Non-used markets (Amazon PA-API, Alternate/NBB/Cyberport/Mindfactory/idealo/Geizhals partner-only): same — no code, only BLOCKERS text. Need per-site honest probe (1 polite request each, save fixture) + `needs: <exact approval clicks>` in Store, same pattern as Allegro/eBay.
 - [ ] eBay still dead without creds (`drivers/ebay/driver.py`, BLOCKERS: needs exemption clicks). No tokenless fallback (refused: decoy cards — correct, but then eBay must be excluded from defaults + counts, and FX normalization dead code (`DECISIONS.md:290`) must be wired once eBay/Allegro return).
 - [ ] Allegro.pl shipped mocked, needs `ALLEGRO_CLIENT_ID/SECRET` live proof (BLOCKERS). Do the one live search once creds land.
 - [ ] Shpock keyword wall (`?q=` ignored → generic dump guard raises), no pagination (first page only), price-band slicing only an IDEA (`IDEAS.md:3`). Implement slicing probes (2-3 polite) or keep honest first-page label in tile (currently "source note" only).
 - [ ] Ricardo 403, vinted 403s come-and-go, willhaben laptop-IP ConnectError-walled (BLOCKERS). No automatic transport failover per failure (proxy failover proven once via tunnel, not automatic). Add per-failure auto-rotate transport + `retry_at` already exists — wire rotation, not just cooldown message.
-- [ ] Shopify driver exists but unused for AliExpress-type shops; no laptop-mainboard shop driver; no Geizhals-price-anchor driver (new-price baseline for used-vs-new compare missing).
+- [x] AliExpress is the new-product source now (see above). Still open: no laptop-mainboard *shop* driver (board supply comes from AliExpress + used markets, which cover it); no Geizhals-price-anchor driver (new-price baseline for used-vs-new compare missing).
 
 ## 3. Proxy / auth / anti-bot — "interchangeable, tries next thing on its own"
 
 - [ ] `TRANSPORTS_JSON` supports direct/proxy/rotating but per-driver proxy picker in UI unverified; no health-check table per proxy; no auto-failover on 403/captcha (only manual proof). Prove: kill primary mid-search → secondary completes, evidence in tile.
-- [ ] No CDP/chrome-debug transport, no cookie/account injection UI (user offered AliExpress account). Add `SESSION_COOKIES_JSON` + Store fields + SSRF/secret hygiene (never log values).
+- [x] CDP/chrome-debug transport SHIPPED (`packages/deal_radar/cdp.py`, `{"type":"cdp"}` transport, `CDP_URL` secret, live-verified against real Chrome). Open: cookie/account file injection (`SESSION_COOKIES_JSON`) not built — the CDP user-data profile carries the login instead, so it is not currently needed; it stays an option for a headless/no-profile server.
 - [ ] Captcha/block detection is string-match only; no per-driver `automation_permission` enforcement in UI (manifest has it, Store doesn't surface ToS warning per driver — DECISIONS says public index accepted, but UI must show personal-use notice per install).
 
 ## 4. AI / scam / filters — "checks everything, configurable, never loses good deals"

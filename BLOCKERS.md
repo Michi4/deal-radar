@@ -127,6 +127,14 @@
   the driver the same day (same honest pattern as Allegro/eBay: real API code,
   mocked tests, clean-errors until keys land).
 
+- [x] AliExpress SOLVED via the debug-browser path (2026-10-18): generic CDP
+  session transport + AliExpress driver shipped, live-verified (real UM870
+  @342€, MINISFORUM AI X1 @461€, laptop boards @56-100€ on page 1). No affiliate
+  approval needed. Needs only `CDP_URL` (Chrome `--remote-debugging-port`) in
+  Admin -> Secrets; without it the driver clean-errors and stays out of defaults.
+  1688/taobao still unprobed through this transport (Chinese app-shells); next
+  step when the owner wants CN-warehouse supply.
+
 ## New-product markets probe 2026-10-12
 
 Method: exactly ONE polite GET per site (curl, timeout 15s, UA `hobbyist-research-probe/1.0`,

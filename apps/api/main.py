@@ -153,6 +153,7 @@ SECRET_DEFS = [
     ("EBAY_MARKETPLACE", "eBay marketplace (default EBAY_AT)", False),
     ("ALLEGRO_CLIENT_ID", "Allegro Client ID (auto token mint, apps.developer.allegro.pl)", True),
     ("ALLEGRO_CLIENT_SECRET", "Allegro Client Secret (auto token mint)", True),
+    ("CDP_URL", "debug-browser CDP endpoint (Chrome --remote-debugging-port, e.g. http://host.docker.internal:9222)", False),
     ("CLOUD_API_URL", "OpenAI-compatible base URL", False),
     ("CLOUD_API_KEY", "cloud model API key", True),
     ("CLOUD_MODELS", "cloud models, comma separated", False),
@@ -209,6 +210,11 @@ def default_sources() -> list[str]:
         if d.id == "allegro" and not (_os.getenv("ALLEGRO_CLIENT_ID") and
                                       _os.getenv("ALLEGRO_CLIENT_SECRET")):
             continue  # needs credentials; configure Client ID + Secret in Secrets
+        if d.id == "aliexpress":
+            drv = registry.get(d.id)
+            ready = getattr(drv, "_session_ready", None)
+            if not (_os.getenv("CDP_URL") or (callable(ready) and ready())):
+                continue  # needs a debug-browser session; set CDP_URL in Secrets
         out.append(d.id)
     return out or registry.ids()
 
@@ -495,7 +501,7 @@ async def _model_bootstrap() -> None:
         pass
 
 
-BUILTIN_IDS = ("ebay", "ebay-web", "allegro", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo",
+BUILTIN_IDS = ("ebay", "ebay-web", "allegro", "aliexpress", "willhaben", "kleinanzeigen", "vinted", "shpock", "ricardo",
                "minisforum", "gmktec", "aoostar", "acemagic")
 
 
@@ -510,6 +516,7 @@ def disabled_drivers() -> set[str]:
 def load_drivers() -> None:
     import json as _json
 
+    from aliexpress.driver import AliexpressDriver
     from allegro.driver import AllegroDriver
     from ebay.driver import EbayDriver
     from ebay_web.driver import EbayWebDriver
@@ -534,6 +541,12 @@ def load_drivers() -> None:
         registry.register(EbayWebDriver())
     if "allegro" not in off:
         registry.register(AllegroDriver(transport_from_config(cfg.get("allegro"))))
+    if "aliexpress" not in off:
+        # session driver: needs CDP_URL (debug Chrome) or a per-driver cdp transport
+        _ali_t = cfg.get("aliexpress")
+        if not _ali_t and os.getenv("CDP_URL"):
+            _ali_t = {"type": "cdp"}
+        registry.register(AliexpressDriver(transport_from_config(_ali_t)))
     for shop_id, shop_name, base_url, currency in SHOPS:
         if shop_id not in off:
             drv = make_shopify_driver(shop_id, shop_name, base_url, currency)
@@ -640,7 +653,8 @@ def drivers(include_disabled: int = 0):
             t = type(registry.get(m.id).transport).__name__
             d["transport"] = {"direct": "direct", "ProxyTransport": "proxy",
                               "RotatingProxyTransport": "rotating",
-                              "TlsImpersonatingTransport": "tls"}.get(t, t)
+                              "TlsImpersonatingTransport": "tls",
+                              "CdpTransport": "cdp"}.get(t, t)
         except Exception:
             d["transport"] = "direct"
         if m.id == "ebay":
@@ -648,6 +662,11 @@ def drivers(include_disabled: int = 0):
             d["requires"] = reqs
             d["configured"] = bool(os.getenv("EBAY_OAUTH_TOKEN") or
                                    (os.getenv("EBAY_APP_ID") and os.getenv("EBAY_CERT_ID")))
+        elif m.id == "aliexpress":
+            _drv = registry.get(m.id)
+            _ready = getattr(_drv, "_session_ready", None)
+            d["requires"] = ["CDP_URL (debug browser)"]
+            d["configured"] = bool((callable(_ready) and _ready()) or os.getenv("CDP_URL"))
         else:
             reqs = {}.get(m.id, [])
             d["requires"] = reqs
