@@ -459,3 +459,32 @@ User: up to €800 (haggle), above OK too, prefer resale money (~€600).
 OLED 155H/32GB/1TB €929 KA. Yoga 7 155H/32GB/2.8K €1,299. MSI Prestige 16" €899.
 Verdict ladder: €600 835 (resale zone) -> €700-760 Envy/Swift (stretch zone) ->
 €929+ (above zone).
+
+## Round 33 — new-market gem hunt: AliExpress + brand stores (2026-10-18)
+Owner: "search everywhere, non-used too, maybe even new & cheaper than UM870@340"
++ laptop-mainboard cheat-code. Shipped the AliExpress driver (CDP debug browser,
+see DECISIONS 2026-10-18) and hunted live.
+
+FINDINGS (all prices live 2026-10-18, EUR, shipped-DE where stated):
+- AliExpress is a BONEBONE-only market: official MINISFORUM UM870 store barebone
+  €341.73, but its 16GB/512GB bundle €738 and 32GB/1TB €1,114 — the RAM/SSD
+  markup is ~2x the part cost. Never buy the pre-built AliExpress variant; buy
+  barebone + your own RAM/SSD.
+- AliExpress "R5 7640HS ES" barebone €236.25 — ES = engineering sample (pre-prod
+  silicon). FLAGGED as a gamble, not a gem (no warranty, silicon lottery).
+- Brand stores (warranty, DE warehouse) beat AliExpress on barebones:
+  * AOOSTAR MACO R7 PRO 8845HS barebone EUR 299.95 (aoostar.com/products/aoostar-maco-8845)
+  * MINISFORUM UM870 Slim 8745H barebone EUR 329 (minisforumpc.eu)
+  * MINISFORUM AI X1 H255 barebone EUR 379; refurb UM870/X1 Slim from EUR 219/289
+  * GMKtec NucBox K12 H255 barebone EUR 349.99; K8 Plus 8845HS EUR 389.99
+  * MINISFORUM UM760 Slim 7640HS refurbished EUR 199; X300 3400GE barebone EUR 139
+- Verdict vs the owner's finds: NEW is NOT cheaper here. Used UM870 8745H 255+85
+  = 340 EUR all-in stays cheapest; the dealer's X1 AI H255 295+85 = 380 all-in is
+  the best NEW-ish product (WiFi7+OCuLink, warranty); the cheapest pure-new
+  barebone of the same class is AOOSTAR MACO 8845HS (299.95) -> ~385 all-in.
+  8745H == 8845HS minus NPU, so these are performance-identical.
+- Laptop-mainboard cheat-code CONFIRMED on AliExpress: MacBook A1502 logic board
+  EUR 25.99, ASUS X540LA boards EUR 25.44, Dell 14z 5423 i3/i5/i7 boards EUR 56.69,
+  Lenovo Y50-70 LA-B111P boards EUR 72.55. OCuLink eGPU docks EUR 14.58+.
+- APP: AliExpress now runs end-to-end through the API (POST /searches
+  sources:["aliexpress"] -> 20 mapped listings with deal DNA + risk live-verified).
