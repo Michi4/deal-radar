@@ -488,3 +488,27 @@ FINDINGS (all prices live 2026-10-18, EUR, shipped-DE where stated):
   Lenovo Y50-70 LA-B111P boards EUR 72.55. OCuLink eGPU docks EUR 14.58+.
 - APP: AliExpress now runs end-to-end through the API (POST /searches
   sources:["aliexpress"] -> 20 mapped listings with deal DNA + risk live-verified).
+
+## Round 34 — piano near Linz + CDP_URL portability (2026-10-18)
+Generic tooling fix (helps every self-hoster): `scripts/browser_hunt/cdp.py`
+now honours `CDP_URL` (was hard-coded localhost:9222) and connects without an
+`Origin` header, so the hunt scripts work against any debug browser (verified
+against a headless Chrome on :9333). README documents it. ruff clean.
+
+Hunt: best digital piano near Linz (weighted keys, cheap). willhaben x20
+keywords -> 431 unique listings, 78 within OÖ/west-NÖ; kleinanzeigen x5 (~116)
+for the Passau border region. All picks verified live on their item pages
+(gone=false, real price, Zustand/Übergabe read from Detailinformationen).
+
+Live-verified picks (pickup = scam-safe):
+- FunKey DP-88 II 88 keys/3 pedals, used very good, 4502 St. Marien, EUR 119
+- Yamaha P-45 neuwertig + Ständer/Hocker/Pedal, 4213 Hattmannsdorf, EUR 290
+- KORG B2 88 fully-weighted NH + headphone set, 4802 Ebensee, EUR 299
+- Casio Celviano AP-270 88 hammer-action cabinet, 4050 Oedt, EUR 449
+- Kawai ES110 (best action), nearly unused, 4050 St. Dionysen, EUR 520
+- Yamaha P-125 + wood stand + cover, 5233 Pischelsdorf, EUR 350
+- Casio Privia PX-770 neuwertig, 4060 Leonding (5 km), EUR 590
+- Yamaha P-515 flagship portable + K&M stand, 4073 Edramsberg, EUR 1100
+Far/border: Kawai ES110 93352 Rohr (DE) EUR 350 with Versand.
+Verdict: ES110 (feel) or P-45 EUR 290 (value) within 20 km; DP-88 II EUR 119
+if price dominates.

@@ -1,8 +1,13 @@
 # browser_hunt — drive the debug browser past blocked drivers
 
 These scripts scrape eBay / kleinanzeigen / willhaben **through a real Chrome**
-(CDP at `localhost:9222`), which is how we hunt when the HTTP drivers are
+(CDP, default `localhost:9222`), which is how we hunt when the HTTP drivers are
 bot-walled. They are a *hunting* tool, separate from the drivers in `drivers/`.
+
+Set `CDP_URL` to point at any other debug browser (e.g. a headless one on
+`:9333`); every script inherits it. The websocket connects without an `Origin`
+header, so `--remote-allow-origins` is optional for these scripts (the browser
+launch below keeps it for other tooling).
 
 ## Prerequisites
 

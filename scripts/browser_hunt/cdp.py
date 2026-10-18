@@ -5,13 +5,15 @@ Usage:
     python3 cdp.py <url> <js-expression-file-or-inline> [wait_ms]
 """
 import json
+import os
 import subprocess
 import sys
 import time
 import urllib.request
 from urllib.parse import quote
 
-CDP = "http://localhost:9222"
+# Default to the documented debug port; override for any other Chrome instance.
+CDP = os.environ.get("CDP_URL", "http://localhost:9222").rstrip("/")
 
 
 def _get(path):
@@ -47,7 +49,7 @@ def run(js, url=None, wait_ms=3500, timeout=60, navigate_first=True):
         import websocket  # type: ignore
 
     sock = websocket.create_connection(ws, timeout=timeout,
-                                       origin="http://localhost:9222")
+                                       suppress_origin=True)
     mid = 0
 
     def send(method, params=None):
@@ -104,8 +106,9 @@ def navigate(url, wait_ms=3000, timeout=60):
 if __name__ == "__main__":
     u = sys.argv[1]
     expr = sys.argv[2]
-    if expr.startswith("/") or expr.endswith(".js") or expr.endswith(".txt"):
-        expr = open(expr).read()
+    if expr.startswith("/") or expr.endswith((".js", ".txt")):
+        with open(expr) as fh:
+            expr = fh.read()
     wait = int(sys.argv[3]) if len(sys.argv) > 3 else 3500
     out = run(expr, url=u, wait_ms=wait)
     print(json.dumps(out, ensure_ascii=False, indent=1) if isinstance(
